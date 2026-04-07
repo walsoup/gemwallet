@@ -6,13 +6,19 @@ import { QuickAddSheet } from '../../components/QuickAddSheet';
 import { SpendingChart } from '../../components/SpendingChart';
 import { useTransactionStore } from '../../store/useTransactionStore';
 
+const CHART_INITIAL_OFFSET = 14;
+const LIST_INITIAL_OFFSET = 18;
+const ENTER_STAGGER_DELAY = 80;
+const CHART_ENTER_DURATION = 260;
+const LIST_ENTER_DURATION = 300;
+
 export default function DashboardScreen() {
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const transactions = useTransactionStore((state) => state.transactions);
   const chartOpacity = useRef(new Animated.Value(0)).current;
-  const chartTranslateY = useRef(new Animated.Value(14)).current;
+  const chartTranslateY = useRef(new Animated.Value(CHART_INITIAL_OFFSET)).current;
   const listOpacity = useRef(new Animated.Value(0)).current;
-  const listTranslateY = useRef(new Animated.Value(18)).current;
+  const listTranslateY = useRef(new Animated.Value(LIST_INITIAL_OFFSET)).current;
 
   useEffect(() => {
     if (Platform.OS === 'android') {
@@ -21,14 +27,14 @@ export default function DashboardScreen() {
   }, []);
 
   useEffect(() => {
-    Animated.stagger(80, [
+    Animated.stagger(ENTER_STAGGER_DELAY, [
       Animated.parallel([
-        Animated.timing(chartOpacity, { toValue: 1, duration: 260, useNativeDriver: true }),
-        Animated.timing(chartTranslateY, { toValue: 0, duration: 260, useNativeDriver: true }),
+        Animated.timing(chartOpacity, { toValue: 1, duration: CHART_ENTER_DURATION, useNativeDriver: true }),
+        Animated.timing(chartTranslateY, { toValue: 0, duration: CHART_ENTER_DURATION, useNativeDriver: true }),
       ]),
       Animated.parallel([
-        Animated.timing(listOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
-        Animated.timing(listTranslateY, { toValue: 0, duration: 300, useNativeDriver: true }),
+        Animated.timing(listOpacity, { toValue: 1, duration: LIST_ENTER_DURATION, useNativeDriver: true }),
+        Animated.timing(listTranslateY, { toValue: 0, duration: LIST_ENTER_DURATION, useNativeDriver: true }),
       ]),
     ]).start();
   }, [chartOpacity, chartTranslateY, listOpacity, listTranslateY]);

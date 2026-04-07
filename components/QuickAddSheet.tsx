@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, View } from 'react-native';
-import { SegmentedButtons, TextInput, Button } from 'react-native-paper';
+import { SegmentedButtons, TextInput, Button, useTheme } from 'react-native-paper';
 
 import { useTransactionStore } from '../store/useTransactionStore';
 import type { TransactionCategory } from '../types/finance';
@@ -15,6 +15,7 @@ type QuickAddSheetProps = {
 
 export function QuickAddSheet({ visible, onDismiss }: QuickAddSheetProps) {
   const addTransaction = useTransactionStore((state) => state.addTransaction);
+  const theme = useTheme();
 
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
@@ -42,7 +43,12 @@ export function QuickAddSheet({ visible, onDismiss }: QuickAddSheetProps) {
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onDismiss}>
-      <Pressable style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.35)' }} onPress={onDismiss} />
+      <Pressable
+        style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.35)' }}
+        onPress={onDismiss}
+        accessibilityRole="button"
+        accessibilityLabel="Close quick add expense dialog"
+      />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View
           style={{
@@ -50,7 +56,7 @@ export function QuickAddSheet({ visible, onDismiss }: QuickAddSheetProps) {
             gap: 12,
             borderTopLeftRadius: 20,
             borderTopRightRadius: 20,
-            backgroundColor: '#fff'
+            backgroundColor: theme.colors.surface
           }}
         >
           <TextInput mode="outlined" label="What did you buy?" value={title} onChangeText={setTitle} />
