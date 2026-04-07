@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { Fragment, useMemo } from 'react';
 import { View } from 'react-native';
 import { Text } from 'react-native-paper';
 import Svg, { Rect, Text as SvgText } from 'react-native-svg';
@@ -23,20 +23,22 @@ export function SpendingChart({ transactions }: Props) {
           const barHeight = (item.amount / max) * 100;
           const x = 10 + index * 58;
           return (
-            <>
+            <Fragment key={item.id}>
               <Rect
-                key={`${item.id}-bar`}
                 x={x}
                 y={130 - barHeight}
                 width={40}
                 height={barHeight}
                 rx={16}
                 ry={16}
+                accessible
+                accessibilityRole="image"
+                accessibilityLabel={`${item.category} spent ${item.amount.toFixed(2)} dollars`}
               />
-              <SvgText key={`${item.id}-label`} x={x + 4} y={150} fontSize={10}>
+              <SvgText x={x + 4} y={150} fontSize={10}>
                 {item.category}
               </SvgText>
-            </>
+            </Fragment>
           );
         })}
       </Svg>
