@@ -1,4 +1,4 @@
-name: Build Android APK (EAS)
+name: Build Android APK (Raw Gradle)
 
 on:
   push:
@@ -11,8 +11,6 @@ permissions:
 jobs:
   build-android-apk:
     runs-on: ubuntu-latest
-    env:
-      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
     steps:
       - name: Checkout repository
@@ -24,22 +22,26 @@ jobs:
           node-version: 20
           cache: npm
 
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
       - name: Install dependencies
         run: npm install --legacy-peer-deps
 
-      - name: Install EAS CLI
-        run: npm install --global eas-cli
+      - name: Generate Native Android Code
+        run: npx expo prebuild --platform android --clean
 
-      - name: Trigger and wait for APK build
-        run: eas build --platform android --profile apk --non-interactive --wait --json > eas-build.json
-
-      - name: Download generated APK
+      - name: Build APK with Gradle
         run: |
-          node -e "const fs=require('fs');const d=JSON.parse(fs.readFileSync('eas-build.json','utf8'));const b=Array.isArray(d)?d[0]:d;const u=b?.artifacts?.buildUrl;if(!u){throw new Error('Missing buildUrl in EAS response')}fs.writeFileSync('apk-url.txt',u);"
-          curl -L "$(cat apk-url.txt)" -o app-release.apk
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: gemwallet-android-apk
-          path: app-release.apk
+          name: gemwallet-raw-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
