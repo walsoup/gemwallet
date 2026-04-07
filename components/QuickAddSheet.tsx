@@ -23,7 +23,7 @@ export const QuickAddSheet = forwardRef<BottomSheet>((_, ref) => {
     }
 
     addTransaction({
-      id: Date.now().toString(),
+      id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`,
       title: title.trim(),
       amount: parsedAmount,
       category,
