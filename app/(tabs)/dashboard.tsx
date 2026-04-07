@@ -1,7 +1,5 @@
-import BottomSheet from '@gorhom/bottom-sheet';
-import { useRef } from 'react';
-import { ScrollView, View } from 'react-native';
-import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, LayoutAnimation, Platform, ScrollView, UIManager, View } from 'react-native';
 import { FAB, List, Text } from 'react-native-paper';
 
 import { QuickAddSheet } from '../../components/QuickAddSheet';
@@ -9,18 +7,45 @@ import { SpendingChart } from '../../components/SpendingChart';
 import { useTransactionStore } from '../../store/useTransactionStore';
 
 export default function DashboardScreen() {
-  const bottomSheetRef = useRef<BottomSheet>(null);
+  const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const transactions = useTransactionStore((state) => state.transactions);
+  const chartOpacity = useRef(new Animated.Value(0)).current;
+  const chartTranslateY = useRef(new Animated.Value(14)).current;
+  const listOpacity = useRef(new Animated.Value(0)).current;
+  const listTranslateY = useRef(new Animated.Value(18)).current;
+
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      UIManager.setLayoutAnimationEnabledExperimental?.(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    Animated.stagger(80, [
+      Animated.parallel([
+        Animated.timing(chartOpacity, { toValue: 1, duration: 260, useNativeDriver: true }),
+        Animated.timing(chartTranslateY, { toValue: 0, duration: 260, useNativeDriver: true }),
+      ]),
+      Animated.parallel([
+        Animated.timing(listOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.timing(listTranslateY, { toValue: 0, duration: 300, useNativeDriver: true }),
+      ]),
+    ]).start();
+  }, [chartOpacity, chartTranslateY, listOpacity, listTranslateY]);
+
+  useEffect(() => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+  }, [transactions.length]);
 
   return (
     <View style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
-        <Animated.View entering={FadeInUp.duration(300)}>
+        <Animated.View style={{ opacity: chartOpacity, transform: [{ translateY: chartTranslateY }] }}>
           <Text variant="headlineMedium">Spending Pulse</Text>
           <SpendingChart transactions={transactions} />
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.duration(350)}>
+        <Animated.View style={{ opacity: listOpacity, transform: [{ translateY: listTranslateY }] }}>
           <Text variant="titleLarge" style={{ marginBottom: 8 }}>
             Recent Transactions
           </Text>
@@ -38,10 +63,10 @@ export default function DashboardScreen() {
       <FAB
         icon="plus"
         style={{ position: 'absolute', bottom: 20, right: 16 }}
-        onPress={() => bottomSheetRef.current?.snapToIndex(0)}
+        onPress={() => setIsQuickAddOpen(true)}
       />
 
-      <QuickAddSheet ref={bottomSheetRef} />
+      <QuickAddSheet visible={isQuickAddOpen} onDismiss={() => setIsQuickAddOpen(false)} />
     </View>
   );
 }
