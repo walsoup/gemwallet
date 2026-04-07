@@ -1,36 +1,46 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# GemWallet – Expressive Finance PWA
 
-## Getting Started
+A mobile-first personal finance Progressive Web App built with Next.js App Router, React, Tailwind CSS, Framer Motion, Zustand, and localforage.
 
-First, run the development server:
+## Features
+
+- Material-inspired expressive motion system with spring interactions.
+- Dashboard with adaptive waveform budget indicator.
+- Fullscreen quick-add expense modal launched by floating action button.
+- Subscription Graveyard tab with dynamic severity color coding.
+- Seeded local transactions for realistic visual testing.
+- Offline-first persistence via Zustand + localforage.
+- PWA support with `manifest.json` + service worker caching.
+- AI advisor endpoint at `/api/gemma-advisor` using `@google/generative-ai` and Gemma 4 JSON output.
+
+## Setup
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Environment Variables
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Create `.env.local`:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+GOOGLE_AI_API_KEY=your_google_ai_studio_api_key
+```
 
-## Learn More
+## Build & Lint
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm run lint
+npm run build
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Deployment
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+GitHub Actions workflow: `.github/workflows/deploy.yml`.
 
-## Deploy on Vercel
+Required repository secrets:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `VERCEL_TOKEN`
+- `VERCEL_ORG_ID`
+- `VERCEL_PROJECT_ID`

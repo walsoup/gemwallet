@@ -1,26 +1,46 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --m3-surface: #12131a;
+  --m3-surface-container: #1a1d28;
+  --m3-surface-container-high: #252a38;
+  --m3-on-surface: #edf1ff;
+  --m3-on-surface-variant: #b8bfd6;
+  --m3-primary: #8ca8ff;
+  --m3-on-primary: #0f2257;
+  --m3-primary-container: #2b3e7a;
+  --m3-on-primary-container: #dbe4ff;
+  --m3-secondary-container: #31435f;
+  --m3-on-secondary-container: #d7e3ff;
+  --m3-tertiary: #95d4c2;
+  --m3-on-tertiary: #04281f;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: "Inter Variable", system-ui, sans-serif;
+  --font-editorial: "Manrope Variable", "Inter Variable", system-ui, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+}
+
+.font-editorial {
+  font-family: var(--font-editorial);
+  font-variation-settings: "wght" 700;
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
 }
