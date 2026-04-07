@@ -6,8 +6,7 @@ import { QuickAddSheet } from '../../components/QuickAddSheet';
 import { SpendingChart } from '../../components/SpendingChart';
 import { useTransactionStore } from '../../store/useTransactionStore';
 
-const CHART_INITIAL_OFFSET = 14;
-const LIST_INITIAL_OFFSET = 18;
+const INITIAL_OFFSET = 16;
 const ENTER_STAGGER_DELAY = 80;
 const CHART_ENTER_DURATION = 260;
 const LIST_ENTER_DURATION = 300;
@@ -16,9 +15,9 @@ export default function DashboardScreen() {
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const transactions = useTransactionStore((state) => state.transactions);
   const chartOpacity = useRef(new Animated.Value(0)).current;
-  const chartTranslateY = useRef(new Animated.Value(CHART_INITIAL_OFFSET)).current;
+  const chartTranslateY = useRef(new Animated.Value(INITIAL_OFFSET)).current;
   const listOpacity = useRef(new Animated.Value(0)).current;
-  const listTranslateY = useRef(new Animated.Value(LIST_INITIAL_OFFSET)).current;
+  const listTranslateY = useRef(new Animated.Value(INITIAL_OFFSET)).current;
 
   useEffect(() => {
     if (Platform.OS === 'android') {

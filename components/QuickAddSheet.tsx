@@ -7,6 +7,7 @@ import type { TransactionCategory } from '../types/finance';
 import { generateId } from '../utils/generateId';
 
 const categories: TransactionCategory[] = ['Food', 'Transport', 'Shopping', 'Bills', 'Entertainment'];
+const BACKDROP_OPACITY = 0.35;
 
 type QuickAddSheetProps = {
   visible: boolean;
@@ -44,7 +45,7 @@ export function QuickAddSheet({ visible, onDismiss }: QuickAddSheetProps) {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onDismiss}>
       <Pressable
-        style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.35)' }}
+        style={{ flex: 1, backgroundColor: `rgba(0, 0, 0, ${BACKDROP_OPACITY})` }}
         onPress={onDismiss}
         accessibilityRole="button"
         accessibilityLabel="Close quick add expense dialog"
