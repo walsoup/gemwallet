@@ -1,46 +1,39 @@
-# GemWallet – Expressive Finance PWA
+# GemWallet Native (Expo)
 
-A mobile-first personal finance Progressive Web App built with Next.js App Router, React, Tailwind CSS, Framer Motion, Zustand, and localforage.
+Native personal finance app built with Expo + React Native.
 
-## Features
+## Stack
 
-- Material-inspired expressive motion system with spring interactions.
-- Dashboard with adaptive waveform budget indicator.
-- Fullscreen quick-add expense modal launched by floating action button.
-- Subscription Graveyard tab with dynamic severity color coding.
-- Seeded local transactions for realistic visual testing.
-- Offline-first persistence via Zustand + localforage.
-- PWA support with `manifest.json` + service worker caching.
-- AI advisor endpoint at `/api/gemma-advisor` using `@google/generative-ai` and Gemma 4 JSON output.
+- Expo Router (file-based navigation)
+- React Native Paper (Material 3)
+- Zustand + AsyncStorage (offline local persistence)
+- Reanimated + Gorhom Bottom Sheet
+- Google Generative AI SDK integration for Gemma-based spending audit
 
 ## Setup
 
 ```bash
 npm install
-npm run dev
+npm run start
 ```
 
-## Environment Variables
+## Environment Variable
 
-Create `.env.local`:
+Create `.env` (or EAS env var) with:
 
 ```bash
-GOOGLE_AI_API_KEY=your_google_ai_studio_api_key
+EXPO_PUBLIC_GEMMA_API_KEY=your_google_ai_key
 ```
 
-## Build & Lint
+## Build/Lint
 
 ```bash
 npm run lint
 npm run build
 ```
 
-## Deployment
+## Android APK via EAS
 
-GitHub Actions workflow: `.github/workflows/deploy.yml`.
-
-Required repository secrets:
-
-- `VERCEL_TOKEN`
-- `VERCEL_ORG_ID`
-- `VERCEL_PROJECT_ID`
+- EAS profile: `apk` in `eas.json` (`buildType: apk`)
+- GitHub Actions workflow: `.github/workflows/build.yml`
+- Required secret: `EXPO_TOKEN`
