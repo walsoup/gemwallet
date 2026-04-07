@@ -1,4 +1,4 @@
-name: Build Android APK (Raw Gradle)
+name: Build Android APK (Raw Gradle - Release)
 
 on:
   push:
@@ -34,6 +34,17 @@ jobs:
       - name: Generate Native Android Code
         run: npx expo prebuild --platform android --clean
 
+      - name: Build Standalone APK (Release)
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gemwallet-standalone-apk
+          path: android/app/build/outputs/apk/release/*.apk
       - name: Build APK with Gradle
         run: |
           cd android
