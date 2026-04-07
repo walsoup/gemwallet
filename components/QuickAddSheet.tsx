@@ -1,16 +1,22 @@
-import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
-import { forwardRef, useMemo, useState } from 'react';
-import { SegmentedButtons, TextInput, Button } from 'react-native-paper';
+import { useState } from 'react';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, View } from 'react-native';
+import { SegmentedButtons, TextInput, Button, useTheme } from 'react-native-paper';
 
 import { useTransactionStore } from '../store/useTransactionStore';
 import type { TransactionCategory } from '../types/finance';
 import { generateId } from '../utils/generateId';
 
 const categories: TransactionCategory[] = ['Food', 'Transport', 'Shopping', 'Bills', 'Entertainment'];
+const BACKDROP_OPACITY = 0.35;
 
-export const QuickAddSheet = forwardRef<BottomSheet>((_, ref) => {
+type QuickAddSheetProps = {
+  visible: boolean;
+  onDismiss: () => void;
+};
+
+export function QuickAddSheet({ visible, onDismiss }: QuickAddSheetProps) {
   const addTransaction = useTransactionStore((state) => state.addTransaction);
-  const snapPoints = useMemo(() => ['50%'], []);
+  const theme = useTheme();
 
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
@@ -33,30 +39,45 @@ export const QuickAddSheet = forwardRef<BottomSheet>((_, ref) => {
 
     setTitle('');
     setAmount('');
+    onDismiss();
   };
 
   return (
-    <BottomSheet ref={ref} index={-1} snapPoints={snapPoints} enablePanDownToClose>
-      <BottomSheetView style={{ padding: 16, gap: 12 }}>
-        <TextInput mode="outlined" label="What did you buy?" value={title} onChangeText={setTitle} />
-        <TextInput
-          mode="outlined"
-          label="Amount"
-          value={amount}
-          onChangeText={setAmount}
-          keyboardType="decimal-pad"
-        />
-        <SegmentedButtons
-          value={category}
-          onValueChange={(value) => setCategory(value as TransactionCategory)}
-          buttons={categories.map((item) => ({ value: item, label: item }))}
-        />
-        <Button mode="contained" onPress={save}>
-          Save Expense
-        </Button>
-      </BottomSheetView>
-    </BottomSheet>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onDismiss}>
+      <Pressable
+        style={{ flex: 1, backgroundColor: `rgba(0, 0, 0, ${BACKDROP_OPACITY})` }}
+        onPress={onDismiss}
+        accessibilityRole="button"
+        accessibilityLabel="Close quick add expense dialog"
+      />
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <View
+          style={{
+            padding: 16,
+            gap: 12,
+            borderTopLeftRadius: 20,
+            borderTopRightRadius: 20,
+            backgroundColor: theme.colors.surface
+          }}
+        >
+          <TextInput mode="outlined" label="What did you buy?" value={title} onChangeText={setTitle} />
+          <TextInput
+            mode="outlined"
+            label="Amount"
+            value={amount}
+            onChangeText={setAmount}
+            keyboardType="decimal-pad"
+          />
+          <SegmentedButtons
+            value={category}
+            onValueChange={(value) => setCategory(value as TransactionCategory)}
+            buttons={categories.map((item) => ({ value: item, label: item }))}
+          />
+          <Button mode="contained" onPress={save}>
+            Save Expense
+          </Button>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
   );
-});
-
-QuickAddSheet.displayName = 'QuickAddSheet';
+}
