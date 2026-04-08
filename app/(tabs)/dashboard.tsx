@@ -242,7 +242,6 @@ export default function DashboardScreen() {
       <Modal transparent visible={isSheetVisible} onRequestClose={() => closeSheet()} animationType="none">
         <View style={{ flex: 1, justifyContent: 'flex-end' }}>
           <Animated.View
-            pointerEvents="none"
             style={{
               ...StyleSheet.absoluteFillObject,
               backgroundColor: theme.colors.backdrop,
@@ -273,7 +272,6 @@ export default function DashboardScreen() {
             }}
           >
             <ScrollView
-              style={{ maxHeight: '100%' }}
               contentContainerStyle={{ padding: 16, gap: 14, backgroundColor: theme.colors.surface }}
             >
               <Text variant="headlineMedium" style={{ color: theme.colors.onSurface }}>

@@ -46,10 +46,6 @@ export default function SettingsScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-  }, [exportData, themePreference]);
-
   const onSaveApiKey = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setGemmaApiKey(gemmaApiKey.trim());
@@ -57,11 +53,13 @@ export default function SettingsScreen() {
 
   const onThemeChange = async (value: string) => {
     await Haptics.selectionAsync();
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setThemePreference(value as 'system' | 'light' | 'dark');
   };
 
   const onExportData = async () => {
     await Haptics.selectionAsync();
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setExportData(JSON.stringify(transactions, null, 2));
   };
 
@@ -73,6 +71,7 @@ export default function SettingsScreen() {
         style: 'destructive',
         onPress: async () => {
           await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
           clearTransactions();
           resetSettings();
           setExportData('');
