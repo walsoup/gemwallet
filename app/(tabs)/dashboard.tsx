@@ -50,6 +50,10 @@ const categoryButtons = [
   { label: 'Shopping', value: 'Shopping' },
 ] as const;
 
+const SHEET_ANIMATION_DURATION = 220;
+const SHEET_BACKDROP_OPACITY = 0.25;
+const SHEET_MAX_HEIGHT = '92%';
+
 export default function DashboardScreen() {
   const theme = useTheme();
   const sheetAnimation = useRef(new Animated.Value(0)).current;
@@ -106,7 +110,7 @@ export default function DashboardScreen() {
     setIsSheetVisible(true);
     Animated.timing(sheetAnimation, {
       toValue: 1,
-      duration: 220,
+      duration: SHEET_ANIMATION_DURATION,
       useNativeDriver: true,
     }).start();
   };
@@ -114,7 +118,7 @@ export default function DashboardScreen() {
   const closeSheet = (reset = true) => {
     Animated.timing(sheetAnimation, {
       toValue: 0,
-      duration: 220,
+      duration: SHEET_ANIMATION_DURATION,
       useNativeDriver: true,
     }).start(({ finished }) => {
       if (!finished) return;
@@ -242,7 +246,7 @@ export default function DashboardScreen() {
             style={{
               ...StyleSheet.absoluteFillObject,
               backgroundColor: theme.colors.backdrop,
-              opacity: sheetAnimation.interpolate({ inputRange: [0, 1], outputRange: [0, 0.25] }),
+              opacity: sheetAnimation.interpolate({ inputRange: [0, 1], outputRange: [0, SHEET_BACKDROP_OPACITY] }),
             }}
           />
           <Pressable
@@ -262,7 +266,7 @@ export default function DashboardScreen() {
                   }),
                 },
               ],
-              maxHeight: '92%',
+              maxHeight: SHEET_MAX_HEIGHT,
               borderTopLeftRadius: 24,
               borderTopRightRadius: 24,
               backgroundColor: theme.colors.surface,
