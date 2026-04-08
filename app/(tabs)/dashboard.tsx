@@ -250,6 +250,7 @@ export default function DashboardScreen() {
           />
           <Pressable
             accessibilityLabel="Close add transaction panel"
+            accessibilityHint="Dismiss the add transaction form"
             accessibilityRole="button"
             style={StyleSheet.absoluteFillObject}
             onPress={() => closeSheet()}
