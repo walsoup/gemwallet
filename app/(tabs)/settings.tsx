@@ -72,7 +72,7 @@ export default function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1 }}>
       <SectionList
         sections={sections}
         keyExtractor={(item) => item}
@@ -87,7 +87,7 @@ export default function SettingsScreen() {
             return (
               <View style={{ marginBottom: 20, gap: 10 }}>
                 <List.Item
-                  title="Gemma 4 API Key"
+                  title="Gemini API Key"
                   description="Stored locally for on-device audit requests"
                   titleStyle={{ color: theme.colors.onSurface }}
                   descriptionStyle={{ color: theme.colors.onSurfaceVariant }}

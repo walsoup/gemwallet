@@ -21,7 +21,7 @@ export default function GraveyardScreen() {
   }, [recurring.length]);
 
   return (
-    <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
         <Text variant="headlineMedium" style={{ color: theme.colors.onSurface }}>
           Subscription Graveyard

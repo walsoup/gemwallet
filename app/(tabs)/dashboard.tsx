@@ -18,10 +18,10 @@ import { useTransactionStore } from '../../store/useTransactionStore';
 import type { TransactionCategory } from '../../types/finance';
 import { generateId } from '../../utils/generateId';
 
-const spendLimits: Record<'Food' | 'Transport' | 'Subscription' | 'Shopping', number> = {
+const spendLimits: Record<'Food' | 'Transport' | 'Subscriptions' | 'Shopping', number> = {
   Food: 350,
   Transport: 220,
-  Subscription: 120,
+  Subscriptions: 120,
   Shopping: 300,
 };
 
@@ -35,7 +35,7 @@ const keypadRows = [
 const categoryButtons = [
   { label: 'Food', value: 'Food' },
   { label: 'Transport', value: 'Transport' },
-  { label: 'Subscriptions', value: 'Subscription' },
+  { label: 'Subscriptions', value: 'Subscriptions' },
   { label: 'Shopping', value: 'Shopping' },
 ] as const;
 
@@ -49,6 +49,7 @@ export default function DashboardScreen() {
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<TransactionCategory>('Food');
+  const [formError, setFormError] = useState('');
 
   const snapPoints = useMemo(() => ['70%', '92%'], []);
 
@@ -67,11 +68,11 @@ export default function DashboardScreen() {
       (acc, tx) => {
         if (tx.category === 'Food') acc.Food += tx.amount;
         if (tx.category === 'Transport') acc.Transport += tx.amount;
-        if (tx.category === 'Subscription') acc.Subscription += tx.amount;
+        if (tx.category === 'Subscriptions') acc.Subscriptions += tx.amount;
         if (tx.category === 'Shopping') acc.Shopping += tx.amount;
         return acc;
       },
-      { Food: 0, Transport: 0, Subscription: 0, Shopping: 0 }
+      { Food: 0, Transport: 0, Subscriptions: 0, Shopping: 0 }
     );
   }, [transactions]);
 
@@ -81,11 +82,12 @@ export default function DashboardScreen() {
       return;
     }
 
-    if (key === '.' && amount.includes('.')) {
-      return;
-    }
-
-    setAmount((prev) => `${prev}${key}`);
+    setAmount((prev) => {
+      if (key === '.' && prev.includes('.')) {
+        return prev;
+      }
+      return `${prev}${key}`;
+    });
   };
 
   const openSheet = () => {
@@ -97,22 +99,26 @@ export default function DashboardScreen() {
     setAmount('');
     setDescription('');
     setCategory('Food');
+    setFormError('');
   };
 
   const onSave = async () => {
     const parsedAmount = Number(amount);
     if (!description.trim() || !Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      setFormError('Enter a valid amount and description.');
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
 
+    setFormError('');
     addTransaction({
       id: generateId(),
       title: description.trim(),
       amount: parsedAmount,
       category,
       date: new Date().toISOString(),
-      recurring: category === 'Subscription',
-      interval: category === 'Subscription' ? 'monthly' : undefined,
+      recurring: category === 'Subscriptions',
+      interval: category === 'Subscriptions' ? 'monthly' : undefined,
     });
 
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -121,7 +127,7 @@ export default function DashboardScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1 }}>
       <FlatList
         data={transactions}
         keyExtractor={(item) => item.id}
@@ -136,7 +142,7 @@ export default function DashboardScreen() {
               Adaptive Spending Bars
             </Text>
 
-            {(Object.keys(spendLimits) as Array<keyof typeof spendLimits>).map((item) => {
+            {(Object.keys(spendLimits) as (keyof typeof spendLimits)[]).map((item) => {
               const limit = spendLimits[item];
               const spent = totals[item];
               const fill = Math.min((spent / limit) * 100, 100);
@@ -145,7 +151,7 @@ export default function DashboardScreen() {
                 <View key={item} style={{ gap: 6 }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                     <Text variant="titleMedium" style={{ color: theme.colors.onSurface }}>
-                      {item === 'Subscription' ? 'Subscriptions' : item}
+                      {item}
                     </Text>
                     <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
                       ${spent.toFixed(2)} / ${limit.toFixed(2)}
@@ -249,7 +255,12 @@ export default function DashboardScreen() {
             mode="outlined"
             label="Description"
             value={description}
-            onChangeText={setDescription}
+            onChangeText={(value) => {
+              setDescription(value);
+              if (formError) {
+                setFormError('');
+              }
+            }}
           />
 
           <SegmentedButtons
@@ -261,6 +272,11 @@ export default function DashboardScreen() {
           <Button mode="contained" onPress={onSave}>
             Save
           </Button>
+          {formError ? (
+            <Text variant="bodySmall" style={{ color: theme.colors.error }}>
+              {formError}
+            </Text>
+          ) : null}
         </BottomSheetScrollView>
       </BottomSheetModal>
     </SafeAreaView>

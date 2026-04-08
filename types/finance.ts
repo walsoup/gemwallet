@@ -4,7 +4,7 @@ export type TransactionCategory =
   | 'Shopping'
   | 'Bills'
   | 'Entertainment'
-  | 'Subscription';
+  | 'Subscriptions';
 
 export type Recurrence = 'monthly' | 'yearly';
 

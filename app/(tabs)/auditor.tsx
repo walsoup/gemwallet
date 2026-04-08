@@ -39,7 +39,7 @@ export default function AuditorScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
         <Text variant="headlineMedium" style={{ color: theme.colors.onSurface }}>
           AI Auditor
@@ -50,7 +50,7 @@ export default function AuditorScreen() {
             visible
             actions={[{ label: 'Open Settings', onPress: () => router.push('/(tabs)/settings') }]}
           >
-            No API key found. Add your Gemma 4 API key in Settings.
+            No API key found. Add your Gemini API key in Settings.
           </Banner>
         ) : null}
 
