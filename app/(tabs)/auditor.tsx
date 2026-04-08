@@ -1,20 +1,32 @@
+import * as Haptics from 'expo-haptics';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ScrollView } from 'react-native';
-import { Button, Text } from 'react-native-paper';
+import { ScrollView, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Banner, Button, Card, Text, useTheme } from 'react-native-paper';
 
+import { useSettingsStore } from '../../store/useSettingsStore';
 import { useTransactionStore } from '../../store/useTransactionStore';
-import { runFinancialAudit } from '../../utils/aiAuditor';
+import { streamFinancialAudit } from '../../utils/aiAuditor';
 
 export default function AuditorScreen() {
+  const theme = useTheme();
+  const router = useRouter();
   const transactions = useTransactionStore((state) => state.transactions);
-  const [isLoading, setIsLoading] = useState(false);
-  const [output, setOutput] = useState('Press "Roast Me" and face your spending decisions.');
+  const apiKey = useSettingsStore((state) => state.gemmaApiKey);
 
-  const onRoast = async () => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [output, setOutput] = useState('Tap Analyze and prepare for the roast.');
+
+  const onAnalyze = async () => {
     try {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       setIsLoading(true);
-      const result = await runFinancialAudit(transactions);
-      setOutput(result);
+      setOutput('');
+
+      await streamFinancialAudit(transactions, apiKey, (chunk) => {
+        setOutput((current) => `${current}${chunk}`);
+      });
     } catch (error) {
       if (error instanceof Error) {
         setOutput(error.message);
@@ -27,12 +39,38 @@ export default function AuditorScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
-      <Text variant="headlineMedium">AI Financial Auditor</Text>
-      <Button mode="contained" loading={isLoading} disabled={isLoading} onPress={onRoast}>
-        Roast Me
-      </Button>
-      <Text variant="bodyLarge">{output}</Text>
-    </ScrollView>
+    <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+      <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
+        <Text variant="headlineMedium" style={{ color: theme.colors.onSurface }}>
+          AI Auditor
+        </Text>
+
+        {!apiKey.trim() ? (
+          <Banner
+            visible
+            actions={[{ label: 'Open Settings', onPress: () => router.push('/(tabs)/settings') }]}
+          >
+            No API key found. Add your Gemma 4 API key in Settings.
+          </Banner>
+        ) : null}
+
+        <Button mode="contained" loading={isLoading} disabled={isLoading || !apiKey.trim()} onPress={onAnalyze}>
+          Analyze
+        </Button>
+
+        <View style={{ gap: 8 }}>
+          <Text variant="titleMedium" style={{ color: theme.colors.onSurface }}>
+            Chat
+          </Text>
+          <Card mode="contained">
+            <Card.Content>
+              <Text variant="bodyLarge" style={{ color: theme.colors.onSurface }}>
+                {output}
+              </Text>
+            </Card.Content>
+          </Card>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }

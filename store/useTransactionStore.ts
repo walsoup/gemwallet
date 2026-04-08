@@ -8,17 +8,19 @@ import { seedTransactions } from '../utils/seedData';
 type FinanceState = {
   transactions: Transaction[];
   addTransaction: (tx: Transaction) => void;
+  clearTransactions: () => void;
 };
 
 export const useTransactionStore = create<FinanceState>()(
   persist(
     (set, get) => ({
       transactions: seedTransactions,
-      addTransaction: (tx) => set({ transactions: [tx, ...get().transactions] })
+      addTransaction: (tx) => set({ transactions: [tx, ...get().transactions] }),
+      clearTransactions: () => set({ transactions: [] }),
     }),
     {
       name: 'gemwallet-transactions-v1',
-      storage: createJSONStorage(() => AsyncStorage)
+      storage: createJSONStorage(() => AsyncStorage),
     }
   )
 );
