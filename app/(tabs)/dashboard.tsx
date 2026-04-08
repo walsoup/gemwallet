@@ -2,6 +2,7 @@ import * as Haptics from 'expo-haptics';
 import { useMemo, useRef, useState, useEffect } from 'react';
 import {
   Animated,
+  Dimensions,
   FlatList,
   LayoutAnimation,
   Modal,
@@ -52,6 +53,7 @@ const categoryButtons = [
 export default function DashboardScreen() {
   const theme = useTheme();
   const sheetAnimation = useRef(new Animated.Value(0)).current;
+  const sheetTranslateDistance = Dimensions.get('window').height;
 
   const transactions = useTransactionStore((state) => state.transactions);
   const addTransaction = useTransactionStore((state) => state.addTransaction);
@@ -243,7 +245,12 @@ export default function DashboardScreen() {
               opacity: sheetAnimation.interpolate({ inputRange: [0, 1], outputRange: [0, 0.25] }),
             }}
           />
-          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => closeSheet()} />
+          <Pressable
+            accessibilityLabel="Close add transaction panel"
+            accessibilityRole="button"
+            style={StyleSheet.absoluteFillObject}
+            onPress={() => closeSheet()}
+          />
           <Animated.View
             style={{
               opacity: sheetAnimation.interpolate({ inputRange: [0, 1], outputRange: [0, 1] }),
@@ -251,7 +258,7 @@ export default function DashboardScreen() {
                 {
                   translateY: sheetAnimation.interpolate({
                     inputRange: [0, 1],
-                    outputRange: [420, 0],
+                    outputRange: [sheetTranslateDistance, 0],
                   }),
                 },
               ],
