@@ -252,7 +252,7 @@ export default function DashboardScreen() {
             accessibilityLabel="Close add transaction panel"
             accessibilityHint="Dismiss the add transaction form"
             accessibilityRole="button"
-            style={StyleSheet.absoluteFillObject}
+            style={{ flex: 1 }}
             onPress={() => closeSheet()}
           />
           <Animated.View
