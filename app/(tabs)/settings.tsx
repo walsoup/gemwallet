@@ -1,6 +1,6 @@
 import * as Haptics from 'expo-haptics';
-import { useMemo, useState } from 'react';
-import { Alert, SectionList, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Alert, LayoutAnimation, Platform, SectionList, UIManager, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Card, List, SegmentedButtons, Text, TextInput, useTheme } from 'react-native-paper';
 
@@ -40,6 +40,12 @@ export default function SettingsScreen() {
     []
   );
 
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      UIManager.setLayoutAnimationEnabledExperimental?.(true);
+    }
+  }, []);
+
   const onSaveApiKey = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setGemmaApiKey(gemmaApiKey.trim());
@@ -47,11 +53,13 @@ export default function SettingsScreen() {
 
   const onThemeChange = async (value: string) => {
     await Haptics.selectionAsync();
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setThemePreference(value as 'system' | 'light' | 'dark');
   };
 
   const onExportData = async () => {
     await Haptics.selectionAsync();
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setExportData(JSON.stringify(transactions, null, 2));
   };
 
@@ -63,6 +71,7 @@ export default function SettingsScreen() {
         style: 'destructive',
         onPress: async () => {
           await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
           clearTransactions();
           resetSettings();
           setExportData('');
