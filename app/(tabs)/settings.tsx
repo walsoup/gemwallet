@@ -1,6 +1,6 @@
 import * as Haptics from 'expo-haptics';
-import { useMemo, useState } from 'react';
-import { Alert, SectionList, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Alert, LayoutAnimation, Platform, SectionList, UIManager, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Card, List, SegmentedButtons, Text, TextInput, useTheme } from 'react-native-paper';
 
@@ -39,6 +39,16 @@ export default function SettingsScreen() {
     ],
     []
   );
+
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      UIManager.setLayoutAnimationEnabledExperimental?.(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+  }, [exportData, themePreference]);
 
   const onSaveApiKey = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);

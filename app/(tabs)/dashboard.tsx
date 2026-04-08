@@ -1,7 +1,17 @@
-import { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import * as Haptics from 'expo-haptics';
 import { useMemo, useRef, useState, useEffect } from 'react';
-import { FlatList, LayoutAnimation, Platform, Pressable, UIManager, View } from 'react-native';
+import {
+  Animated,
+  FlatList,
+  LayoutAnimation,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  UIManager,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Button,
@@ -41,7 +51,7 @@ const categoryButtons = [
 
 export default function DashboardScreen() {
   const theme = useTheme();
-  const bottomSheetRef = useRef<BottomSheetModal>(null);
+  const sheetAnimation = useRef(new Animated.Value(0)).current;
 
   const transactions = useTransactionStore((state) => state.transactions);
   const addTransaction = useTransactionStore((state) => state.addTransaction);
@@ -50,8 +60,7 @@ export default function DashboardScreen() {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<TransactionCategory>('Food');
   const [formError, setFormError] = useState('');
-
-  const snapPoints = useMemo(() => ['70%', '92%'], []);
+  const [isSheetVisible, setIsSheetVisible] = useState(false);
 
   useEffect(() => {
     if (Platform.OS === 'android') {
@@ -92,7 +101,26 @@ export default function DashboardScreen() {
 
   const openSheet = () => {
     void Haptics.selectionAsync();
-    bottomSheetRef.current?.present();
+    setIsSheetVisible(true);
+    Animated.timing(sheetAnimation, {
+      toValue: 1,
+      duration: 220,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const closeSheet = (reset = true) => {
+    Animated.timing(sheetAnimation, {
+      toValue: 0,
+      duration: 220,
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (!finished) return;
+      setIsSheetVisible(false);
+      if (reset) {
+        resetForm();
+      }
+    });
   };
 
   const resetForm = () => {
@@ -122,8 +150,7 @@ export default function DashboardScreen() {
     });
 
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    bottomSheetRef.current?.dismiss();
-    resetForm();
+    closeSheet();
   };
 
   return (
@@ -206,79 +233,104 @@ export default function DashboardScreen() {
         onPress={openSheet}
       />
 
-      <BottomSheetModal
-        ref={bottomSheetRef}
-        snapPoints={snapPoints}
-        onDismiss={resetForm}
-        backdropComponent={(props) => <BottomSheetBackdrop {...props} appearsOnIndex={0} disappearsOnIndex={-1} />}
-      >
-        <BottomSheetScrollView
-          contentContainerStyle={{ padding: 16, gap: 14, backgroundColor: theme.colors.surface }}
-        >
-          <Text variant="headlineMedium" style={{ color: theme.colors.onSurface }}>
-            Add Transaction
-          </Text>
-
-          <Text
-            variant="displaySmall"
-            style={{ textAlign: 'center', color: theme.colors.onSurface, minHeight: 58 }}
-          >
-            {amount ? `$${amount}` : '$0'}
-          </Text>
-
-          <View style={{ gap: 10 }}>
-            {keypadRows.map((row) => (
-              <View key={row.join('')} style={{ flexDirection: 'row', gap: 10 }}>
-                {row.map((key) => (
-                  <Pressable
-                    key={key}
-                    onPress={() => onPressKey(key)}
-                    style={{
-                      flex: 1,
-                      minHeight: 64,
-                      borderRadius: 16,
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      backgroundColor: theme.colors.surfaceVariant,
-                    }}
-                  >
-                    <Text variant="headlineMedium" style={{ color: theme.colors.onSurface }}>
-                      {key}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            ))}
-          </View>
-
-          <TextInput
-            mode="outlined"
-            label="Description"
-            value={description}
-            onChangeText={(value) => {
-              setDescription(value);
-              if (formError) {
-                setFormError('');
-              }
+      <Modal transparent visible={isSheetVisible} onRequestClose={() => closeSheet()} animationType="none">
+        <View style={{ flex: 1, justifyContent: 'flex-end' }}>
+          <Animated.View
+            pointerEvents="none"
+            style={{
+              ...StyleSheet.absoluteFillObject,
+              backgroundColor: theme.colors.backdrop,
+              opacity: sheetAnimation.interpolate({ inputRange: [0, 1], outputRange: [0, 0.25] }),
             }}
           />
+          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => closeSheet()} />
+          <Animated.View
+            style={{
+              opacity: sheetAnimation.interpolate({ inputRange: [0, 1], outputRange: [0, 1] }),
+              transform: [
+                {
+                  translateY: sheetAnimation.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [420, 0],
+                  }),
+                },
+              ],
+              maxHeight: '92%',
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              backgroundColor: theme.colors.surface,
+            }}
+          >
+            <ScrollView
+              style={{ maxHeight: '100%' }}
+              contentContainerStyle={{ padding: 16, gap: 14, backgroundColor: theme.colors.surface }}
+            >
+              <Text variant="headlineMedium" style={{ color: theme.colors.onSurface }}>
+                Add Transaction
+              </Text>
 
-          <SegmentedButtons
-            value={category}
-            onValueChange={(value) => setCategory(value as TransactionCategory)}
-            buttons={categoryButtons.map((item) => ({ label: item.label, value: item.value }))}
-          />
+              <Text
+                variant="displaySmall"
+                style={{ textAlign: 'center', color: theme.colors.onSurface, minHeight: 58 }}
+              >
+                {amount ? `$${amount}` : '$0'}
+              </Text>
 
-          <Button mode="contained" onPress={onSave}>
-            Save
-          </Button>
-          {formError ? (
-            <Text variant="bodySmall" style={{ color: theme.colors.error }}>
-              {formError}
-            </Text>
-          ) : null}
-        </BottomSheetScrollView>
-      </BottomSheetModal>
+              <View style={{ gap: 10 }}>
+                {keypadRows.map((row) => (
+                  <View key={row.join('')} style={{ flexDirection: 'row', gap: 10 }}>
+                    {row.map((key) => (
+                      <Pressable
+                        key={key}
+                        onPress={() => onPressKey(key)}
+                        style={{
+                          flex: 1,
+                          minHeight: 64,
+                          borderRadius: 16,
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          backgroundColor: theme.colors.surfaceVariant,
+                        }}
+                      >
+                        <Text variant="headlineMedium" style={{ color: theme.colors.onSurface }}>
+                          {key}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                ))}
+              </View>
+
+              <TextInput
+                mode="outlined"
+                label="Description"
+                value={description}
+                onChangeText={(value) => {
+                  setDescription(value);
+                  if (formError) {
+                    setFormError('');
+                  }
+                }}
+              />
+
+              <SegmentedButtons
+                value={category}
+                onValueChange={(value) => setCategory(value as TransactionCategory)}
+                buttons={categoryButtons.map((item) => ({ label: item.label, value: item.value }))}
+              />
+
+              <Button mode="contained" onPress={onSave}>
+                Save
+              </Button>
+              {formError ? (
+                <Text variant="bodySmall" style={{ color: theme.colors.error }}>
+                  {formError}
+                </Text>
+              ) : null}
+            </ScrollView>
+          </Animated.View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
