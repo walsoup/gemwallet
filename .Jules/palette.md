@@ -1,0 +1,3 @@
+## 2024-05-15 - Interactive Custom Keypads Require Manual Accessibility and Feedback
+**Learning:** Custom keypads built with loops and generic views/text (rather than built-in buttons) inherently lack accessibility roles, screen reader descriptions (especially for icon-only keys like "⌫"), and visual feedback upon interaction, leading to a disconnected experience for both visual and non-visual users.
+**Action:** When implementing custom interactive grids/keypads, always ensure `Pressable` styles handle the `({ pressed })` state for immediate visual feedback, explicitly set `accessibilityRole="button"`, and conditionally provide descriptive `accessibilityLabel`s for non-text keys.
