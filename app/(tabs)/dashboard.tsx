@@ -292,15 +292,18 @@ export default function DashboardScreen() {
                     {row.map((key) => (
                       <Pressable
                         key={key}
+                        accessibilityRole="button"
+                        accessibilityLabel={key === '⌫' ? 'Delete last digit' : key}
                         onPress={() => onPressKey(key)}
-                        style={{
+                        style={({ pressed }) => ({
                           flex: 1,
                           minHeight: 64,
                           borderRadius: 16,
                           justifyContent: 'center',
                           alignItems: 'center',
-                          backgroundColor: theme.colors.surfaceVariant,
-                        }}
+                          backgroundColor: pressed ? theme.colors.primaryContainer : theme.colors.surfaceVariant,
+                          opacity: pressed ? 0.8 : 1,
+                        })}
                       >
                         <Text variant="headlineMedium" style={{ color: theme.colors.onSurface }}>
                           {key}
