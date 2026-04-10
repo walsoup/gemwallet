@@ -1,0 +1,3 @@
+## 2024-04-10 - Accessible Custom Keypads and Icon-only FABs
+**Learning:** Custom keypads built with `Pressable` loops need explicit `accessibilityRole="button"` and programmatic mapping for special characters (like `⌫` to `Backspace`). Also, custom `icon` render functions in React Native Paper components (like `FAB`) do not automatically infer an accessible name.
+**Action:** Always verify `accessibilityRole` in mapped custom touchables and explicitly provide `accessibilityLabel` when using custom icon functions within React Native Paper components or when symbols like `⌫` are used in UI text.
