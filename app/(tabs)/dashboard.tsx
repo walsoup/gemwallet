@@ -234,6 +234,7 @@ export default function DashboardScreen() {
       />
 
       <FAB
+        accessibilityLabel="Add transaction"
         icon={() => <AppIcon name="add" color={theme.colors.onPrimaryContainer} size={22} />}
         style={{ position: 'absolute', right: 16, bottom: 24 }}
         onPress={openSheet}
@@ -292,6 +293,8 @@ export default function DashboardScreen() {
                     {row.map((key) => (
                       <Pressable
                         key={key}
+                        accessibilityRole="button"
+                        accessibilityLabel={key === '⌫' ? 'Backspace' : key}
                         onPress={() => onPressKey(key)}
                         style={{
                           flex: 1,
