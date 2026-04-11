@@ -237,6 +237,7 @@ export default function DashboardScreen() {
         icon={() => <AppIcon name="add" color={theme.colors.onPrimaryContainer} size={22} />}
         style={{ position: 'absolute', right: 16, bottom: 24 }}
         onPress={openSheet}
+        accessibilityLabel="Add transaction"
       />
 
       <Modal transparent visible={isSheetVisible} onRequestClose={() => closeSheet()} animationType="none">
@@ -292,15 +293,18 @@ export default function DashboardScreen() {
                     {row.map((key) => (
                       <Pressable
                         key={key}
+                        accessibilityRole="button"
+                        accessibilityLabel={key === '⌫' ? 'Backspace' : key === '.' ? 'Decimal point' : key}
                         onPress={() => onPressKey(key)}
-                        style={{
+                        style={({ pressed }) => ({
                           flex: 1,
                           minHeight: 64,
                           borderRadius: 16,
                           justifyContent: 'center',
                           alignItems: 'center',
                           backgroundColor: theme.colors.surfaceVariant,
-                        }}
+                          opacity: pressed ? 0.7 : 1,
+                        })}
                       >
                         <Text variant="headlineMedium" style={{ color: theme.colors.onSurface }}>
                           {key}
