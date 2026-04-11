@@ -1,0 +1,3 @@
+## 2024-04-11 - Accessibility in Custom Keypads
+**Learning:** Custom keypad implementations using `Pressable` components frequently lack essential accessibility metadata (like `accessibilityRole` and meaningful `accessibilityLabel` mappings for symbol keys like "⌫" or ".") and visual feedback states (like dimming on press), which degrades the experience for screen reader users and those relying on visual touch cues.
+**Action:** When auditing or implementing custom keypads, ensure each key correctly maps its visual symbol to text-to-speech labels and provides immediate visual feedback during interaction.
