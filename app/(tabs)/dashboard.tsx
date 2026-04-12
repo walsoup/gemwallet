@@ -166,6 +166,17 @@ export default function DashboardScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
         ItemSeparatorComponent={() => <Divider style={{ marginVertical: 4 }} />}
+        ListEmptyComponent={
+          <View style={{ paddingVertical: 32, alignItems: 'center', gap: 8 }}>
+            <AppIcon name="dashboard" color={theme.colors.onSurfaceVariant} size={48} />
+            <Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center' }}>
+              No transactions yet.
+            </Text>
+            <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center' }}>
+              Tap the + button to add your first expense.
+            </Text>
+          </View>
+        }
         ListHeaderComponent={
           <View style={{ marginBottom: 16, gap: 14 }}>
             <Text variant="headlineMedium" style={{ color: theme.colors.onSurface }}>
@@ -237,6 +248,7 @@ export default function DashboardScreen() {
         icon={() => <AppIcon name="add" color={theme.colors.onPrimaryContainer} size={22} />}
         style={{ position: 'absolute', right: 16, bottom: 24 }}
         onPress={openSheet}
+        accessibilityLabel="Add transaction"
       />
 
       <Modal transparent visible={isSheetVisible} onRequestClose={() => closeSheet()} animationType="none">
@@ -293,6 +305,8 @@ export default function DashboardScreen() {
                       <Pressable
                         key={key}
                         onPress={() => onPressKey(key)}
+                        accessibilityRole="button"
+                        accessibilityLabel={key === '⌫' ? 'Backspace' : key}
                         style={{
                           flex: 1,
                           minHeight: 64,
