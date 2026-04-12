@@ -1,14 +1,28 @@
 # GemWallet Native (Expo)
 
-Native personal finance app built with Expo + React Native.
+Offline-first personal cash wallet built with Expo + React Native.
+
+## What’s implemented
+
+- PRD-style onboarding (set opening cash + optional voice toggle)
+- Single-screen dashboard with:
+  - Greeting app bar + settings access
+  - Hero available-cash card with zero/overdraft states
+  - Search + category chip filtering
+  - Sectioned transaction ledger grouped by day
+- Rebuilt FAB interactions:
+  - Tap: 2-phase manual expense flow (amount -> category instant-save)
+  - Long press: quick actions (add cash, settings, voice placeholder)
+- Add-cash flow with source chips and custom keypad
+- Undo snackbar after logging entries
+- Local-only persistence via Zustand + AsyncStorage
+- Settings for theme, OLED true black, high contrast, secure-access toggle, category management, and CSV preview export
 
 ## Stack
 
-- Expo Router (file-based navigation)
+- Expo Router
 - React Native Paper (Material 3)
 - Zustand + AsyncStorage (offline local persistence)
-- Reanimated + Gorhom Bottom Sheet
-- Google Generative AI SDK integration for Gemma-based spending audit
 
 ## Setup
 
@@ -17,23 +31,9 @@ npm install
 npm run start
 ```
 
-## Environment Variable
-
-Create `.env` (or EAS env var) with:
-
-```bash
-EXPO_PUBLIC_GEMMA_API_KEY=your_google_ai_key
-```
-
 ## Build/Lint
 
 ```bash
 npm run lint
 npm run build
 ```
-
-## Android APK via EAS
-
-- EAS profile: `apk` in `eas.json` (`buildType: apk`)
-- GitHub Actions workflow: `.github/workflows/build.yml`
-- Required secret: `EXPO_TOKEN`

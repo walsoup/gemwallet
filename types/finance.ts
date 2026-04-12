@@ -1,3 +1,9 @@
+export type ThemePreference = 'system' | 'light' | 'dark';
+
+export type TransactionType = 'income' | 'expense';
+
+export type CategoryKind = 'expense' | 'income' | 'system';
+
 export type TransactionCategory =
   | 'Food'
   | 'Transport'
@@ -6,14 +12,26 @@ export type TransactionCategory =
   | 'Entertainment'
   | 'Subscriptions';
 
-export type Recurrence = 'monthly' | 'yearly';
+export type Category = {
+  id: string;
+  name: string;
+  emoji: string;
+  kind: CategoryKind;
+  tint?: string;
+  isLocked?: boolean;
+};
 
 export type Transaction = {
   id: string;
-  title: string;
-  amount: number;
-  category: TransactionCategory;
-  date: string;
-  recurring?: boolean;
-  interval?: Recurrence;
+  amountCents: number;
+  type: TransactionType;
+  timestamp: number;
+  categoryId: string;
+  note?: string;
+  isVoid?: boolean;
+};
+
+export type WalletMeta = {
+  hasCompletedOnboarding: boolean;
+  voiceAssistantEnabled: boolean;
 };
