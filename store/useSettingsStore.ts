@@ -2,27 +2,39 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-export type ThemePreference = 'system' | 'light' | 'dark';
+import type { ThemePreference } from '../types/finance';
 
 type SettingsState = {
-  gemmaApiKey: string;
   themePreference: ThemePreference;
-  setGemmaApiKey: (apiKey: string) => void;
+  oledTrueBlackEnabled: boolean;
+  highContrastEnabled: boolean;
+  secureAccessEnabled: boolean;
   setThemePreference: (preference: ThemePreference) => void;
+  setOledTrueBlackEnabled: (enabled: boolean) => void;
+  setHighContrastEnabled: (enabled: boolean) => void;
+  setSecureAccessEnabled: (enabled: boolean) => void;
   resetSettings: () => void;
+};
+
+const defaultState = {
+  themePreference: 'system' as ThemePreference,
+  oledTrueBlackEnabled: false,
+  highContrastEnabled: false,
+  secureAccessEnabled: false,
 };
 
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
-      gemmaApiKey: '',
-      themePreference: 'system',
-      setGemmaApiKey: (gemmaApiKey) => set({ gemmaApiKey }),
+      ...defaultState,
       setThemePreference: (themePreference) => set({ themePreference }),
-      resetSettings: () => set({ gemmaApiKey: '', themePreference: 'system' }),
+      setOledTrueBlackEnabled: (oledTrueBlackEnabled) => set({ oledTrueBlackEnabled }),
+      setHighContrastEnabled: (highContrastEnabled) => set({ highContrastEnabled }),
+      setSecureAccessEnabled: (secureAccessEnabled) => set({ secureAccessEnabled }),
+      resetSettings: () => set(defaultState),
     }),
     {
-      name: 'gemwallet-settings-v1',
+      name: 'gemwallet-settings-v2',
       storage: createJSONStorage(() => AsyncStorage),
     }
   )
