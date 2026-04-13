@@ -305,7 +305,11 @@ export default function HomeScreen() {
             Track cash with zero cloud sync.
           </Text>
         </View>
-        <IconButton icon="cog-outline" onPress={() => router.push('/settings')} />
+        <IconButton
+          icon="cog-outline"
+          accessibilityLabel="Settings"
+          onPress={() => router.push('/settings')}
+        />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -351,7 +355,7 @@ export default function HomeScreen() {
           value={search}
           onChangeText={setSearch}
           label="Search transactions"
-          right={<TextInput.Icon icon="close" onPress={() => setSearch('')} />}
+          right={<TextInput.Icon icon="close" accessibilityLabel="Clear search" onPress={() => setSearch('')} />}
         />
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
@@ -427,6 +431,7 @@ export default function HomeScreen() {
 
       <FAB
         icon="plus"
+        accessibilityLabel="Add transaction"
         style={[styles.fab, { backgroundColor: theme.colors.primary }]}
         color={theme.colors.onPrimary}
         onPress={() => {
