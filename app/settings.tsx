@@ -157,7 +157,7 @@ export default function SettingsScreen() {
                     {item.emoji} {item.name}
                   </Text>
                   {!item.isLocked ? (
-                    <IconButton icon="delete-outline" onPress={() => deleteCategory(item.id)} />
+                    <IconButton icon="delete-outline" accessibilityLabel={`Delete category ${item.name}`} onPress={() => deleteCategory(item.id)} />
                   ) : (
                     <Text variant="labelMedium" style={{ color: theme.colors.onSurfaceVariant }}>
                       locked
