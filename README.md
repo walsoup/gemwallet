@@ -37,3 +37,11 @@ npm run start
 npm run lint
 npm run build
 ```
+
+## Architecture (Migration Baseline)
+
+- Expo Router route files in `app` are now composition-only wrappers.
+- Feature logic is being moved into `src/features`.
+- Core migration contracts are staged in `src/core` for theme, DB, sync, crypto, and feature flags.
+- Current store/theming implementations remain as compatibility layers while SQLite/Drizzle, FlashList, and elite UI primitives are rolled out behind flags.
+- Detailed mapping and rollout slices are documented in `docs/architecture/elite-expo-migration.md`.

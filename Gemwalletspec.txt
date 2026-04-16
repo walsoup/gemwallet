@@ -1,3 +1,10 @@
+[ ARCHITECTURE FREEZE ADDENDUM — EXPO ELITE TRACK ]
+This repository now standardizes on an Expo-first architecture and formally deprecates Android-native-only assumptions as primary implementation requirements.
+Deprecated as primary architecture: Room as mandatory persistence API, RecyclerView as mandatory ledger engine, ConstraintLayout as mandatory layout primitive, and Android Intents as foundational navigation/data boundary.
+Non-negotiables for implementation: Expo + React Native New Architecture compatibility, Skia/Reanimated-first visual primitives, SQLite/Drizzle persistence trajectory, FlashList ledger trajectory, and local-first encrypted sync trajectory.
+Out of scope for first production cut: enabling on-device LLM inference by default before bridge hardening, model governance, and recovery-ready key lifecycle are complete.
+Migration principles: preserve user-visible behavior during refactors, release incrementally behind feature flags, and maintain rollback paths per slice.
+
 CONFIDENTIAL & PROPRIETARY
 DOCUMENT ID: GW-PRD-2026-V2.0 (EXPANDED MASTER SPECIFICATION)
 PROJECT: GemWallet
