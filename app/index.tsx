@@ -1,8 +1,8 @@
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, SectionList, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useMemo, useState, useRef } from 'react';
+import { Modal, Pressable, ScrollView, SectionList, StyleSheet, View, Animated } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Button,
   Chip,
@@ -13,10 +13,15 @@ import {
   Text,
   TextInput,
   useTheme,
+  SegmentedButtons,
+  TouchableRipple,
+  Card,
+  ActivityIndicator
 } from 'react-native-paper';
 
 import { useTransactionStore, selectBalanceCents } from '../store/useTransactionStore';
 import type { Category, Transaction } from '../types/finance';
+import { streamFinancialAnalysis } from '../services/gemma';
 
 const keypadRows = [
   ['1', '2', '3'],
@@ -71,6 +76,7 @@ function greeting() {
 export default function HomeScreen() {
   const theme = useTheme();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   const transactions = useTransactionStore((state) => state.transactions);
   const categories = useTransactionStore((state) => state.categories);
@@ -87,10 +93,7 @@ export default function HomeScreen() {
   const [manualVisible, setManualVisible] = useState(false);
   const [manualPhase, setManualPhase] = useState<ManualPhase>('amount');
   const [manualAmount, setManualAmount] = useState('');
-
-  const [cashVisible, setCashVisible] = useState(false);
-  const [cashAmount, setCashAmount] = useState('');
-  const [cashCategoryId, setCashCategoryId] = useState('income-atm');
+  const [txType, setTxType] = useState<'expense' | 'income'>('expense');
 
   const [quickActionsVisible, setQuickActionsVisible] = useState(false);
 
@@ -99,11 +102,33 @@ export default function HomeScreen() {
 
   const [snackbar, setSnackbar] = useState({ visible: false, text: '', txId: '' });
 
+  // Gemma state
+  const [gemmaVisible, setGemmaVisible] = useState(false);
+  const [gemmaText, setGemmaText] = useState('');
+  const [isGemmaLoading, setIsGemmaLoading] = useState(false);
+
+  // Animation values for collapsing header
+  const scrollY = useRef(new Animated.Value(0)).current;
+
+  const headerHeight = scrollY.interpolate({
+    inputRange: [0, 100],
+    outputRange: [120, 60],
+    extrapolate: 'clamp',
+  });
+
+  const titleScale = scrollY.interpolate({
+    inputRange: [0, 100],
+    outputRange: [1, 0.75],
+    extrapolate: 'clamp',
+  });
+
   const expenseCategories = useMemo(
     () => categories.filter((item) => item.kind === 'expense'),
     [categories]
   );
   const incomeCategories = useMemo(() => categories.filter((item) => item.kind === 'income'), [categories]);
+
+  const activeCategories = txType === 'expense' ? expenseCategories : incomeCategories;
 
   const filteredTransactions = useMemo(() => {
     return transactions.filter((item) => {
@@ -178,16 +203,23 @@ export default function HomeScreen() {
   const openManualFlow = async () => {
     setManualAmount('');
     setManualPhase('amount');
+    setTxType('expense');
     setManualVisible(true);
     await Haptics.selectionAsync();
   };
 
-  const saveExpense = async (categoryId: string) => {
+  const saveManual = async (categoryId: string) => {
     const amountCents = amountTextToCents(manualAmount);
     if (amountCents <= 0) return;
 
     const category = categoryById(categories, categoryId);
-    const tx = addExpense({ amountCents, categoryId });
+    let tx;
+    if (txType === 'expense') {
+      tx = addExpense({ amountCents, categoryId });
+    } else {
+      tx = addIncome({ amountCents, categoryId });
+    }
+    
     setManualVisible(false);
     setManualAmount('');
     setManualPhase('amount');
@@ -195,19 +227,20 @@ export default function HomeScreen() {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
-  const saveIncome = async () => {
-    const amountCents = amountTextToCents(cashAmount);
-    if (amountCents <= 0 || !cashCategoryId) {
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      return;
+  const askGemma = async () => {
+    setGemmaVisible(true);
+    setGemmaText('');
+    setIsGemmaLoading(true);
+    try {
+      const generator = streamFinancialAnalysis(transactions);
+      for await (const chunk of generator) {
+        setGemmaText((prev) => prev + chunk);
+      }
+    } catch (e) {
+      setGemmaText("Oops, Gemma had an issue processing this request.");
+    } finally {
+      setIsGemmaLoading(false);
     }
-
-    const category = categoryById(categories, cashCategoryId);
-    const tx = addIncome({ amountCents, categoryId: cashCategoryId });
-    setCashVisible(false);
-    setCashAmount('');
-    pushSnackbar(`Added ${formatCurrency(amountCents)} from ${category?.name ?? 'income'}`, tx.id);
-    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
   if (!walletMeta.hasCompletedOnboarding) {
@@ -231,17 +264,18 @@ export default function HomeScreen() {
                 {keypadRows.map((row) => (
                   <View key={row.join('')} style={styles.keypadRow}>
                     {row.map((key) => (
-                      <Pressable
+                      <TouchableRipple
                         key={key}
                         onPress={() => {
                           void handleKeypadInput(key, setOpeningBalance, openingBalance);
                         }}
                         style={[styles.keypadKey, { backgroundColor: theme.colors.surfaceVariant }]}
+                        borderless
                       >
                         <Text variant="headlineSmall" style={{ color: theme.colors.onSurface }}>
                           {key}
                         </Text>
-                      </Pressable>
+                      </TouchableRipple>
                     ))}
                   </View>
                 ))}
@@ -251,43 +285,48 @@ export default function HomeScreen() {
                 mode="contained"
                 disabled={amountTextToCents(openingBalance) <= 0}
                 onPress={() => setOnboardingPhase('voice')}
+                style={styles.pillButton}
               >
                 Set balance
               </Button>
             </>
           ) : (
-            <View style={[styles.voiceCard, { backgroundColor: theme.colors.surfaceVariant }]}> 
-              <Text variant="titleLarge" style={{ color: theme.colors.onSurface, textAlign: 'center' }}>
-                Enable Gemma voice assistant?
-              </Text>
-              <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center' }}>
-                Log expenses hands-free with local-first flows.
-              </Text>
-              <View style={styles.voiceButtons}>
-                <Button
-                  mode="contained"
-                  onPress={() => {
-                    completeOnboarding({
-                      initialBalanceCents: amountTextToCents(openingBalance),
-                      voiceAssistantEnabled: true,
-                    });
-                  }}
-                >
-                  Enable microphone
-                </Button>
-                <Button
-                  mode="outlined"
-                  onPress={() => {
-                    completeOnboarding({
-                      initialBalanceCents: amountTextToCents(openingBalance),
-                      voiceAssistantEnabled: false,
-                    });
-                  }}
-                >
-                  Skip for now
-                </Button>
-              </View>
-            </View>
+            <Card style={[styles.voiceCard, { backgroundColor: theme.colors.surfaceVariant }]}> 
+              <Card.Content style={{ gap: 14 }}>
+                <Text variant="titleLarge" style={{ color: theme.colors.onSurface, textAlign: 'center' }}>
+                  Enable Gemma voice assistant?
+                </Text>
+                <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center' }}>
+                  Log expenses hands-free with local-first flows.
+                </Text>
+                <View style={styles.voiceButtons}>
+                  <Button
+                    mode="contained"
+                    onPress={() => {
+                      completeOnboarding({
+                        initialBalanceCents: amountTextToCents(openingBalance),
+                        voiceAssistantEnabled: true,
+                      });
+                    }}
+                    style={styles.pillButton}
+                  >
+                    Enable microphone
+                  </Button>
+                  <Button
+                    mode="outlined"
+                    onPress={() => {
+                      completeOnboarding({
+                        initialBalanceCents: amountTextToCents(openingBalance),
+                        voiceAssistantEnabled: false,
+                      });
+                    }}
+                    style={styles.pillButton}
+                  >
+                    Skip for now
+                  </Button>
+                </View>
+              </Card.Content>
+            </Card>
           )}
         </View>
       </SafeAreaView>
@@ -295,21 +334,26 @@ export default function HomeScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.screen, { backgroundColor: theme.colors.background }]}> 
-      <View style={styles.topBar}>
-        <View>
-          <Text variant="titleLarge" style={{ color: theme.colors.onSurface }}>
+    <View style={[styles.screen, { backgroundColor: theme.colors.background }]}> 
+      <Animated.View style={[styles.topBar, { height: headerHeight, paddingTop: insets.top, backgroundColor: theme.colors.surface }]}>
+        <Animated.View style={{ transform: [{ scale: titleScale }], transformOrigin: 'left bottom' }}>
+          <Text variant="headlineLarge" style={{ color: theme.colors.onSurface, fontWeight: 'bold' }}>
             {greeting()}
           </Text>
-          <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-            Track cash with zero cloud sync.
-          </Text>
-        </View>
+        </Animated.View>
         <IconButton icon="cog-outline" onPress={() => router.push('/settings')} />
-      </View>
+      </Animated.View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View
+      <Animated.ScrollView 
+        contentContainerStyle={styles.scrollContent}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: false }
+        )}
+        scrollEventThrottle={16}
+      >
+        <Card
+          mode="contained"
           style={[
             styles.heroCard,
             {
@@ -322,29 +366,31 @@ export default function HomeScreen() {
             },
           ]}
         >
-          <Text variant="titleMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-            {selectedExpenseCategoryId || search.trim() ? 'Filtered spend' : 'Available cash'}
-          </Text>
-          <Text
-            variant="displaySmall"
-            style={{
-              color:
-                balanceCents < 0 && !(selectedExpenseCategoryId || search.trim())
-                  ? theme.colors.onErrorContainer
-                  : theme.colors.onSurface,
-              fontWeight: '700',
-            }}
-          >
-            {selectedExpenseCategoryId || search.trim()
-              ? formatCurrency(filteredSpendCents)
-              : formatCurrency(balanceCents)}
-          </Text>
-          {balanceCents === 0 ? (
-            <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-              📨 Wallet is empty
+          <Card.Content>
+            <Text variant="titleMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+              {selectedExpenseCategoryId || search.trim() ? 'Filtered spend' : 'Available cash'}
             </Text>
-          ) : null}
-        </View>
+            <Text
+              variant="displaySmall"
+              style={{
+                color:
+                  balanceCents < 0 && !(selectedExpenseCategoryId || search.trim())
+                    ? theme.colors.onErrorContainer
+                    : theme.colors.onSurface,
+                fontWeight: '700',
+              }}
+            >
+              {selectedExpenseCategoryId || search.trim()
+                ? formatCurrency(filteredSpendCents)
+                : formatCurrency(balanceCents)}
+            </Text>
+            {balanceCents === 0 ? (
+              <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, marginTop: 8 }}>
+                📨 Wallet is empty
+              </Text>
+            ) : null}
+          </Card.Content>
+        </Card>
 
         <TextInput
           mode="outlined"
@@ -352,10 +398,11 @@ export default function HomeScreen() {
           onChangeText={setSearch}
           label="Search transactions"
           right={<TextInput.Icon icon="close" onPress={() => setSearch('')} />}
+          style={{ borderRadius: 24, marginVertical: 8 }}
         />
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-          <Chip selected={!selectedExpenseCategoryId} onPress={() => setSelectedExpenseCategoryId(null)}>
+          <Chip selected={!selectedExpenseCategoryId} onPress={() => setSelectedExpenseCategoryId(null)} style={{ borderRadius: 16 }}>
             All
           </Chip>
           {expenseCategories.map((item) => (
@@ -365,6 +412,7 @@ export default function HomeScreen() {
               onPress={() => {
                 setSelectedExpenseCategoryId((current) => (current === item.id ? null : item.id));
               }}
+              style={{ borderRadius: 16 }}
             >
               {item.emoji} {item.name}
             </Chip>
@@ -377,7 +425,7 @@ export default function HomeScreen() {
           scrollEnabled={false}
           stickySectionHeadersEnabled={false}
           renderSectionHeader={({ section }) => (
-            <Text variant="titleSmall" style={{ color: theme.colors.onSurfaceVariant, marginTop: 8 }}>
+            <Text variant="titleSmall" style={{ color: theme.colors.onSurfaceVariant, marginTop: 16, marginBottom: 8 }}>
               {section.title}
             </Text>
           )}
@@ -390,7 +438,7 @@ export default function HomeScreen() {
                 </View>
 
                 <View style={styles.txCenter}>
-                  <Text variant="titleMedium" style={{ color: theme.colors.onSurface }} numberOfLines={1}>
+                  <Text variant="titleMedium" style={{ color: theme.colors.onSurface, fontWeight: '600' }} numberOfLines={1}>
                     {item.note || category?.name || 'Transaction'}
                   </Text>
                   <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
@@ -409,6 +457,7 @@ export default function HomeScreen() {
                           : theme.colors.onSurface,
                     textAlign: 'right',
                     minWidth: 96,
+                    fontWeight: 'bold',
                   }}
                 >
                   {item.type === 'income' ? '+' : '-'}{formatCurrency(item.amountCents)}
@@ -416,45 +465,48 @@ export default function HomeScreen() {
               </View>
             );
           }}
-          ItemSeparatorComponent={() => <Divider />}
+          ItemSeparatorComponent={() => <Divider style={{ opacity: 0.5 }} />}
           ListEmptyComponent={
-            <Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant, marginTop: 16 }}>
+            <Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant, marginTop: 24, textAlign: 'center' }}>
               No matching transactions.
             </Text>
           }
         />
-      </ScrollView>
+      </Animated.ScrollView>
+
+      {/* Ask Gemma FAB */}
+      <FAB
+        icon="sparkles"
+        label="Ask Gemma"
+        style={[styles.gemmaFab, { backgroundColor: theme.colors.tertiaryContainer }]}
+        color={theme.colors.onTertiaryContainer}
+        onPress={() => {
+          void askGemma();
+        }}
+      />
 
       <FAB
         icon="plus"
-        style={[styles.fab, { backgroundColor: theme.colors.primary }]}
-        color={theme.colors.onPrimary}
+        style={[styles.fab, { backgroundColor: theme.colors.primaryContainer }]}
+        color={theme.colors.onPrimaryContainer}
         onPress={() => {
           void openManualFlow();
         }}
         onLongPress={() => setQuickActionsVisible(true)}
       />
 
+      {/* Quick Actions Modal */}
       <Modal visible={quickActionsVisible} transparent animationType="fade" onRequestClose={() => setQuickActionsVisible(false)}>
         <Pressable
           style={[styles.modalBackdrop, { backgroundColor: theme.colors.backdrop }]}
           onPress={() => setQuickActionsVisible(false)}
         />
-        <View style={[styles.quickActionsCard, { backgroundColor: theme.colors.surface }]}> 
-          <Text variant="titleMedium" style={{ color: theme.colors.onSurface }}>
+        <View style={[styles.quickActionsCard, { backgroundColor: theme.colors.surface, borderRadius: theme.roundness }]}> 
+          <Text variant="titleMedium" style={{ color: theme.colors.onSurface, fontWeight: 'bold' }}>
             Quick Actions
           </Text>
           <Button
             mode="contained"
-            onPress={() => {
-              setQuickActionsVisible(false);
-              setCashVisible(true);
-            }}
-          >
-            Add cash
-          </Button>
-          <Button
-            mode="outlined"
             onPress={() => {
               setQuickActionsVisible(false);
               router.push('/settings');
@@ -475,37 +527,51 @@ export default function HomeScreen() {
         </View>
       </Modal>
 
+      {/* Manual Input Modal */}
       <Modal visible={manualVisible} transparent animationType="slide" onRequestClose={() => setManualVisible(false)}>
         <View style={styles.sheetRoot}>
           <Pressable
             style={[styles.modalBackdrop, { backgroundColor: theme.colors.backdrop }]}
             onPress={() => setManualVisible(false)}
           />
-          <View style={[styles.sheetCard, { backgroundColor: theme.colors.surface }]}> 
+          <View style={[styles.sheetCard, { backgroundColor: theme.colors.elevation.level3, borderTopLeftRadius: 28, borderTopRightRadius: 28 }]}> 
+            <View style={styles.dragHandle} />
+            
+            <SegmentedButtons
+              value={txType}
+              onValueChange={(val) => {
+                setTxType(val as 'expense' | 'income');
+                Haptics.selectionAsync();
+              }}
+              buttons={[
+                { value: 'expense', label: 'Expense', icon: 'minus' },
+                { value: 'income', label: 'Income', icon: 'plus' },
+              ]}
+              style={{ marginBottom: 16 }}
+            />
+
             {manualPhase === 'amount' ? (
               <>
-                <Text variant="headlineSmall" style={{ color: theme.colors.onSurface }}>
-                  Expense amount
-                </Text>
-                <Text variant="displaySmall" style={{ color: theme.colors.onSurface, textAlign: 'center' }}>
-                  {manualAmount ? `$${manualAmount}` : '$0.00'}
+                <Text variant="displayMedium" style={{ color: txType === 'income' ? theme.colors.tertiary : theme.colors.onSurface, textAlign: 'center', fontWeight: 'bold', marginVertical: 16 }}>
+                  {txType === 'income' ? '+' : '-'}{manualAmount ? `$${manualAmount}` : '$0.00'}
                 </Text>
 
                 <View style={styles.keypadGrid}>
                   {keypadRows.map((row) => (
                     <View key={row.join('')} style={styles.keypadRow}>
                       {row.map((key) => (
-                        <Pressable
+                        <TouchableRipple
                           key={key}
                           onPress={() => {
                             void handleKeypadInput(key, setManualAmount, manualAmount);
                           }}
-                          style={[styles.keypadKey, { backgroundColor: theme.colors.surfaceVariant }]}
+                          style={[styles.keypadKey, { backgroundColor: theme.colors.elevation.level1 }]}
+                          borderless
                         >
-                          <Text variant="headlineSmall" style={{ color: theme.colors.onSurface }}>
+                          <Text variant="headlineSmall" style={{ color: theme.colors.onSurface, fontWeight: '600' }}>
                             {key}
                           </Text>
-                        </Pressable>
+                        </TouchableRipple>
                       ))}
                     </View>
                   ))}
@@ -515,89 +581,76 @@ export default function HomeScreen() {
                   mode="contained"
                   disabled={amountTextToCents(manualAmount) <= 0}
                   onPress={() => setManualPhase('category')}
+                  style={[styles.pillButton, { marginTop: 16 }]}
+                  contentStyle={{ height: 56 }}
                 >
                   Continue
                 </Button>
               </>
             ) : (
               <>
-                <Text variant="headlineSmall" style={{ color: theme.colors.onSurface }}>
-                  Pick category
+                <Text variant="titleMedium" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 16, textAlign: 'center' }}>
+                  Pick a category to save instantly
                 </Text>
-                <Text variant="titleMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-                  Instant-save: tap once to log
-                </Text>
-                <View style={styles.categoryGrid}>
-                  {expenseCategories.map((item) => (
-                    <Pressable
+                <ScrollView contentContainerStyle={styles.categoryGrid}>
+                  {activeCategories.map((item) => (
+                    <TouchableRipple
                       key={item.id}
                       onPress={() => {
-                        void saveExpense(item.id);
+                        void saveManual(item.id);
                       }}
-                      style={[styles.categoryCell, { backgroundColor: theme.colors.secondaryContainer }]}
+                      style={[styles.categoryCell, { backgroundColor: theme.colors.elevation.level1 }]}
+                      borderless
                     >
-                      <Text variant="headlineSmall">{item.emoji}</Text>
-                      <Text variant="labelLarge" style={{ color: theme.colors.onSecondaryContainer }}>
-                        {item.name}
-                      </Text>
-                    </Pressable>
+                      <>
+                        <Text variant="headlineMedium">{item.emoji}</Text>
+                        <Text variant="labelLarge" style={{ color: theme.colors.onSurface, marginTop: 4 }}>
+                          {item.name}
+                        </Text>
+                      </>
+                    </TouchableRipple>
                   ))}
-                </View>
+                </ScrollView>
               </>
             )}
           </View>
         </View>
       </Modal>
 
-      <Modal visible={cashVisible} transparent animationType="slide" onRequestClose={() => setCashVisible(false)}>
+      {/* Gemma Output Modal */}
+      <Modal visible={gemmaVisible} transparent animationType="slide" onRequestClose={() => setGemmaVisible(false)}>
         <View style={styles.sheetRoot}>
           <Pressable
             style={[styles.modalBackdrop, { backgroundColor: theme.colors.backdrop }]}
-            onPress={() => setCashVisible(false)}
+            onPress={() => setGemmaVisible(false)}
           />
-          <View style={[styles.sheetCard, { backgroundColor: theme.colors.surface }]}> 
-            <Text variant="headlineSmall" style={{ color: theme.colors.onSurface }}>
-              Add cash
+          <View style={[styles.sheetCard, { backgroundColor: theme.colors.elevation.level3, borderTopLeftRadius: 32, borderTopRightRadius: 32, minHeight: '50%' }]}> 
+            <View style={styles.dragHandle} />
+            <Text variant="headlineSmall" style={{ color: theme.colors.onSurface, fontWeight: 'bold', marginBottom: 16 }}>
+              ✨ Gemma Analysis
             </Text>
-
-            <Text variant="displaySmall" style={{ color: theme.colors.tertiary, textAlign: 'center' }}>
-              {cashAmount ? `+ $${cashAmount}` : '+ $0.00'}
-            </Text>
-
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-              {incomeCategories.map((item) => (
-                <Chip
-                  key={item.id}
-                  selected={cashCategoryId === item.id}
-                  onPress={() => setCashCategoryId(item.id)}
-                >
-                  {item.emoji} {item.name}
-                </Chip>
-              ))}
+            
+            <ScrollView style={{ flexGrow: 0, maxHeight: 400 }}>
+              {isGemmaLoading && !gemmaText ? (
+                <View style={{ alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+                  <ActivityIndicator size="large" />
+                  <Text variant="bodyLarge" style={{ marginTop: 16, color: theme.colors.onSurfaceVariant }}>
+                    Analyzing your spending habits...
+                  </Text>
+                </View>
+              ) : (
+                <Text variant="bodyLarge" style={{ color: theme.colors.onSurface, lineHeight: 24 }}>
+                  {gemmaText}
+                </Text>
+              )}
             </ScrollView>
 
-            <View style={styles.keypadGrid}>
-              {keypadRows.map((row) => (
-                <View key={row.join('')} style={styles.keypadRow}>
-                  {row.map((key) => (
-                    <Pressable
-                      key={key}
-                      onPress={() => {
-                        void handleKeypadInput(key, setCashAmount, cashAmount);
-                      }}
-                      style={[styles.keypadKey, { backgroundColor: theme.colors.surfaceVariant }]}
-                    >
-                      <Text variant="headlineSmall" style={{ color: theme.colors.onSurface }}>
-                        {key}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              ))}
-            </View>
-
-            <Button mode="contained" onPress={() => void saveIncome()}>
-              Add to wallet
+            <Button
+              mode="contained"
+              onPress={() => setGemmaVisible(false)}
+              style={[styles.pillButton, { marginTop: 24 }]}
+            >
+              Close
             </Button>
           </View>
         </View>
@@ -620,7 +673,7 @@ export default function HomeScreen() {
       >
         {snackbar.text}
       </Snackbar>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -635,105 +688,124 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   topBar: {
-    paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingHorizontal: 20,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-end',
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'transparent', // Will be visually distinct via elevation if needed
   },
   scrollContent: {
     paddingHorizontal: 16,
-    paddingBottom: 120,
+    paddingTop: 16,
+    paddingBottom: 160,
     gap: 12,
   },
   heroCard: {
-    borderRadius: 32,
-    padding: 20,
-    gap: 8,
+    borderRadius: 28,
   },
   filterRow: {
     gap: 8,
-    paddingVertical: 2,
+    paddingVertical: 8,
   },
   transactionRow: {
-    minHeight: 72,
+    minHeight: 76,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingVertical: 10,
+    gap: 16,
+    paddingVertical: 12,
   },
   emojiCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
   },
   txCenter: {
     flex: 1,
+    justifyContent: 'center',
+  },
+  gemmaFab: {
+    position: 'absolute',
+    left: 16,
+    bottom: 24,
+    borderRadius: 16,
   },
   fab: {
     position: 'absolute',
     right: 16,
     bottom: 24,
+    borderRadius: 16,
   },
   modalBackdrop: {
     ...StyleSheet.absoluteFillObject,
-    opacity: 0.35,
+    opacity: 0.5,
   },
   quickActionsCard: {
     position: 'absolute',
     right: 16,
-    bottom: 88,
+    bottom: 96,
     minWidth: 220,
-    borderRadius: 24,
     padding: 16,
     gap: 10,
+    elevation: 5,
   },
   sheetRoot: {
     flex: 1,
     justifyContent: 'flex-end',
   },
   sheetCard: {
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    padding: 16,
-    gap: 12,
+    padding: 24,
+    paddingBottom: 40,
+    gap: 8,
     maxHeight: '92%',
+    elevation: 24,
+  },
+  dragHandle: {
+    width: 32,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#999',
+    alignSelf: 'center',
+    marginBottom: 16,
+    opacity: 0.5,
   },
   keypadGrid: {
-    gap: 8,
+    gap: 12,
   },
   keypadRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 12,
   },
   keypadKey: {
     flex: 1,
-    minHeight: 64,
-    borderRadius: 16,
+    minHeight: 68,
+    borderRadius: 34, // Fully rounded pill
     justifyContent: 'center',
     alignItems: 'center',
   },
   categoryGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 12,
+    justifyContent: 'center',
   },
   categoryCell: {
-    width: '31%',
-    minHeight: 84,
-    borderRadius: 20,
+    width: '30%',
+    aspectRatio: 1,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 6,
   },
   voiceCard: {
-    borderRadius: 24,
-    padding: 16,
-    gap: 14,
+    borderRadius: 28,
   },
   voiceButtons: {
     gap: 10,
   },
+  pillButton: {
+    borderRadius: 28,
+  }
 });
