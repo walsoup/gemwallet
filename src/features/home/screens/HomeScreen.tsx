@@ -23,7 +23,7 @@ import { useTransactionStore, selectBalanceCents } from '../../../../store/useTr
 import { useSettingsStore } from '../../../../store/useSettingsStore';
 import type { Category, Transaction } from '../../../../types/finance';
 import { formatCurrency } from '../../../../utils/formatCurrency';
-import { streamFinancialAnalysis } from '../../nlp/services/gemmaAnalysis';
+import { parseAddExpenseCommand, streamFinancialAnalysis } from '../../nlp/services/gemmaAnalysis';
 
 const keypadRows = [
   ['1', '2', '3'],
@@ -250,7 +250,20 @@ export default function HomeScreen() {
         advanced: advancedSummariesEnabled,
       });
       for await (const chunk of generator) {
-        setGemmaText((prev) => prev + chunk);
+        const command = parseAddExpenseCommand(chunk);
+        if (command) {
+          const category = expenseCategories.find((c) =>
+            c.name.toLowerCase().includes(command.categoryHint.toLowerCase())
+          );
+          const tx = addExpense({
+            amountCents: command.amountCents,
+            categoryId: category?.id ?? expenseCategories[0]?.id ?? 'expense-misc',
+            note: command.note || 'Gemma-added expense',
+          });
+          pushSnackbar(`Gemma added ${formatAmount(command.amountCents)} for ${category?.name ?? 'expense'}`, tx.id);
+        } else {
+          setGemmaText((prev) => prev + chunk);
+        }
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -534,15 +547,17 @@ export default function HomeScreen() {
       </Animated.ScrollView>
 
       {/* Ask Gemma FAB */}
-      <FAB
-        icon="sparkles"
-        label="Ask Gemma"
-        style={[styles.gemmaFab, { backgroundColor: theme.colors.tertiaryContainer }]}
-        color={theme.colors.onTertiaryContainer}
-        onPress={() => {
-          void askGemma();
-        }}
-      />
+      {geminiApiKey?.trim() ? (
+        <FAB
+          icon="sparkles"
+          label="Ask Gemma"
+          style={[styles.gemmaFab, { backgroundColor: theme.colors.tertiaryContainer }]}
+          color={theme.colors.onTertiaryContainer}
+          onPress={() => {
+            void askGemma();
+          }}
+        />
+      ) : null}
 
       <FAB
         icon="plus"

@@ -28,6 +28,7 @@ const currencyOptions = [
   { code: 'JPY', label: 'JPY (¥)' },
   { code: 'AUD', label: 'AUD (A$)' },
   { code: 'CAD', label: 'CAD (C$)' },
+  { code: 'MAD', label: 'MAD (د.م.)' },
 ] as const;
 
 const languageOptions = [
@@ -45,6 +46,7 @@ const regionOptions = [
   { code: 'JP', label: 'Japan' },
   { code: 'AU', label: 'Australia' },
   { code: 'CA', label: 'Canada' },
+  { code: 'MA', label: 'Morocco' },
 ] as const;
 
 const modelOptions = [
