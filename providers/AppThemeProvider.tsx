@@ -21,26 +21,29 @@ export function AppThemeProvider({ children }: PropsWithChildren) {
     const base = isDark ? MD3DarkTheme : MD3LightTheme;
     const m3Colors = isDark ? m3Theme.dark : m3Theme.light;
     const isTrueBlack = isDark && oledTrueBlackEnabled;
+    const background = isTrueBlack ? '#000000' : m3Colors.surfaceContainerLowest;
+    const surface = isTrueBlack ? '#0A0A0A' : m3Colors.surfaceContainerHigh;
+    const surfaceVariant = isTrueBlack ? '#161616' : m3Colors.surfaceVariant;
 
     return {
       ...base,
-      roundness: 28,
+      roundness: 16,
       colors: {
         ...base.colors,
         ...m3Colors,
-        background: isTrueBlack ? '#000000' : m3Colors.background,
-        surface: isTrueBlack ? '#121212' : m3Colors.surface,
-        surfaceVariant: isTrueBlack ? '#1E1E1E' : m3Colors.surfaceVariant,
+        background,
+        surface,
+        surfaceVariant,
+        surfaceContainer: isTrueBlack ? '#0F0F0F' : m3Colors.surfaceContainer,
+        surfaceContainerLow: isTrueBlack ? '#0C0C0C' : m3Colors.surfaceContainerLow,
+        surfaceContainerLowest: isTrueBlack ? '#000000' : m3Colors.surfaceContainerLowest,
+        surfaceContainerHigh: isTrueBlack ? '#131313' : m3Colors.surfaceContainerHigh,
+        surfaceContainerHighest: isTrueBlack ? '#161616' : m3Colors.surfaceContainerHighest,
         outline: highContrastEnabled ? (isDark ? '#FFFFFF' : '#000000') : m3Colors.outline,
         onSurfaceVariant: highContrastEnabled ? base.colors.onSurface : m3Colors.onSurfaceVariant,
         elevation: {
-          level0: 'transparent',
-          level1: isDark ? '#1C1B1F' : '#F3EDF7',
-          level2: isDark ? '#232128' : '#EDDFF6',
-          level3: isDark ? '#2A2731' : '#E8D2F5',
-          level4: isDark ? '#2D2934' : '#E6CEF5',
-          level5: isDark ? '#332E3A' : '#E2C5F4',
-        }
+          ...m3Colors.elevation,
+        },
       },
     };
   }, [highContrastEnabled, isDark, oledTrueBlackEnabled, m3Theme]);
