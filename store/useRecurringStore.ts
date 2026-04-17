@@ -41,12 +41,13 @@ export const useRecurringStore = create<RecurringState>()(
       recurringEnabled: false,
       addEvent: ({ name, amountCents, type, categoryId, interval, startDate }) => {
         const cleaned = name.trim().slice(0, 40);
-        if (!cleaned || amountCents <= 0) return;
+        const normalizedAmount = Math.round(amountCents);
+        if (!cleaned || !categoryId || !Number.isFinite(normalizedAmount) || normalizedAmount <= 0) return;
         const nextRun = startDate ?? Date.now();
         const event: RecurringCashEvent = {
           id: `recurring-${generateId()}`,
           name: cleaned,
-          amountCents: Math.max(1, Math.round(amountCents)),
+          amountCents: Math.max(1, normalizedAmount),
           type,
           categoryId,
           interval,
@@ -64,6 +65,8 @@ export const useRecurringStore = create<RecurringState>()(
         set((state) => {
           const events = state.events.map((event) => {
             if (!state.recurringEnabled || !event.enabled || event.nextRun > now) return event;
+            const normalizedAmount = Math.round(event.amountCents);
+            if (!Number.isFinite(normalizedAmount) || normalizedAmount <= 0) return event;
             apply(event);
             return { ...event, nextRun: addInterval(event.nextRun, event.interval) };
           });
@@ -74,6 +77,8 @@ export const useRecurringStore = create<RecurringState>()(
         set((state) => {
           const events = state.events.map((event) => {
             if (event.id !== id) return event;
+            const normalizedAmount = Math.round(event.amountCents);
+            if (!Number.isFinite(normalizedAmount) || normalizedAmount <= 0) return event;
             apply(event);
             return { ...event, nextRun: addInterval(now, event.interval) };
           });
