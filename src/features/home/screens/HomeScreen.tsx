@@ -1,6 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
-import { useCallback, useMemo, useState, useRef } from 'react';
+import { useCallback, useMemo, useState, useRef, useEffect } from 'react';
 import { Modal, Pressable, ScrollView, SectionList, StyleSheet, View, Animated } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -18,12 +18,15 @@ import {
   Card,
   ActivityIndicator
 } from 'react-native-paper';
+import { Polyline, Svg } from 'react-native-svg';
 
 import { useTransactionStore, selectBalanceCents } from '../../../../store/useTransactionStore';
 import { useSettingsStore } from '../../../../store/useSettingsStore';
+import { useRecurringStore } from '../../../../store/useRecurringStore';
+import { useGoalsStore } from '../../../../store/useGoalsStore';
 import type { Category, Transaction } from '../../../../types/finance';
 import { formatCurrency } from '../../../../utils/formatCurrency';
-import { streamFinancialAnalysis } from '../../nlp/services/gemmaAnalysis';
+import { parseAddExpenseCommand, streamFinancialAnalysis } from '../../nlp/services/gemmaAnalysis';
 
 const keypadRows = [
   ['1', '2', '3'],
@@ -71,6 +74,115 @@ function greeting() {
   return 'Good evening';
 }
 
+type SeriesPoint = { label: string; value: number };
+
+function buildDailyExpenses(transactions: Transaction[], days: number) {
+  const now = new Date();
+  const buckets = new Map<string, number>();
+  for (let i = 0; i < days; i += 1) {
+    const date = new Date(now);
+    date.setDate(now.getDate() - i);
+    const key = date.toISOString().slice(0, 10);
+    buckets.set(key, 0);
+  }
+
+  for (const tx of transactions) {
+    if (tx.type !== 'expense') continue;
+    const key = new Date(tx.timestamp).toISOString().slice(0, 10);
+    if (buckets.has(key)) {
+      buckets.set(key, (buckets.get(key) ?? 0) + tx.amountCents);
+    }
+  }
+
+  const sorted = [...buckets.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([date, value]) => ({
+      label: date.slice(5), // MM-DD
+      value,
+    }));
+
+  return sorted;
+}
+
+function buildWeeklyExpenses(transactions: Transaction[], weeks: number) {
+  const now = new Date();
+  const buckets = new Map<string, number>();
+
+  const weekKey = (date: Date) => {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday start
+    d.setDate(diff);
+    d.setHours(0, 0, 0, 0);
+    return d.toISOString().slice(0, 10);
+  };
+
+  for (let i = 0; i < weeks; i += 1) {
+    const date = new Date(now);
+    date.setDate(now.getDate() - i * 7);
+    buckets.set(weekKey(date), 0);
+  }
+
+  for (const tx of transactions) {
+    if (tx.type !== 'expense') continue;
+    const key = weekKey(new Date(tx.timestamp));
+    if (buckets.has(key)) {
+      buckets.set(key, (buckets.get(key) ?? 0) + tx.amountCents);
+    }
+  }
+
+  const sorted = [...buckets.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([start, value]) => ({
+      label: start.slice(5),
+      value,
+    }));
+
+  return sorted;
+}
+
+function detectAnomaly(points: SeriesPoint[]) {
+  if (!points.length) return null;
+  const values = points.map((p) => p.value);
+  const avg = values.reduce((sum, v) => sum + v, 0) / values.length;
+  const variance = values.reduce((sum, v) => sum + (v - avg) ** 2, 0) / values.length;
+  const stdDev = Math.sqrt(variance);
+  const latest = points[points.length - 1];
+  if (latest.value > avg + stdDev * 1.5 && latest.value > 0) {
+    return { label: latest.label, value: latest.value, avg, stdDev };
+  }
+  return null;
+}
+
+function Sparkline({ points, color }: { points: SeriesPoint[]; color: string }) {
+  const width = 160;
+  const height = 48;
+  if (!points.length) {
+    return <Text variant="bodySmall" style={{ color }}>No data</Text>;
+  }
+  const max = Math.max(...points.map((p) => p.value), 1);
+  const min = 0;
+  const stepX = points.length > 1 ? width / (points.length - 1) : width;
+  const coords = points.map((p, idx) => {
+    const x = idx * stepX;
+    const y = height - ((p.value - min) / (max - min)) * height;
+    return `${x},${Number.isFinite(y) ? y : height}`;
+  });
+
+  return (
+    <Svg width={width} height={height}>
+      <Polyline
+        points={coords.join(' ')}
+        fill="none"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
 export default function HomeScreen() {
   const theme = useTheme();
   const router = useRouter();
@@ -81,6 +193,15 @@ export default function HomeScreen() {
   const geminiApiKey = useSettingsStore((state) => state.geminiApiKey);
   const gemmaModel = useSettingsStore((state) => state.gemmaModel);
   const advancedSummariesEnabled = useSettingsStore((state) => state.advancedSummariesEnabled);
+  const passcodeEnabled = useSettingsStore((state) => state.passcodeEnabled);
+  const passcodePin = useSettingsStore((state) => state.passcodePin);
+  const resetSettings = useSettingsStore((state) => state.resetSettings);
+  const setRecurringEnabled = useRecurringStore((state) => state.setRecurringEnabled);
+  const addRecurringEvent = useRecurringStore((state) => state.addEvent);
+  const recurringEvents = useRecurringStore((state) => state.events);
+  const recurringEnabled = useRecurringStore((state) => state.recurringEnabled);
+  const goalsEnabled = useGoalsStore((state) => state.goalsEnabled);
+  const goals = useGoalsStore((state) => state.goals);
 
   const transactions = useTransactionStore((state) => state.transactions);
   const categories = useTransactionStore((state) => state.categories);
@@ -90,6 +211,7 @@ export default function HomeScreen() {
   const addExpense = useTransactionStore((state) => state.addExpense);
   const addIncome = useTransactionStore((state) => state.addIncome);
   const undoTransaction = useTransactionStore((state) => state.undoTransaction);
+  const clearAllData = useTransactionStore((state) => state.clearAllData);
   const locale = language || 'en-US';
   const formatAmount = useCallback(
     (value: number) => formatCurrency(value, { currencyCode, locale }),
@@ -102,6 +224,8 @@ export default function HomeScreen() {
   const [manualVisible, setManualVisible] = useState(false);
   const [manualPhase, setManualPhase] = useState<ManualPhase>('amount');
   const [manualAmount, setManualAmount] = useState('');
+  const [manualNote, setManualNote] = useState('');
+  const [receiptText, setReceiptText] = useState('');
   const [txType, setTxType] = useState<'expense' | 'income'>('expense');
 
   const [quickActionsVisible, setQuickActionsVisible] = useState(false);
@@ -110,14 +234,29 @@ export default function HomeScreen() {
   const [openingBalance, setOpeningBalance] = useState('');
 
   const [snackbar, setSnackbar] = useState({ visible: false, text: '', txId: '' });
+  const [recurringSuggestion, setRecurringSuggestion] = useState<{ txId: string; label: string; amountCents: number; categoryId: string; interval: 'weekly' | 'monthly'; type: 'expense' | 'income' } | null>(null);
 
   // Gemma state
   const [gemmaVisible, setGemmaVisible] = useState(false);
   const [gemmaText, setGemmaText] = useState('');
   const [isGemmaLoading, setIsGemmaLoading] = useState(false);
+  const [sessionUnlocked, setSessionUnlocked] = useState(!passcodeEnabled || !passcodePin);
+  const [passcodeInput, setPasscodeInput] = useState('');
+  const [passcodeError, setPasscodeError] = useState('');
 
   // Animation values for collapsing header
   const scrollY = useRef(new Animated.Value(0)).current;
+  const lastSuggestedId = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (passcodeEnabled && passcodePin) {
+      setSessionUnlocked(false);
+    } else {
+      setSessionUnlocked(true);
+    }
+    setPasscodeInput('');
+    setPasscodeError('');
+  }, [passcodeEnabled, passcodePin]);
 
   const headerHeight = scrollY.interpolate({
     inputRange: [0, 100],
@@ -175,8 +314,113 @@ export default function HomeScreen() {
     return [...groups.entries()].map(([title, data]) => ({ title, data }));
   }, [filteredTransactions, locale]);
 
+  const dailyExpenses = useMemo(
+    () => buildDailyExpenses(transactions, 14),
+    [transactions]
+  );
+
+  const weeklyExpenses = useMemo(
+    () => buildWeeklyExpenses(transactions, 6),
+    [transactions]
+  );
+
+  const dailyAnomaly = useMemo(() => detectAnomaly(dailyExpenses), [dailyExpenses]);
+  const weeklyAnomaly = useMemo(() => detectAnomaly(weeklyExpenses), [weeklyExpenses]);
+
+  const summarizeSeries = (points: SeriesPoint[]) => {
+    if (!points.length) return { latest: 0, changePct: 0 };
+    const latest = points[points.length - 1].value;
+    const prev = points.length > 1 ? points[points.length - 2].value : 0;
+    const changePct = prev ? ((latest - prev) / prev) * 100 : 0;
+    return { latest, changePct };
+  };
+
+  const dailySummary = summarizeSeries(dailyExpenses);
+  const weeklySummary = summarizeSeries(weeklyExpenses);
+  const showCoach =
+    transactions.length === 0 || !goalsEnabled || goals.length === 0 || !recurringEnabled || recurringEvents.length === 0;
+
+  useEffect(() => {
+    if (!transactions.length) return;
+    const latest = transactions[0];
+    if (latest.id === lastSuggestedId.current) return;
+    const matches = transactions.filter(
+      (tx) =>
+        tx.type === latest.type &&
+        tx.categoryId === latest.categoryId &&
+        Math.abs(tx.amountCents - latest.amountCents) <= latest.amountCents * 0.1 &&
+        tx.id !== latest.id
+    );
+    if (matches.length < 2) return;
+    const timestamps = [latest.timestamp, ...matches.slice(0, 2).map((m) => m.timestamp)].sort((a, b) => b - a);
+    const deltas = timestamps.slice(0, 2).map((t, idx) => (idx === timestamps.length - 1 ? 0 : t - timestamps[idx + 1]));
+    const avgDelta = deltas[0] || 0;
+    let interval: 'weekly' | 'monthly' | null = null;
+    const days = avgDelta / (1000 * 60 * 60 * 24);
+    if (days >= 5 && days <= 9) interval = 'weekly';
+    if (days >= 25 && days <= 35) interval = 'monthly';
+    if (!interval) return;
+
+    const alreadyRecurring = recurringEvents.some(
+      (ev) =>
+        ev.categoryId === latest.categoryId &&
+        ev.type === latest.type &&
+        Math.abs(ev.amountCents - latest.amountCents) <= latest.amountCents * 0.1
+    );
+    if (alreadyRecurring) return;
+
+    setRecurringSuggestion({
+      txId: latest.id,
+      label: categoryById(categories, latest.categoryId)?.name ?? 'category',
+      amountCents: latest.amountCents,
+      categoryId: latest.categoryId,
+      interval,
+      type: latest.type,
+    });
+    lastSuggestedId.current = latest.id;
+  }, [categories, recurringEvents, transactions]);
+
+  useEffect(() => {
+    if (recurringSuggestion) {
+      setSnackbar({
+        visible: true,
+        text: `Make ${recurringSuggestion.label} ${recurringSuggestion.interval} recurring?`,
+        txId: '',
+      });
+    }
+  }, [recurringSuggestion]);
+
   const pushSnackbar = (text: string, txId: string) => {
     setSnackbar({ visible: true, text, txId });
+  };
+
+  const handleUnlock = async () => {
+    if (passcodeInput === passcodePin) {
+      setSessionUnlocked(true);
+      setPasscodeInput('');
+      setPasscodeError('');
+      await Haptics.selectionAsync();
+    } else {
+      setPasscodeError('Incorrect passcode.');
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    }
+  };
+
+  const createRecurringFromSuggestion = async () => {
+    if (!recurringSuggestion) return;
+    if (!recurringEnabled) {
+      setRecurringEnabled(true);
+    }
+    addRecurringEvent({
+      name: recurringSuggestion.label,
+      amountCents: recurringSuggestion.amountCents,
+      type: recurringSuggestion.type,
+      categoryId: recurringSuggestion.categoryId,
+      interval: recurringSuggestion.interval,
+    });
+    setRecurringSuggestion(null);
+    await Haptics.selectionAsync();
+    pushSnackbar('Recurring event created.', '');
   };
 
   const handleKeypadInput = async (key: (typeof keypadRows)[number][number], setValue: (next: string) => void, value: string) => {
@@ -211,6 +455,8 @@ export default function HomeScreen() {
 
   const openManualFlow = async () => {
     setManualAmount('');
+    setManualNote('');
+    setReceiptText('');
     setManualPhase('amount');
     setTxType('expense');
     setManualVisible(true);
@@ -223,14 +469,17 @@ export default function HomeScreen() {
 
     const category = categoryById(categories, categoryId);
     let tx;
+    const note = [manualNote, receiptText].filter(Boolean).join(' • ').trim() || undefined;
     if (txType === 'expense') {
-      tx = addExpense({ amountCents, categoryId });
+      tx = addExpense({ amountCents, categoryId, note });
     } else {
-      tx = addIncome({ amountCents, categoryId });
+      tx = addIncome({ amountCents, categoryId, note });
     }
     
     setManualVisible(false);
     setManualAmount('');
+    setManualNote('');
+    setReceiptText('');
     setManualPhase('amount');
     pushSnackbar(`Logged ${formatAmount(amountCents)} for ${category?.name ?? 'category'}`, tx.id);
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -250,7 +499,20 @@ export default function HomeScreen() {
         advanced: advancedSummariesEnabled,
       });
       for await (const chunk of generator) {
-        setGemmaText((prev) => prev + chunk);
+        const command = parseAddExpenseCommand(chunk);
+        if (command) {
+          const category = expenseCategories.find((c) =>
+            c.name.toLowerCase().includes(command.categoryHint.toLowerCase())
+          );
+          const tx = addExpense({
+            amountCents: command.amountCents,
+            categoryId: category?.id ?? expenseCategories[0]?.id ?? 'expense-misc',
+            note: command.note || 'Gemma-added expense',
+          });
+          pushSnackbar(`Gemma added ${formatAmount(command.amountCents)} for ${category?.name ?? 'expense'}`, tx.id);
+        } else {
+          setGemmaText((prev) => prev + chunk);
+        }
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -260,6 +522,49 @@ export default function HomeScreen() {
       setIsGemmaLoading(false);
     }
   };
+
+  if (passcodeEnabled && passcodePin && !sessionUnlocked) {
+    return (
+      <SafeAreaView style={[styles.screen, { backgroundColor: theme.colors.background, justifyContent: 'center', padding: 24 }]}>
+        <View style={{ gap: 16 }}>
+          <Text variant="headlineMedium" style={{ color: theme.colors.onSurface, textAlign: 'center' }}>
+            Unlock wallet
+          </Text>
+          <TextInput
+            mode="outlined"
+            label="Passcode"
+            value={passcodeInput}
+            onChangeText={(val) => {
+              setPasscodeInput(val);
+              setPasscodeError('');
+            }}
+            keyboardType="number-pad"
+            secureTextEntry
+            maxLength={8}
+          />
+          {passcodeError ? (
+            <Text variant="bodySmall" style={{ color: theme.colors.error }}>
+              {passcodeError}
+            </Text>
+          ) : null}
+          <Button mode="contained" onPress={() => void handleUnlock()} disabled={!passcodeInput}>
+            Unlock
+          </Button>
+          <Button
+            mode="text"
+            onPress={async () => {
+              clearAllData();
+              resetSettings();
+              setSessionUnlocked(true);
+              await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            }}
+          >
+            Reset all data (clears passcode)
+          </Button>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (!walletMeta.hasCompletedOnboarding) {
     return (
@@ -417,14 +722,102 @@ export default function HomeScreen() {
                 📨 Wallet is empty
               </Text>
             ) : null}
-          </Card.Content>
-        </Card>
+            </Card.Content>
+          </Card>
 
-        <TextInput
-          mode="outlined"
-          value={search}
-          onChangeText={setSearch}
-          label="Search transactions"
+          {showCoach ? (
+            <Card mode="elevated" style={{ borderRadius: 20, backgroundColor: theme.colors.surface }}>
+              <Card.Content style={{ gap: 8 }}>
+                <Text variant="titleMedium" style={{ color: theme.colors.onSurface, fontWeight: '700' }}>
+                  Quick setup coach
+                </Text>
+                <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                  Finish these to unlock smoother tracking.
+                </Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  <Chip
+                    mode="outlined"
+                    selected={!transactions.length}
+                    onPress={() => void openManualFlow()}
+                  >
+                    Log first transaction
+                  </Chip>
+                  <Chip
+                    mode="outlined"
+                    selected={!goalsEnabled || goals.length === 0}
+                    onPress={() => router.push('/settings')}
+                  >
+                    Create a goal
+                  </Chip>
+                  <Chip
+                    mode="outlined"
+                    selected={!recurringEnabled || recurringEvents.length === 0}
+                    onPress={() => router.push('/settings')}
+                  >
+                    Add recurring
+                  </Chip>
+                  <Chip
+                    mode="outlined"
+                    onPress={() => router.push('/settings')}
+                  >
+                    Set backup
+                  </Chip>
+                </View>
+              </Card.Content>
+            </Card>
+          ) : null}
+
+          <Card
+            mode="elevated"
+            style={{ borderRadius: 24, backgroundColor: theme.colors.surface }}
+            contentStyle={{ padding: 16, gap: 12 }}
+          >
+            <Text variant="titleMedium" style={{ color: theme.colors.onSurface, fontWeight: '700' }}>
+              Cashflow trends
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <View style={{ flex: 1, gap: 6 }}>
+                <Text variant="labelMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                  Daily (14d)
+                </Text>
+                <Sparkline points={dailyExpenses} color={theme.colors.primary} />
+                <Text variant="bodySmall" style={{ color: theme.colors.onSurface }}>
+                  {formatCurrency(dailySummary.latest, { currencyCode, locale })} today
+                  {Number.isFinite(dailySummary.changePct) && dailySummary.changePct !== 0
+                    ? ` (${dailySummary.changePct > 0 ? '+' : ''}${dailySummary.changePct.toFixed(1)}%) vs prev`
+                    : ''}
+                </Text>
+                {dailyAnomaly ? (
+                  <Text variant="bodySmall" style={{ color: theme.colors.error }}>
+                    Alert: {formatCurrency(dailyAnomaly.value, { currencyCode, locale })} exceeds typical spend.
+                  </Text>
+                ) : null}
+              </View>
+              <View style={{ flex: 1, gap: 6 }}>
+                <Text variant="labelMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                  Weekly (6w)
+                </Text>
+                <Sparkline points={weeklyExpenses} color={theme.colors.tertiary} />
+                <Text variant="bodySmall" style={{ color: theme.colors.onSurface }}>
+                  {formatCurrency(weeklySummary.latest, { currencyCode, locale })} this week
+                  {Number.isFinite(weeklySummary.changePct) && weeklySummary.changePct !== 0
+                    ? ` (${weeklySummary.changePct > 0 ? '+' : ''}${weeklySummary.changePct.toFixed(1)}%) vs prev`
+                    : ''}
+                </Text>
+                {weeklyAnomaly ? (
+                  <Text variant="bodySmall" style={{ color: theme.colors.error }}>
+                    Alert: {formatCurrency(weeklyAnomaly.value, { currencyCode, locale })} exceeds typical week.
+                  </Text>
+                ) : null}
+              </View>
+            </View>
+          </Card>
+
+          <TextInput
+            mode="outlined"
+            value={search}
+            onChangeText={setSearch}
+            label="Search transactions"
           right={<TextInput.Icon icon="close" onPress={() => setSearch('')} />}
           style={{ borderRadius: 24, marginVertical: 8 }}
         />
@@ -534,15 +927,17 @@ export default function HomeScreen() {
       </Animated.ScrollView>
 
       {/* Ask Gemma FAB */}
-      <FAB
-        icon="sparkles"
-        label="Ask Gemma"
-        style={[styles.gemmaFab, { backgroundColor: theme.colors.tertiaryContainer }]}
-        color={theme.colors.onTertiaryContainer}
-        onPress={() => {
-          void askGemma();
-        }}
-      />
+      {geminiApiKey?.trim() ? (
+        <FAB
+          icon="sparkles"
+          label="Ask Gemma"
+          style={[styles.gemmaFab, { backgroundColor: theme.colors.tertiaryContainer }]}
+          color={theme.colors.onTertiaryContainer}
+          onPress={() => {
+            void askGemma();
+          }}
+        />
+      ) : null}
 
       <FAB
         icon="plus"
@@ -670,6 +1065,32 @@ export default function HomeScreen() {
                 <Text variant="titleMedium" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 16, textAlign: 'center' }}>
                   Pick a category to save instantly
                 </Text>
+                <TextInput
+                  mode="outlined"
+                  label="Receipt/IOU note (paste photo text)"
+                  value={receiptText}
+                  onChangeText={setReceiptText}
+                  multiline
+                  style={{ marginBottom: 8 }}
+                />
+                <TextInput
+                  mode="outlined"
+                  label="Quick note"
+                  value={manualNote}
+                  onChangeText={setManualNote}
+                  style={{ marginBottom: 8 }}
+                />
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 12 }}>
+                  {['Receipt', 'IOU', 'Reimbursable'].map((tag) => (
+                    <Chip
+                      key={tag}
+                      onPress={() => setManualNote((prev) => (prev ? `${prev} ${tag}` : tag))}
+                      mode="outlined"
+                    >
+                      {tag}
+                    </Chip>
+                  ))}
+                </ScrollView>
                 <ScrollView contentContainerStyle={styles.categoryGrid}>
                   {activeCategories.map((item) => (
                     <TouchableRipple
@@ -760,7 +1181,12 @@ export default function HomeScreen() {
                   undoTransaction(snackbar.txId);
                 },
               }
-            : undefined
+            : recurringSuggestion
+              ? {
+                  label: 'Add recurring',
+                  onPress: () => void createRecurringFromSuggestion(),
+                }
+              : undefined
         }
       >
         {snackbar.text}

@@ -14,6 +14,7 @@ type AnalysisOptions = {
   region: string;
   model?: string;
   advanced?: boolean;
+  addExpense?: (params: { amountCents: number; categoryId: string; note?: string }) => Transaction;
 };
 
 function chunkText(text: string) {
@@ -58,6 +59,7 @@ function buildPrompt(transactions: Transaction[], options: AnalysisOptions) {
     `Locale: ${options.locale}, Region: ${options.region}, Currency: ${options.currencyCode}.`,
     'Focus on: balance trend, biggest categories, spending vs income, and one practical next action.',
     'Avoid apologizing. Keep it under 5 short bullets.',
+    'If the user asks you to add or log an expense, extract amount, category hint, and note. Reply with a single line starting with "ADD_EXPENSE:" followed by amount number, category hint, and note. Example: "ADD_EXPENSE: 12.50 food ramen".',
     'Transactions:',
     rows || 'No transactions yet.',
   ].join('\n');
@@ -110,4 +112,14 @@ export async function* streamFinancialAnalysis(transactions: Transaction[], opti
   }
 
   yield 'Gemma had an issue processing this request. Double-check your API key and network connection.';
+}
+
+export function parseAddExpenseCommand(text: string) {
+  const match = text.match(/ADD_EXPENSE:\s*([0-9]+(?:\.[0-9]{1,2})?)\s+([^\s]+)\s*(.*)/i);
+  if (!match) return null;
+  const amount = Number(match[1]);
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+  const categoryHint = match[2];
+  const note = match[3]?.trim();
+  return { amountCents: Math.round(amount * 100), categoryHint, note };
 }
