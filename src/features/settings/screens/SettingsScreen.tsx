@@ -48,7 +48,8 @@ const regionOptions = [
 ] as const;
 
 const modelOptions = [
-  { value: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Flash Lite (preview, recommended)' },
+  { value: 'gemma-4-31b-it', label: 'Gemma 4 31B (default)' },
+  { value: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Flash Lite (fallback)' },
   { value: 'gemma-2-9b-it', label: 'Gemma 2 9B' },
 ] as const;
 
@@ -141,22 +142,29 @@ export default function SettingsScreen() {
           backgroundColor: theme.colors.background,
         }}
       >
-        <View style={{ gap: 4 }}>
-          <Text variant="headlineMedium" style={{ color: theme.colors.onSurface }}>
+        <View style={{ gap: 6, paddingHorizontal: 4 }}>
+          <Text variant="displaySmall" style={{ color: theme.colors.onSurface }}>
             Settings
           </Text>
-          <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-            Tune GemWallet to match Material 3, your language, and your AI preferences.
+          <Text variant="titleMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+            Material 3 expressive layout with tonal surfaces, dynamic color, and AI controls.
           </Text>
         </View>
 
         <Card
           mode="elevated"
           style={{ backgroundColor: theme.colors.surfaceContainer }}
-          contentStyle={{ paddingVertical: 8, gap: 8 }}
+          contentStyle={{ paddingVertical: 12, gap: 12 }}
         >
-          <Card.Title title="Appearance" subtitle="Material Design 3 surfaces" />
-          <Card.Content style={{ gap: 12 }}>
+          <Card.Title
+            title="Appearance"
+            subtitle="Material Design 3 expressive surfaces"
+            titleVariant="titleLarge"
+            subtitleVariant="bodyMedium"
+            titleStyle={{ color: theme.colors.onSurface }}
+            subtitleStyle={{ color: theme.colors.onSurfaceVariant }}
+          />
+          <Card.Content style={{ gap: 16 }}>
             <SegmentedButtons
               value={themePreference}
               onValueChange={(value) => setThemePreference(value as 'system' | 'light' | 'dark')}
@@ -188,10 +196,17 @@ export default function SettingsScreen() {
         <Card
           mode="elevated"
           style={{ backgroundColor: theme.colors.surfaceContainer }}
-          contentStyle={{ paddingVertical: 8, gap: 8 }}
+          contentStyle={{ paddingVertical: 12, gap: 12 }}
         >
-          <Card.Title title="Gemma & Locale" subtitle="Connect Gemini API access and region defaults" />
-          <Card.Content style={{ gap: 12 }}>
+          <Card.Title
+            title="Gemma & Locale"
+            subtitle="Connect Gemini API access and region defaults"
+            titleVariant="titleLarge"
+            subtitleVariant="bodyMedium"
+            titleStyle={{ color: theme.colors.onSurface }}
+            subtitleStyle={{ color: theme.colors.onSurfaceVariant }}
+          />
+          <Card.Content style={{ gap: 16 }}>
             <TextInput
               mode="outlined"
               label="Gemini API key"
@@ -283,10 +298,14 @@ export default function SettingsScreen() {
         <Card
           mode="elevated"
           style={{ backgroundColor: theme.colors.surfaceContainer }}
-          contentStyle={{ paddingVertical: 8, gap: 8 }}
+          contentStyle={{ paddingVertical: 12, gap: 12 }}
         >
-          <Card.Title title="Security & advanced" />
-          <Card.Content style={{ gap: 8 }}>
+          <Card.Title
+            title="Security & advanced"
+            titleVariant="titleLarge"
+            titleStyle={{ color: theme.colors.onSurface }}
+          />
+          <Card.Content style={{ gap: 12 }}>
             <List.Item
               title="Secure app access"
               description="Require a device lock or biometric check before opening."
@@ -320,10 +339,14 @@ export default function SettingsScreen() {
         <Card
           mode="elevated"
           style={{ backgroundColor: theme.colors.surfaceContainer }}
-          contentStyle={{ paddingVertical: 8, gap: 8 }}
+          contentStyle={{ paddingVertical: 12, gap: 12 }}
         >
-          <Card.Title title="Category management" />
-          <Card.Content style={{ gap: 12 }}>
+          <Card.Title
+            title="Category management"
+            titleVariant="titleLarge"
+            titleStyle={{ color: theme.colors.onSurface }}
+          />
+          <Card.Content style={{ gap: 14 }}>
             <TextInput
               mode="outlined"
               label="Category name (max 14)"
@@ -385,10 +408,17 @@ export default function SettingsScreen() {
         <Card
           mode="elevated"
           style={{ backgroundColor: theme.colors.surfaceContainer }}
-          contentStyle={{ paddingVertical: 8, gap: 8 }}
+          contentStyle={{ paddingVertical: 12, gap: 12 }}
         >
-          <Card.Title title="Data export" subtitle="Generate a CSV preview without leaving the device" />
-          <Card.Content style={{ gap: 12 }}>
+          <Card.Title
+            title="Data export"
+            subtitle="Generate a CSV preview without leaving the device"
+            titleVariant="titleLarge"
+            subtitleVariant="bodyMedium"
+            titleStyle={{ color: theme.colors.onSurface }}
+            subtitleStyle={{ color: theme.colors.onSurfaceVariant }}
+          />
+          <Card.Content style={{ gap: 14 }}>
             <Button
               mode="outlined"
               onPress={async () => {

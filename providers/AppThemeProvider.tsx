@@ -21,13 +21,13 @@ export function AppThemeProvider({ children }: PropsWithChildren) {
     const base = isDark ? MD3DarkTheme : MD3LightTheme;
     const m3Colors = isDark ? m3Theme.dark : m3Theme.light;
     const isTrueBlack = isDark && oledTrueBlackEnabled;
-    const surface = isTrueBlack ? '#0A0A0A' : m3Colors.surface;
-    const background = isTrueBlack ? '#000000' : m3Colors.background;
+    const background = isTrueBlack ? '#000000' : m3Colors.surfaceContainerLowest;
+    const surface = isTrueBlack ? '#0A0A0A' : m3Colors.surfaceContainerHigh;
     const surfaceVariant = isTrueBlack ? '#161616' : m3Colors.surfaceVariant;
 
     return {
       ...base,
-      roundness: 12,
+      roundness: 16,
       colors: {
         ...base.colors,
         ...m3Colors,

@@ -4,7 +4,8 @@ import type { Transaction } from '../../../../types/finance';
 import { formatCurrency } from '../../../../utils/formatCurrency';
 
 const STREAM_CHUNK_SIZE = 80;
-const DEFAULT_MODEL = 'gemini-3.1-flash-lite-preview';
+const DEFAULT_MODEL = 'gemma-4-31b-it';
+const FALLBACK_MODEL = 'gemini-3.1-flash-lite-preview';
 
 type AnalysisOptions = {
   apiKey?: string;
@@ -76,26 +77,37 @@ export async function* streamFinancialAnalysis(transactions: Transaction[], opti
     return;
   }
 
-  try {
-    const genAI = new GoogleGenerativeAI(options.apiKey.trim());
-    const model = genAI.getGenerativeModel({ model: options.model || DEFAULT_MODEL });
-    const prompt = buildPrompt(transactions, options);
+  const genAI = new GoogleGenerativeAI(options.apiKey.trim());
+  const preferredModel = options.model || DEFAULT_MODEL;
+  const prompt = buildPrompt(transactions, options);
+  const modelsToTry = [preferredModel, FALLBACK_MODEL].filter(
+    (model, index, arr) => arr.indexOf(model) === index
+  );
 
-    const response = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: options.advanced ? 0.65 : 0.35,
-        maxOutputTokens: options.advanced ? 512 : 320,
-      },
-    });
+  for (const modelName of modelsToTry) {
+    try {
+      const model = genAI.getGenerativeModel({ model: modelName });
+      const response = await model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: options.advanced ? 0.65 : 0.35,
+          maxOutputTokens: options.advanced ? 512 : 320,
+        },
+      });
 
-    const text = response.response.text()?.trim() || fallback;
-    for (const chunk of chunkText(text)) {
-      await new Promise((resolve) => setTimeout(resolve, 8));
-      yield chunk;
+      const prefix =
+        modelName === FALLBACK_MODEL ? 'Using fallback Gemini 3.1 Flash Lite model.\n\n' : '';
+      const text = `${prefix}${response.response.text()?.trim() || fallback}`;
+      for (const chunk of chunkText(text)) {
+        await new Promise((resolve) => setTimeout(resolve, 8));
+        yield chunk;
+      }
+      return;
+    } catch (error) {
+      console.warn(`Gemma analysis failed on model ${modelName}`, error);
+      continue;
     }
-  } catch (error) {
-    console.error('Gemma analysis failed', error);
-    yield 'Gemma had an issue processing this request. Double-check your API key and network connection.';
   }
+
+  yield 'Gemma had an issue processing this request. Double-check your API key and network connection.';
 }

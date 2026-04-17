@@ -39,7 +39,7 @@ const defaultState = {
   language: 'en-US' as LanguageCode,
   region: 'US' as RegionCode,
   geminiApiKey: '',
-  gemmaModel: 'gemini-3.1-flash-lite-preview',
+  gemmaModel: 'gemma-4-31b-it',
   advancedSummariesEnabled: false,
   includeNotesInExport: true,
 };
