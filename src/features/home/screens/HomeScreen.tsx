@@ -352,10 +352,20 @@ export default function HomeScreen() {
   }
 
   return (
-    <View style={[styles.screen, { backgroundColor: theme.colors.background }]}> 
-      <Animated.View style={[styles.topBar, { height: headerHeight, paddingTop: insets.top, backgroundColor: theme.colors.surface }]}>
+    <View style={[styles.screen, { backgroundColor: theme.colors.surfaceContainerLowest }]}> 
+      <Animated.View
+        style={[
+          styles.topBar,
+          {
+            height: headerHeight,
+            paddingTop: insets.top,
+            backgroundColor: theme.colors.surfaceContainerHigh,
+            shadowColor: theme.colors.shadow,
+          },
+        ]}
+      >
         <Animated.View style={{ transform: [{ scale: titleScale }], transformOrigin: 'left bottom' }}>
-          <Text variant="headlineLarge" style={{ color: theme.colors.onSurface, fontWeight: 'bold' }}>
+          <Text variant="headlineLarge" style={{ color: theme.colors.onSurface, fontWeight: '800' }}>
             {greeting()}
           </Text>
         </Animated.View>
@@ -420,7 +430,20 @@ export default function HomeScreen() {
         />
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-          <Chip selected={!selectedExpenseCategoryId} onPress={() => setSelectedExpenseCategoryId(null)} style={{ borderRadius: 16 }}>
+          <Chip
+            selected={!selectedExpenseCategoryId}
+            onPress={() => setSelectedExpenseCategoryId(null)}
+            style={[
+              styles.filterChip,
+              {
+                backgroundColor: !selectedExpenseCategoryId
+                  ? theme.colors.secondaryContainer
+                  : theme.colors.surface,
+                borderColor: theme.colors.outlineVariant,
+              },
+            ]}
+            selectedColor={theme.colors.onSecondaryContainer}
+          >
             All
           </Chip>
           {expenseCategories.map((item) => (
@@ -430,7 +453,17 @@ export default function HomeScreen() {
               onPress={() => {
                 setSelectedExpenseCategoryId((current) => (current === item.id ? null : item.id));
               }}
-              style={{ borderRadius: 16 }}
+              style={[
+                styles.filterChip,
+                {
+                  backgroundColor:
+                    selectedExpenseCategoryId === item.id
+                      ? theme.colors.secondaryContainer
+                      : theme.colors.surface,
+                  borderColor: theme.colors.outlineVariant,
+                },
+              ]}
+              selectedColor={theme.colors.onSecondaryContainer}
             >
               {item.emoji} {item.name}
             </Chip>
@@ -450,8 +483,16 @@ export default function HomeScreen() {
           renderItem={({ item }) => {
             const category = categoryById(categories, item.categoryId);
             return (
-              <View style={styles.transactionRow}>
-                <View style={[styles.emojiCircle, { backgroundColor: theme.colors.secondaryContainer }]}> 
+              <View
+                style={[
+                  styles.transactionRow,
+                  {
+                    backgroundColor: theme.colors.surfaceContainerLow,
+                    borderColor: theme.colors.outlineVariant,
+                  },
+                ]}
+              >
+                <View style={[styles.emojiCircle, { backgroundColor: theme.colors.secondaryContainer }]}>
                   <Text variant="titleLarge">{category?.emoji ?? '💸'}</Text>
                 </View>
 
@@ -519,7 +560,16 @@ export default function HomeScreen() {
           style={[styles.modalBackdrop, { backgroundColor: theme.colors.backdrop }]}
           onPress={() => setQuickActionsVisible(false)}
         />
-        <View style={[styles.quickActionsCard, { backgroundColor: theme.colors.surface, borderRadius: theme.roundness }]}> 
+        <View
+          style={[
+            styles.quickActionsCard,
+            {
+              backgroundColor: theme.colors.surfaceContainerHigh,
+              borderRadius: theme.roundness,
+              borderColor: theme.colors.outlineVariant,
+            },
+          ]}
+        > 
           <Text variant="titleMedium" style={{ color: theme.colors.onSurface, fontWeight: 'bold' }}>
             Quick Actions
           </Text>
@@ -552,7 +602,17 @@ export default function HomeScreen() {
             style={[styles.modalBackdrop, { backgroundColor: theme.colors.backdrop }]}
             onPress={() => setManualVisible(false)}
           />
-          <View style={[styles.sheetCard, { backgroundColor: theme.colors.elevation.level3, borderTopLeftRadius: 28, borderTopRightRadius: 28 }]}> 
+          <View
+            style={[
+              styles.sheetCard,
+              {
+                backgroundColor: theme.colors.surfaceContainerHigh,
+                borderTopLeftRadius: 32,
+                borderTopRightRadius: 32,
+                borderColor: theme.colors.outlineVariant,
+              },
+            ]}
+          > 
             <View style={[styles.dragHandle, { backgroundColor: theme.colors.onSurfaceVariant }]} />
             
             <SegmentedButtons
@@ -583,7 +643,7 @@ export default function HomeScreen() {
                           onPress={() => {
                             void handleKeypadInput(key, setManualAmount, manualAmount);
                           }}
-                          style={[styles.keypadKey, { backgroundColor: theme.colors.elevation.level1 }]}
+                          style={[styles.keypadKey, { backgroundColor: theme.colors.surfaceContainer }]}
                           borderless
                         >
                           <Text variant="headlineSmall" style={{ color: theme.colors.onSurface, fontWeight: '600' }}>
@@ -617,7 +677,10 @@ export default function HomeScreen() {
                       onPress={() => {
                         void saveManual(item.id);
                       }}
-                      style={[styles.categoryCell, { backgroundColor: theme.colors.elevation.level1 }]}
+                      style={[
+                        styles.categoryCell,
+                        { backgroundColor: theme.colors.surfaceContainer },
+                      ]}
                       borderless
                     >
                       <>
@@ -642,7 +705,18 @@ export default function HomeScreen() {
             style={[styles.modalBackdrop, { backgroundColor: theme.colors.backdrop }]}
             onPress={() => setGemmaVisible(false)}
           />
-          <View style={[styles.sheetCard, { backgroundColor: theme.colors.elevation.level3, borderTopLeftRadius: 32, borderTopRightRadius: 32, minHeight: '50%' }]}> 
+          <View
+            style={[
+              styles.sheetCard,
+              {
+                backgroundColor: theme.colors.surfaceContainerHigh,
+                borderTopLeftRadius: 36,
+                borderTopRightRadius: 36,
+                minHeight: '50%',
+                borderColor: theme.colors.outlineVariant,
+              },
+            ]}
+          > 
             <View style={[styles.dragHandle, { backgroundColor: theme.colors.onSurfaceVariant }]} />
             <Text variant="headlineSmall" style={{ color: theme.colors.onSurface, fontWeight: 'bold', marginBottom: 16 }}>
               ✨ Gemma Analysis
@@ -727,12 +801,19 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 8,
   },
+  filterChip: {
+    borderRadius: 16,
+    borderWidth: 1,
+  },
   transactionRow: {
     minHeight: 76,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 16,
     paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 18,
+    borderWidth: 1,
   },
   emojiCircle: {
     width: 52,
@@ -769,6 +850,7 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 10,
     elevation: 5,
+    borderWidth: 1,
   },
   sheetRoot: {
     flex: 1,
@@ -780,6 +862,7 @@ const styles = StyleSheet.create({
     gap: 8,
     maxHeight: '92%',
     elevation: 24,
+    borderWidth: 1,
   },
   dragHandle: {
     width: 32,
