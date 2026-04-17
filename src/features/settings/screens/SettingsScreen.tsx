@@ -19,10 +19,13 @@ import {
 } from 'react-native-paper';
 
 import { useSettingsStore } from '../../../../store/useSettingsStore';
+import type { SettingsState } from '../../../../store/useSettingsStore';
 import { useTransactionStore } from '../../../../store/useTransactionStore';
 import { useGoalsStore } from '../../../../store/useGoalsStore';
 import { useRecurringStore } from '../../../../store/useRecurringStore';
+import type { Category, Goal, RecurringCashEvent, Transaction, WalletMeta } from '../../../../types/finance';
 import { formatCurrency } from '../../../../utils/formatCurrency';
+import { decryptBackup, encryptBackup } from '../../../../utils/backup';
 
 const currencyOptions = [
   { code: 'USD', label: 'USD ($)' },
@@ -75,12 +78,18 @@ export default function SettingsScreen() {
   const [recurringType, setRecurringType] = useState<'expense' | 'income'>('expense');
   const [recurringInterval, setRecurringInterval] = useState<'weekly' | 'monthly'>('monthly');
   const [recurringCategoryId, setRecurringCategoryId] = useState<string | null>(null);
+  const [backupPassphrase, setBackupPassphrase] = useState('');
+  const [backupConfirm, setBackupConfirm] = useState('');
+  const [backupOutput, setBackupOutput] = useState('');
+  const [backupInput, setBackupInput] = useState('');
+  const [backupMessage, setBackupMessage] = useState('');
 
   const themePreference = useSettingsStore((state) => state.themePreference);
   const oledTrueBlackEnabled = useSettingsStore((state) => state.oledTrueBlackEnabled);
   const highContrastEnabled = useSettingsStore((state) => state.highContrastEnabled);
   const secureAccessEnabled = useSettingsStore((state) => state.secureAccessEnabled);
   const passcodeEnabled = useSettingsStore((state) => state.passcodeEnabled);
+  const passcodePin = useSettingsStore((state) => state.passcodePin);
   const currencyCode = useSettingsStore((state) => state.currencyCode);
   const language = useSettingsStore((state) => state.language);
   const region = useSettingsStore((state) => state.region);
@@ -117,14 +126,19 @@ export default function SettingsScreen() {
   const deleteRecurringEvent = useRecurringStore((state) => state.deleteEvent);
   const applyDueRecurringEvents = useRecurringStore((state) => state.applyDueEvents);
   const runRecurringEventNow = useRecurringStore((state) => state.runEventNow);
+  const hydrateRecurring = useRecurringStore((state) => state.hydrateFromBackup);
 
   const categories = useTransactionStore((state) => state.categories);
   const transactions = useTransactionStore((state) => state.transactions);
+  const walletMeta = useTransactionStore((state) => state.walletMeta);
   const addCustomCategory = useTransactionStore((state) => state.addCustomCategory);
   const deleteCategory = useTransactionStore((state) => state.deleteCategory);
   const clearAllData = useTransactionStore((state) => state.clearAllData);
   const addExpense = useTransactionStore((state) => state.addExpense);
   const addIncome = useTransactionStore((state) => state.addIncome);
+  const hydrateTransactions = useTransactionStore((state) => state.hydrateFromBackup);
+  const hydrateSettings = useSettingsStore((state) => state.hydrateFromBackup);
+  const hydrateGoals = useGoalsStore((state) => state.hydrateFromBackup);
 
   const exportRows = useMemo(() => {
     const byId = new Map(categories.map((item) => [item.id, item]));
@@ -269,6 +283,79 @@ export default function SettingsScreen() {
     await Haptics.selectionAsync();
   };
 
+  type BackupSnapshot = {
+    version: 1;
+    settings: Partial<SettingsState>;
+    transactions: Transaction[];
+    categories: Category[];
+    walletMeta: WalletMeta;
+    goalsEnabled: boolean;
+    goals: Goal[];
+    recurringEnabled: boolean;
+    recurringEvents: RecurringCashEvent[];
+  };
+
+  const createBackupPayload = (): Omit<BackupSnapshot, 'version'> => ({
+    settings: {
+      themePreference,
+      oledTrueBlackEnabled,
+      highContrastEnabled,
+      secureAccessEnabled,
+      passcodeEnabled,
+      passcodePin,
+      currencyCode,
+      language,
+      region,
+      geminiApiKey,
+      gemmaModel,
+      advancedSummariesEnabled,
+      includeNotesInExport,
+    },
+    transactions,
+    categories,
+    walletMeta,
+    goalsEnabled,
+    goals,
+    recurringEnabled,
+    recurringEvents,
+  });
+
+  const handleCreateBackup = () => {
+    setBackupMessage('');
+    if (!backupPassphrase || backupPassphrase !== backupConfirm) {
+      setBackupMessage('Passphrase must match and not be empty.');
+      return;
+    }
+    const payload = { version: 1 as const, ...createBackupPayload() };
+    const encrypted = encryptBackup(payload, backupPassphrase);
+    setBackupOutput(encrypted);
+    setBackupPassphrase('');
+    setBackupConfirm('');
+    setBackupMessage('Backup created. Save it securely.');
+  };
+
+  const handleRestoreBackup = () => {
+    setBackupMessage('');
+    try {
+      if (!backupInput || !backupPassphrase) {
+        setBackupMessage('Provide encrypted text and passphrase.');
+        return;
+      }
+      const payload = decryptBackup<BackupSnapshot>(backupInput.trim(), backupPassphrase);
+      if (payload.version !== 1) throw new Error('Unsupported backup version');
+      hydrateSettings(payload.settings);
+      hydrateTransactions({ transactions: payload.transactions, categories: payload.categories, walletMeta: payload.walletMeta });
+      hydrateGoals({ goals: payload.goals, goalsEnabled: payload.goalsEnabled });
+      hydrateRecurring({ events: payload.recurringEvents, recurringEnabled: payload.recurringEnabled });
+      setBackupMessage('Restore successful. Restart app if needed.');
+      setBackupInput('');
+      setBackupPassphrase('');
+      setBackupConfirm('');
+    } catch (error) {
+      setBackupMessage(error instanceof Error ? error.message : 'Restore failed');
+    }
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <ScrollView
@@ -326,6 +413,84 @@ export default function SettingsScreen() {
               right={() => <Switch value={highContrastEnabled} onValueChange={setHighContrastEnabled} />}
               style={{ paddingHorizontal: 0 }}
             />
+          </Card.Content>
+        </Card>
+
+        <Card
+          mode="elevated"
+          style={{ backgroundColor: theme.colors.surfaceContainer }}
+          contentStyle={{ paddingVertical: 12, gap: 12 }}
+        >
+          <Card.Title
+            title="Backup & restore"
+            subtitle="Encrypt data with a passphrase for export/import"
+            titleVariant="titleLarge"
+            subtitleVariant="bodyMedium"
+            titleStyle={{ color: theme.colors.onSurface }}
+            subtitleStyle={{ color: theme.colors.onSurfaceVariant }}
+          />
+          <Card.Content style={{ gap: 12 }}>
+            <Text variant="titleSmall" style={{ color: theme.colors.onSurface }}>
+              Create encrypted backup
+            </Text>
+            <TextInput
+              mode="outlined"
+              label="Passphrase"
+              value={backupPassphrase}
+              onChangeText={setBackupPassphrase}
+              secureTextEntry
+            />
+            <TextInput
+              mode="outlined"
+              label="Confirm passphrase"
+              value={backupConfirm}
+              onChangeText={setBackupConfirm}
+              secureTextEntry
+            />
+            <Button mode="contained" onPress={handleCreateBackup} disabled={!backupPassphrase || backupPassphrase !== backupConfirm}>
+              Generate encrypted backup
+            </Button>
+            {backupOutput ? (
+              <View
+                style={{
+                  backgroundColor: theme.colors.surfaceVariant,
+                  borderRadius: 12,
+                  padding: 12,
+                  borderColor: theme.colors.outlineVariant,
+                  borderWidth: 1,
+                }}
+              >
+                <Text variant="bodySmall" selectable style={{ color: theme.colors.onSurface }}>
+                  {backupOutput}
+                </Text>
+              </View>
+            ) : null}
+            <Divider />
+            <Text variant="titleSmall" style={{ color: theme.colors.onSurface }}>
+              Restore from encrypted text
+            </Text>
+            <TextInput
+              mode="outlined"
+              label="Encrypted backup"
+              value={backupInput}
+              onChangeText={setBackupInput}
+              multiline
+            />
+            <TextInput
+              mode="outlined"
+              label="Passphrase"
+              value={backupPassphrase}
+              onChangeText={setBackupPassphrase}
+              secureTextEntry
+            />
+            <Button mode="contained-tonal" onPress={handleRestoreBackup} disabled={!backupInput || !backupPassphrase}>
+              Restore backup
+            </Button>
+            {backupMessage ? (
+              <Text variant="bodySmall" style={{ color: backupMessage.toLowerCase().includes('fail') ? theme.colors.error : theme.colors.onSurface }}>
+                {backupMessage}
+              </Text>
+            ) : null}
           </Card.Content>
         </Card>
 

@@ -13,6 +13,7 @@ type GoalState = {
   toggleGoal: (goalId: string, enabled: boolean) => void;
   deleteGoal: (goalId: string) => void;
   setGoalsEnabled: (enabled: boolean) => void;
+  hydrateFromBackup: (data: { goals: Goal[]; goalsEnabled: boolean }) => void;
 };
 
 export const useGoalsStore = create<GoalState>()(
@@ -57,6 +58,7 @@ export const useGoalsStore = create<GoalState>()(
         })),
       deleteGoal: (goalId) => set((state) => ({ goals: state.goals.filter((goal) => goal.id !== goalId) })),
       setGoalsEnabled: (enabled) => set({ goalsEnabled: enabled }),
+      hydrateFromBackup: ({ goals, goalsEnabled }) => set({ goals: goals ?? [], goalsEnabled: !!goalsEnabled }),
     }),
     {
       name: 'gemwallet-goals-v1',

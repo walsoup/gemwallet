@@ -4,7 +4,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import type { CurrencyCode, LanguageCode, RegionCode, ThemePreference } from '../types/finance';
 
-type SettingsState = {
+export type SettingsState = {
   themePreference: ThemePreference;
   oledTrueBlackEnabled: boolean;
   highContrastEnabled: boolean;
@@ -31,6 +31,7 @@ type SettingsState = {
   setGemmaModel: (model: string) => void;
   setAdvancedSummariesEnabled: (enabled: boolean) => void;
   setIncludeNotesInExport: (enabled: boolean) => void;
+  hydrateFromBackup: (incoming: Partial<SettingsState>) => void;
   resetSettings: () => void;
 };
 
@@ -67,6 +68,11 @@ export const useSettingsStore = create<SettingsState>()(
       setGemmaModel: (gemmaModel) => set({ gemmaModel }),
       setAdvancedSummariesEnabled: (advancedSummariesEnabled) => set({ advancedSummariesEnabled }),
       setIncludeNotesInExport: (includeNotesInExport) => set({ includeNotesInExport }),
+      hydrateFromBackup: (incoming) =>
+        set(() => ({
+          ...defaultState,
+          ...incoming,
+        })),
       resetSettings: () => set(defaultState),
     }),
     {

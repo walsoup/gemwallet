@@ -53,6 +53,7 @@ type TransactionState = {
   addCustomCategory: (params: { name: string; emoji: string }) => void;
   deleteCategory: (categoryId: string) => void;
   clearAllData: () => void;
+  hydrateFromBackup: (data: { transactions: Transaction[]; categories: Category[]; walletMeta: WalletMeta }) => void;
 };
 
 export const useTransactionStore = create<TransactionState>()(
@@ -158,6 +159,12 @@ export const useTransactionStore = create<TransactionState>()(
           transactions: [],
           categories: DEFAULT_CATEGORIES,
           walletMeta: DEFAULT_WALLET_META,
+        }),
+      hydrateFromBackup: ({ transactions, categories, walletMeta }) =>
+        set({
+          transactions: transactions ?? [],
+          categories: categories?.length ? categories : DEFAULT_CATEGORIES,
+          walletMeta: walletMeta ?? DEFAULT_WALLET_META,
         }),
     }),
     {

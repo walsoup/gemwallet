@@ -22,6 +22,8 @@ import { Polyline, Svg } from 'react-native-svg';
 
 import { useTransactionStore, selectBalanceCents } from '../../../../store/useTransactionStore';
 import { useSettingsStore } from '../../../../store/useSettingsStore';
+import { useRecurringStore } from '../../../../store/useRecurringStore';
+import { useGoalsStore } from '../../../../store/useGoalsStore';
 import type { Category, Transaction } from '../../../../types/finance';
 import { formatCurrency } from '../../../../utils/formatCurrency';
 import { parseAddExpenseCommand, streamFinancialAnalysis } from '../../nlp/services/gemmaAnalysis';
@@ -194,6 +196,12 @@ export default function HomeScreen() {
   const passcodeEnabled = useSettingsStore((state) => state.passcodeEnabled);
   const passcodePin = useSettingsStore((state) => state.passcodePin);
   const resetSettings = useSettingsStore((state) => state.resetSettings);
+  const setRecurringEnabled = useRecurringStore((state) => state.setRecurringEnabled);
+  const addRecurringEvent = useRecurringStore((state) => state.addEvent);
+  const recurringEvents = useRecurringStore((state) => state.events);
+  const recurringEnabled = useRecurringStore((state) => state.recurringEnabled);
+  const goalsEnabled = useGoalsStore((state) => state.goalsEnabled);
+  const goals = useGoalsStore((state) => state.goals);
 
   const transactions = useTransactionStore((state) => state.transactions);
   const categories = useTransactionStore((state) => state.categories);
@@ -216,6 +224,8 @@ export default function HomeScreen() {
   const [manualVisible, setManualVisible] = useState(false);
   const [manualPhase, setManualPhase] = useState<ManualPhase>('amount');
   const [manualAmount, setManualAmount] = useState('');
+  const [manualNote, setManualNote] = useState('');
+  const [receiptText, setReceiptText] = useState('');
   const [txType, setTxType] = useState<'expense' | 'income'>('expense');
 
   const [quickActionsVisible, setQuickActionsVisible] = useState(false);
@@ -224,6 +234,7 @@ export default function HomeScreen() {
   const [openingBalance, setOpeningBalance] = useState('');
 
   const [snackbar, setSnackbar] = useState({ visible: false, text: '', txId: '' });
+  const [recurringSuggestion, setRecurringSuggestion] = useState<{ txId: string; label: string; amountCents: number; categoryId: string; interval: 'weekly' | 'monthly'; type: 'expense' | 'income' } | null>(null);
 
   // Gemma state
   const [gemmaVisible, setGemmaVisible] = useState(false);
@@ -235,6 +246,7 @@ export default function HomeScreen() {
 
   // Animation values for collapsing header
   const scrollY = useRef(new Animated.Value(0)).current;
+  const lastSuggestedId = useRef<string | null>(null);
 
   useEffect(() => {
     if (passcodeEnabled && passcodePin) {
@@ -325,6 +337,58 @@ export default function HomeScreen() {
 
   const dailySummary = summarizeSeries(dailyExpenses);
   const weeklySummary = summarizeSeries(weeklyExpenses);
+  const showCoach =
+    transactions.length === 0 || !goalsEnabled || goals.length === 0 || !recurringEnabled || recurringEvents.length === 0;
+
+  useEffect(() => {
+    if (!transactions.length) return;
+    const latest = transactions[0];
+    if (latest.id === lastSuggestedId.current) return;
+    const matches = transactions.filter(
+      (tx) =>
+        tx.type === latest.type &&
+        tx.categoryId === latest.categoryId &&
+        Math.abs(tx.amountCents - latest.amountCents) <= latest.amountCents * 0.1 &&
+        tx.id !== latest.id
+    );
+    if (matches.length < 2) return;
+    const timestamps = [latest.timestamp, ...matches.slice(0, 2).map((m) => m.timestamp)].sort((a, b) => b - a);
+    const deltas = timestamps.slice(0, 2).map((t, idx) => (idx === timestamps.length - 1 ? 0 : t - timestamps[idx + 1]));
+    const avgDelta = deltas[0] || 0;
+    let interval: 'weekly' | 'monthly' | null = null;
+    const days = avgDelta / (1000 * 60 * 60 * 24);
+    if (days >= 5 && days <= 9) interval = 'weekly';
+    if (days >= 25 && days <= 35) interval = 'monthly';
+    if (!interval) return;
+
+    const alreadyRecurring = recurringEvents.some(
+      (ev) =>
+        ev.categoryId === latest.categoryId &&
+        ev.type === latest.type &&
+        Math.abs(ev.amountCents - latest.amountCents) <= latest.amountCents * 0.1
+    );
+    if (alreadyRecurring) return;
+
+    setRecurringSuggestion({
+      txId: latest.id,
+      label: categoryById(categories, latest.categoryId)?.name ?? 'category',
+      amountCents: latest.amountCents,
+      categoryId: latest.categoryId,
+      interval,
+      type: latest.type,
+    });
+    lastSuggestedId.current = latest.id;
+  }, [categories, recurringEvents, transactions]);
+
+  useEffect(() => {
+    if (recurringSuggestion) {
+      setSnackbar({
+        visible: true,
+        text: `Make ${recurringSuggestion.label} ${recurringSuggestion.interval} recurring?`,
+        txId: '',
+      });
+    }
+  }, [recurringSuggestion]);
 
   const pushSnackbar = (text: string, txId: string) => {
     setSnackbar({ visible: true, text, txId });
@@ -340,6 +404,23 @@ export default function HomeScreen() {
       setPasscodeError('Incorrect passcode.');
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
+  };
+
+  const createRecurringFromSuggestion = async () => {
+    if (!recurringSuggestion) return;
+    if (!recurringEnabled) {
+      setRecurringEnabled(true);
+    }
+    addRecurringEvent({
+      name: recurringSuggestion.label,
+      amountCents: recurringSuggestion.amountCents,
+      type: recurringSuggestion.type,
+      categoryId: recurringSuggestion.categoryId,
+      interval: recurringSuggestion.interval,
+    });
+    setRecurringSuggestion(null);
+    await Haptics.selectionAsync();
+    pushSnackbar('Recurring event created.', '');
   };
 
   const handleKeypadInput = async (key: (typeof keypadRows)[number][number], setValue: (next: string) => void, value: string) => {
@@ -374,6 +455,8 @@ export default function HomeScreen() {
 
   const openManualFlow = async () => {
     setManualAmount('');
+    setManualNote('');
+    setReceiptText('');
     setManualPhase('amount');
     setTxType('expense');
     setManualVisible(true);
@@ -386,14 +469,17 @@ export default function HomeScreen() {
 
     const category = categoryById(categories, categoryId);
     let tx;
+    const note = [manualNote, receiptText].filter(Boolean).join(' • ').trim() || undefined;
     if (txType === 'expense') {
-      tx = addExpense({ amountCents, categoryId });
+      tx = addExpense({ amountCents, categoryId, note });
     } else {
-      tx = addIncome({ amountCents, categoryId });
+      tx = addIncome({ amountCents, categoryId, note });
     }
     
     setManualVisible(false);
     setManualAmount('');
+    setManualNote('');
+    setReceiptText('');
     setManualPhase('amount');
     pushSnackbar(`Logged ${formatAmount(amountCents)} for ${category?.name ?? 'category'}`, tx.id);
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -598,11 +684,11 @@ export default function HomeScreen() {
           { useNativeDriver: false }
         )}
         scrollEventThrottle={16}
-        >
-          <Card
-            mode="contained"
-            style={[
-              styles.heroCard,
+      >
+        <Card
+          mode="contained"
+          style={[
+            styles.heroCard,
             {
               backgroundColor:
                 balanceCents === 0
@@ -638,6 +724,48 @@ export default function HomeScreen() {
             ) : null}
             </Card.Content>
           </Card>
+
+          {showCoach ? (
+            <Card mode="elevated" style={{ borderRadius: 20, backgroundColor: theme.colors.surface }}>
+              <Card.Content style={{ gap: 8 }}>
+                <Text variant="titleMedium" style={{ color: theme.colors.onSurface, fontWeight: '700' }}>
+                  Quick setup coach
+                </Text>
+                <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                  Finish these to unlock smoother tracking.
+                </Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  <Chip
+                    mode="outlined"
+                    selected={!transactions.length}
+                    onPress={() => void openManualFlow()}
+                  >
+                    Log first transaction
+                  </Chip>
+                  <Chip
+                    mode="outlined"
+                    selected={!goalsEnabled || goals.length === 0}
+                    onPress={() => router.push('/settings')}
+                  >
+                    Create a goal
+                  </Chip>
+                  <Chip
+                    mode="outlined"
+                    selected={!recurringEnabled || recurringEvents.length === 0}
+                    onPress={() => router.push('/settings')}
+                  >
+                    Add recurring
+                  </Chip>
+                  <Chip
+                    mode="outlined"
+                    onPress={() => router.push('/settings')}
+                  >
+                    Set backup
+                  </Chip>
+                </View>
+              </Card.Content>
+            </Card>
+          ) : null}
 
           <Card
             mode="elevated"
@@ -937,6 +1065,32 @@ export default function HomeScreen() {
                 <Text variant="titleMedium" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 16, textAlign: 'center' }}>
                   Pick a category to save instantly
                 </Text>
+                <TextInput
+                  mode="outlined"
+                  label="Receipt/IOU note (paste photo text)"
+                  value={receiptText}
+                  onChangeText={setReceiptText}
+                  multiline
+                  style={{ marginBottom: 8 }}
+                />
+                <TextInput
+                  mode="outlined"
+                  label="Quick note"
+                  value={manualNote}
+                  onChangeText={setManualNote}
+                  style={{ marginBottom: 8 }}
+                />
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 12 }}>
+                  {['Receipt', 'IOU', 'Reimbursable'].map((tag) => (
+                    <Chip
+                      key={tag}
+                      onPress={() => setManualNote((prev) => (prev ? `${prev} ${tag}` : tag))}
+                      mode="outlined"
+                    >
+                      {tag}
+                    </Chip>
+                  ))}
+                </ScrollView>
                 <ScrollView contentContainerStyle={styles.categoryGrid}>
                   {activeCategories.map((item) => (
                     <TouchableRipple
@@ -1027,7 +1181,12 @@ export default function HomeScreen() {
                   undoTransaction(snackbar.txId);
                 },
               }
-            : undefined
+            : recurringSuggestion
+              ? {
+                  label: 'Add recurring',
+                  onPress: () => void createRecurringFromSuggestion(),
+                }
+              : undefined
         }
       >
         {snackbar.text}

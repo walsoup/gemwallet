@@ -21,6 +21,7 @@ type RecurringState = {
   applyDueEvents: (now: number, apply: (event: RecurringCashEvent) => void) => void;
   runEventNow: (id: string, apply: (event: RecurringCashEvent) => void, now: number) => void;
   setRecurringEnabled: (enabled: boolean) => void;
+  hydrateFromBackup: (data: { events: RecurringCashEvent[]; recurringEnabled: boolean }) => void;
 };
 
 function addInterval(base: number, interval: RecurringInterval) {
@@ -80,6 +81,8 @@ export const useRecurringStore = create<RecurringState>()(
         });
       },
       setRecurringEnabled: (enabled) => set({ recurringEnabled: enabled }),
+      hydrateFromBackup: ({ events, recurringEnabled }) =>
+        set({ events: events ?? [], recurringEnabled: !!recurringEnabled }),
     }),
     {
       name: 'gemwallet-recurring-v1',
