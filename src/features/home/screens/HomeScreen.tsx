@@ -18,6 +18,7 @@ import {
   Card,
   ActivityIndicator
 } from 'react-native-paper';
+import { Polyline, Svg } from 'react-native-svg';
 
 import { useTransactionStore, selectBalanceCents } from '../../../../store/useTransactionStore';
 import { useSettingsStore } from '../../../../store/useSettingsStore';
@@ -69,6 +70,115 @@ function greeting() {
   if (hour < 12) return 'Good morning';
   if (hour < 18) return 'Good afternoon';
   return 'Good evening';
+}
+
+type SeriesPoint = { label: string; value: number };
+
+function buildDailyExpenses(transactions: Transaction[], days: number) {
+  const now = new Date();
+  const buckets = new Map<string, number>();
+  for (let i = 0; i < days; i += 1) {
+    const date = new Date(now);
+    date.setDate(now.getDate() - i);
+    const key = date.toISOString().slice(0, 10);
+    buckets.set(key, 0);
+  }
+
+  for (const tx of transactions) {
+    if (tx.type !== 'expense') continue;
+    const key = new Date(tx.timestamp).toISOString().slice(0, 10);
+    if (buckets.has(key)) {
+      buckets.set(key, (buckets.get(key) ?? 0) + tx.amountCents);
+    }
+  }
+
+  const sorted = [...buckets.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([date, value]) => ({
+      label: date.slice(5), // MM-DD
+      value,
+    }));
+
+  return sorted;
+}
+
+function buildWeeklyExpenses(transactions: Transaction[], weeks: number) {
+  const now = new Date();
+  const buckets = new Map<string, number>();
+
+  const weekKey = (date: Date) => {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday start
+    d.setDate(diff);
+    d.setHours(0, 0, 0, 0);
+    return d.toISOString().slice(0, 10);
+  };
+
+  for (let i = 0; i < weeks; i += 1) {
+    const date = new Date(now);
+    date.setDate(now.getDate() - i * 7);
+    buckets.set(weekKey(date), 0);
+  }
+
+  for (const tx of transactions) {
+    if (tx.type !== 'expense') continue;
+    const key = weekKey(new Date(tx.timestamp));
+    if (buckets.has(key)) {
+      buckets.set(key, (buckets.get(key) ?? 0) + tx.amountCents);
+    }
+  }
+
+  const sorted = [...buckets.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([start, value]) => ({
+      label: start.slice(5),
+      value,
+    }));
+
+  return sorted;
+}
+
+function detectAnomaly(points: SeriesPoint[]) {
+  if (!points.length) return null;
+  const values = points.map((p) => p.value);
+  const avg = values.reduce((sum, v) => sum + v, 0) / values.length;
+  const variance = values.reduce((sum, v) => sum + (v - avg) ** 2, 0) / values.length;
+  const stdDev = Math.sqrt(variance);
+  const latest = points[points.length - 1];
+  if (latest.value > avg + stdDev * 1.5 && latest.value > 0) {
+    return { label: latest.label, value: latest.value, avg, stdDev };
+  }
+  return null;
+}
+
+function Sparkline({ points, color }: { points: SeriesPoint[]; color: string }) {
+  const width = 160;
+  const height = 48;
+  if (!points.length) {
+    return <Text variant="bodySmall" style={{ color }}>No data</Text>;
+  }
+  const max = Math.max(...points.map((p) => p.value), 1);
+  const min = 0;
+  const stepX = points.length > 1 ? width / (points.length - 1) : width;
+  const coords = points.map((p, idx) => {
+    const x = idx * stepX;
+    const y = height - ((p.value - min) / (max - min)) * height;
+    return `${x},${Number.isFinite(y) ? y : height}`;
+  });
+
+  return (
+    <Svg width={width} height={height}>
+      <Polyline
+        points={coords.join(' ')}
+        fill="none"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
 }
 
 export default function HomeScreen() {
@@ -191,6 +301,30 @@ export default function HomeScreen() {
 
     return [...groups.entries()].map(([title, data]) => ({ title, data }));
   }, [filteredTransactions, locale]);
+
+  const dailyExpenses = useMemo(
+    () => buildDailyExpenses(transactions, 14),
+    [transactions]
+  );
+
+  const weeklyExpenses = useMemo(
+    () => buildWeeklyExpenses(transactions, 6),
+    [transactions]
+  );
+
+  const dailyAnomaly = useMemo(() => detectAnomaly(dailyExpenses), [dailyExpenses]);
+  const weeklyAnomaly = useMemo(() => detectAnomaly(weeklyExpenses), [weeklyExpenses]);
+
+  const summarizeSeries = (points: SeriesPoint[]) => {
+    if (!points.length) return { latest: 0, changePct: 0 };
+    const latest = points[points.length - 1].value;
+    const prev = points.length > 1 ? points[points.length - 2].value : 0;
+    const changePct = prev ? ((latest - prev) / prev) * 100 : 0;
+    return { latest, changePct };
+  };
+
+  const dailySummary = summarizeSeries(dailyExpenses);
+  const weeklySummary = summarizeSeries(weeklyExpenses);
 
   const pushSnackbar = (text: string, txId: string) => {
     setSnackbar({ visible: true, text, txId });
@@ -464,11 +598,11 @@ export default function HomeScreen() {
           { useNativeDriver: false }
         )}
         scrollEventThrottle={16}
-      >
-        <Card
-          mode="contained"
-          style={[
-            styles.heroCard,
+        >
+          <Card
+            mode="contained"
+            style={[
+              styles.heroCard,
             {
               backgroundColor:
                 balanceCents === 0
@@ -502,14 +636,60 @@ export default function HomeScreen() {
                 📨 Wallet is empty
               </Text>
             ) : null}
-          </Card.Content>
-        </Card>
+            </Card.Content>
+          </Card>
 
-        <TextInput
-          mode="outlined"
-          value={search}
-          onChangeText={setSearch}
-          label="Search transactions"
+          <Card
+            mode="elevated"
+            style={{ borderRadius: 24, backgroundColor: theme.colors.surface }}
+            contentStyle={{ padding: 16, gap: 12 }}
+          >
+            <Text variant="titleMedium" style={{ color: theme.colors.onSurface, fontWeight: '700' }}>
+              Cashflow trends
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <View style={{ flex: 1, gap: 6 }}>
+                <Text variant="labelMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                  Daily (14d)
+                </Text>
+                <Sparkline points={dailyExpenses} color={theme.colors.primary} />
+                <Text variant="bodySmall" style={{ color: theme.colors.onSurface }}>
+                  {formatCurrency(dailySummary.latest, { currencyCode, locale })} today
+                  {Number.isFinite(dailySummary.changePct) && dailySummary.changePct !== 0
+                    ? ` (${dailySummary.changePct > 0 ? '+' : ''}${dailySummary.changePct.toFixed(1)}%) vs prev`
+                    : ''}
+                </Text>
+                {dailyAnomaly ? (
+                  <Text variant="bodySmall" style={{ color: theme.colors.error }}>
+                    Alert: {formatCurrency(dailyAnomaly.value, { currencyCode, locale })} exceeds typical spend.
+                  </Text>
+                ) : null}
+              </View>
+              <View style={{ flex: 1, gap: 6 }}>
+                <Text variant="labelMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                  Weekly (6w)
+                </Text>
+                <Sparkline points={weeklyExpenses} color={theme.colors.tertiary} />
+                <Text variant="bodySmall" style={{ color: theme.colors.onSurface }}>
+                  {formatCurrency(weeklySummary.latest, { currencyCode, locale })} this week
+                  {Number.isFinite(weeklySummary.changePct) && weeklySummary.changePct !== 0
+                    ? ` (${weeklySummary.changePct > 0 ? '+' : ''}${weeklySummary.changePct.toFixed(1)}%) vs prev`
+                    : ''}
+                </Text>
+                {weeklyAnomaly ? (
+                  <Text variant="bodySmall" style={{ color: theme.colors.error }}>
+                    Alert: {formatCurrency(weeklyAnomaly.value, { currencyCode, locale })} exceeds typical week.
+                  </Text>
+                ) : null}
+              </View>
+            </View>
+          </Card>
+
+          <TextInput
+            mode="outlined"
+            value={search}
+            onChangeText={setSearch}
+            label="Search transactions"
           right={<TextInput.Icon icon="close" onPress={() => setSearch('')} />}
           style={{ borderRadius: 24, marginVertical: 8 }}
         />
