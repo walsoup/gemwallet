@@ -1,6 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
-import { useMemo, useState, useRef } from 'react';
+import { useCallback, useMemo, useState, useRef } from 'react';
 import { Modal, Pressable, ScrollView, SectionList, StyleSheet, View, Animated } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -20,7 +20,9 @@ import {
 } from 'react-native-paper';
 
 import { useTransactionStore, selectBalanceCents } from '../../../../store/useTransactionStore';
+import { useSettingsStore } from '../../../../store/useSettingsStore';
 import type { Category, Transaction } from '../../../../types/finance';
+import { formatCurrency } from '../../../../utils/formatCurrency';
 import { streamFinancialAnalysis } from '../../nlp/services/gemmaAnalysis';
 
 const keypadRows = [
@@ -33,11 +35,7 @@ const keypadRows = [
 type ManualPhase = 'amount' | 'category';
 type OnboardingPhase = 'balance' | 'voice';
 
-function formatCurrency(cents: number) {
-  return `$${(cents / 100).toFixed(2)}`;
-}
-
-function formatRelativeDate(timestamp: number) {
+function formatRelativeDate(timestamp: number, locale: string) {
   const now = new Date();
   const target = new Date(timestamp);
 
@@ -47,11 +45,11 @@ function formatRelativeDate(timestamp: number) {
 
   if (diffDays === 0) return 'Today';
   if (diffDays === 1) return 'Yesterday';
-  return target.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+  return target.toLocaleDateString(locale || 'en-US', { weekday: 'long', month: 'short', day: 'numeric' });
 }
 
-function formatTime(timestamp: number) {
-  return new Date(timestamp).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+function formatTime(timestamp: number, locale: string) {
+  return new Date(timestamp).toLocaleTimeString(locale || 'en-US', { hour: 'numeric', minute: '2-digit' });
 }
 
 function categoryById(categories: Category[], categoryId: string) {
@@ -77,6 +75,12 @@ export default function HomeScreen() {
   const theme = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const currencyCode = useSettingsStore((state) => state.currencyCode);
+  const language = useSettingsStore((state) => state.language);
+  const region = useSettingsStore((state) => state.region);
+  const geminiApiKey = useSettingsStore((state) => state.geminiApiKey);
+  const gemmaModel = useSettingsStore((state) => state.gemmaModel);
+  const advancedSummariesEnabled = useSettingsStore((state) => state.advancedSummariesEnabled);
 
   const transactions = useTransactionStore((state) => state.transactions);
   const categories = useTransactionStore((state) => state.categories);
@@ -86,6 +90,11 @@ export default function HomeScreen() {
   const addExpense = useTransactionStore((state) => state.addExpense);
   const addIncome = useTransactionStore((state) => state.addIncome);
   const undoTransaction = useTransactionStore((state) => state.undoTransaction);
+  const locale = language || 'en-US';
+  const formatAmount = useCallback(
+    (value: number) => formatCurrency(value, { currencyCode, locale }),
+    [currencyCode, locale]
+  );
 
   const [search, setSearch] = useState('');
   const [selectedExpenseCategoryId, setSelectedExpenseCategoryId] = useState<string | null>(null);
@@ -133,7 +142,7 @@ export default function HomeScreen() {
   const filteredTransactions = useMemo(() => {
     return transactions.filter((item) => {
       const category = categoryById(categories, item.categoryId);
-      const text = [item.note ?? '', category?.name ?? '', category?.emoji ?? '', formatCurrency(item.amountCents)]
+      const text = [item.note ?? '', category?.name ?? '', category?.emoji ?? '', formatAmount(item.amountCents)]
         .join(' ')
         .toLowerCase();
 
@@ -144,7 +153,7 @@ export default function HomeScreen() {
 
       return matchesQuery && matchesCategory;
     });
-  }, [categories, search, selectedExpenseCategoryId, transactions]);
+  }, [categories, formatAmount, search, selectedExpenseCategoryId, transactions]);
 
   const filteredSpendCents = useMemo(
     () =>
@@ -158,13 +167,13 @@ export default function HomeScreen() {
     const groups = new Map<string, Transaction[]>();
 
     for (const item of filteredTransactions) {
-      const key = formatRelativeDate(item.timestamp);
+      const key = formatRelativeDate(item.timestamp, locale);
       const current = groups.get(key) ?? [];
       groups.set(key, [...current, item]);
     }
 
     return [...groups.entries()].map(([title, data]) => ({ title, data }));
-  }, [filteredTransactions]);
+  }, [filteredTransactions, locale]);
 
   const pushSnackbar = (text: string, txId: string) => {
     setSnackbar({ visible: true, text, txId });
@@ -223,7 +232,7 @@ export default function HomeScreen() {
     setManualVisible(false);
     setManualAmount('');
     setManualPhase('amount');
-    pushSnackbar(`Logged ${formatCurrency(amountCents)} for ${category?.name ?? 'category'}`, tx.id);
+    pushSnackbar(`Logged ${formatAmount(amountCents)} for ${category?.name ?? 'category'}`, tx.id);
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
@@ -232,7 +241,14 @@ export default function HomeScreen() {
     setGemmaText('');
     setIsGemmaLoading(true);
     try {
-      const generator = streamFinancialAnalysis(transactions);
+      const generator = streamFinancialAnalysis(transactions, {
+        apiKey: geminiApiKey,
+        currencyCode,
+        locale,
+        region,
+        model: gemmaModel,
+        advanced: advancedSummariesEnabled,
+      });
       for await (const chunk of generator) {
         setGemmaText((prev) => prev + chunk);
       }
@@ -383,8 +399,8 @@ export default function HomeScreen() {
               }}
             >
               {selectedExpenseCategoryId || search.trim()
-                ? formatCurrency(filteredSpendCents)
-                : formatCurrency(balanceCents)}
+                ? formatAmount(filteredSpendCents)
+                : formatAmount(balanceCents)}
             </Text>
             {balanceCents === 0 ? (
               <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, marginTop: 8 }}>
@@ -444,7 +460,7 @@ export default function HomeScreen() {
                     {item.note || category?.name || 'Transaction'}
                   </Text>
                   <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                    {formatTime(item.timestamp)}
+                    {formatTime(item.timestamp, locale)}
                   </Text>
                 </View>
 
@@ -462,7 +478,7 @@ export default function HomeScreen() {
                     fontWeight: 'bold',
                   }}
                 >
-                  {item.type === 'income' ? '+' : '-'}{formatCurrency(item.amountCents)}
+                  {item.type === 'income' ? '+' : '-'}{formatAmount(item.amountCents)}
                 </Text>
               </View>
             );

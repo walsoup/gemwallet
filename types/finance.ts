@@ -4,6 +4,12 @@ export type TransactionType = 'income' | 'expense';
 
 export type CategoryKind = 'expense' | 'income' | 'system';
 
+export type CurrencyCode = 'USD' | 'EUR' | 'GBP' | 'JPY' | 'AUD' | 'CAD';
+
+export type LanguageCode = 'en-US' | 'en-GB' | 'fr-FR' | 'de-DE' | 'ja-JP';
+
+export type RegionCode = 'US' | 'EU' | 'UK' | 'JP' | 'AU' | 'CA';
+
 export type TransactionCategory =
   | 'Food'
   | 'Transport'
