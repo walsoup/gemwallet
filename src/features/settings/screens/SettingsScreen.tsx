@@ -61,6 +61,15 @@ const modelOptions = [
   { value: 'gemma-2-9b-it', label: 'Gemma 2 9B' },
 ] as const;
 
+function parseAmountToCents(input: string) {
+  const normalized = input.replace(/[^0-9.,]/g, '').replace(',', '.');
+  const parsed = Number.parseFloat(normalized);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return null;
+  }
+  return Math.round(parsed * 100);
+}
+
 export default function SettingsScreen() {
   const theme = useTheme();
   const [categoryName, setCategoryName] = useState('');
@@ -73,11 +82,13 @@ export default function SettingsScreen() {
   const [goalTarget, setGoalTarget] = useState('');
   const [goalDueDate, setGoalDueDate] = useState('');
   const [goalContribution, setGoalContribution] = useState<Record<string, string>>({});
+  const [goalError, setGoalError] = useState('');
   const [recurringName, setRecurringName] = useState('');
   const [recurringAmount, setRecurringAmount] = useState('');
   const [recurringType, setRecurringType] = useState<'expense' | 'income'>('expense');
   const [recurringInterval, setRecurringInterval] = useState<'weekly' | 'monthly'>('monthly');
   const [recurringCategoryId, setRecurringCategoryId] = useState<string | null>(null);
+  const [recurringError, setRecurringError] = useState('');
   const [backupPassphrase, setBackupPassphrase] = useState('');
   const [backupConfirm, setBackupConfirm] = useState('');
   const [backupOutput, setBackupOutput] = useState('');
@@ -203,7 +214,12 @@ export default function SettingsScreen() {
   const recurringCategoryList = recurringType === 'income' ? incomeCategories : expenseCategories;
 
   const ensureRecurringCategory = useCallback(() => {
-    if (!recurringCategoryId && recurringCategoryList.length) {
+    if (!recurringCategoryList.length) {
+      setRecurringCategoryId(null);
+      return;
+    }
+    const hasCurrent = recurringCategoryList.some((item) => item.id === recurringCategoryId);
+    if (!hasCurrent) {
       setRecurringCategoryId(recurringCategoryList[0].id);
     }
   }, [recurringCategoryId, recurringCategoryList]);
@@ -224,8 +240,13 @@ export default function SettingsScreen() {
   };
 
   const handleCreateGoal = async () => {
-    const target = Math.round(Number(goalTarget || '0') * 100);
-    if (!goalsEnabled || !goalName.trim() || target <= 0) return;
+    setGoalError('');
+    if (!goalsEnabled || !goalName.trim()) return;
+    const target = parseAmountToCents(goalTarget);
+    if (target === null) {
+      setGoalError('Enter a valid target amount.');
+      return;
+    }
     const due = goalDueDate ? Date.parse(goalDueDate) : undefined;
     addGoal({ name: goalName, targetCents: target, dueDate: Number.isFinite(due) ? due : undefined });
     setGoalName('');
@@ -235,8 +256,8 @@ export default function SettingsScreen() {
   };
 
   const handleContributeToGoal = async (goalId: string) => {
-    const amount = Math.round(Number(goalContribution[goalId] || '0') * 100);
-    if (amount <= 0) return;
+    const amount = parseAmountToCents(goalContribution[goalId] || '');
+    if (!amount) return;
     const updated = contributeToGoal(goalId, amount);
     if (updated) {
       addExpense({ amountCents: amount, categoryId: 'expense-savings', note: `Goal: ${updated.name}` });
@@ -246,14 +267,23 @@ export default function SettingsScreen() {
   };
 
   const handleCreateRecurring = async () => {
+    setRecurringError('');
     ensureRecurringCategory();
-    const amount = Math.round(Number(recurringAmount || '0') * 100);
-    if (!recurringEnabled || !recurringName.trim() || amount <= 0 || !recurringCategoryId) return;
+    const categoryId =
+      recurringCategoryId && recurringCategoryList.some((item) => item.id === recurringCategoryId)
+        ? recurringCategoryId
+        : recurringCategoryList[0]?.id ?? null;
+    if (!recurringEnabled || !recurringName.trim() || !categoryId) return;
+    const amount = parseAmountToCents(recurringAmount);
+    if (amount === null) {
+      setRecurringError('Enter a valid amount.');
+      return;
+    }
     addRecurringEvent({
       name: recurringName,
       amountCents: amount,
       type: recurringType,
-      categoryId: recurringCategoryId,
+      categoryId,
       interval: recurringInterval,
     });
     setRecurringName('');
@@ -263,10 +293,12 @@ export default function SettingsScreen() {
 
   const applyDueNow = async () => {
     applyDueRecurringEvents(Date.now(), (event) => {
+      const amountCents = Number.isFinite(event.amountCents) && event.amountCents > 0 ? Math.round(event.amountCents) : null;
+      if (!amountCents) return;
       if (event.type === 'income') {
-        addIncome({ amountCents: event.amountCents, categoryId: event.categoryId, note: `Recurring: ${event.name}` });
+        addIncome({ amountCents, categoryId: event.categoryId, note: `Recurring: ${event.name}` });
       } else {
-        addExpense({ amountCents: event.amountCents, categoryId: event.categoryId, note: `Recurring: ${event.name}` });
+        addExpense({ amountCents, categoryId: event.categoryId, note: `Recurring: ${event.name}` });
       }
     });
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -274,10 +306,12 @@ export default function SettingsScreen() {
 
   const runSingleRecurring = async (id: string) => {
     runRecurringEventNow(id, (event) => {
+      const amountCents = Number.isFinite(event.amountCents) && event.amountCents > 0 ? Math.round(event.amountCents) : null;
+      if (!amountCents) return;
       if (event.type === 'income') {
-        addIncome({ amountCents: event.amountCents, categoryId: event.categoryId, note: `Recurring: ${event.name}` });
+        addIncome({ amountCents, categoryId: event.categoryId, note: `Recurring: ${event.name}` });
       } else {
-        addExpense({ amountCents: event.amountCents, categoryId: event.categoryId, note: `Recurring: ${event.name}` });
+        addExpense({ amountCents, categoryId: event.categoryId, note: `Recurring: ${event.name}` });
       }
     }, Date.now());
     await Haptics.selectionAsync();
@@ -529,7 +563,10 @@ export default function SettingsScreen() {
                   mode="outlined"
                   label="Target amount"
                   value={goalTarget}
-                  onChangeText={setGoalTarget}
+                  onChangeText={(val) => {
+                    setGoalTarget(val);
+                    if (goalError) setGoalError('');
+                  }}
                   keyboardType="decimal-pad"
                   placeholder="500.00"
                 />
@@ -540,7 +577,10 @@ export default function SettingsScreen() {
                   onChangeText={setGoalDueDate}
                   placeholder="2025-12-31"
                 />
-                <Button mode="contained" onPress={handleCreateGoal} disabled={!goalName.trim() || !goalTarget}>
+                <HelperText type="error" visible={!!goalError} style={{ marginLeft: 0 }}>
+                  {goalError}
+                </HelperText>
+                <Button mode="contained" onPress={handleCreateGoal} disabled={!goalName.trim() || !parseAmountToCents(goalTarget)}>
                   Create goal
                 </Button>
                 <Divider />
@@ -550,7 +590,10 @@ export default function SettingsScreen() {
                   </Text>
                 ) : (
                   goals.map((goal) => {
-                    const progress = goal.targetCents ? goal.savedCents / goal.targetCents : 0;
+                    const targetCents = Number.isFinite(goal.targetCents) && goal.targetCents > 0 ? goal.targetCents : 0;
+                    const savedCents = Number.isFinite(goal.savedCents) && goal.savedCents >= 0 ? goal.savedCents : 0;
+                    const progressRaw = targetCents ? savedCents / targetCents : 0;
+                    const progress = Number.isFinite(progressRaw) ? Math.min(1, Math.max(0, progressRaw)) : 0;
                     return (
                       <Card key={goal.id} mode="outlined" style={{ backgroundColor: theme.colors.surfaceVariant }}>
                         <Card.Content style={{ gap: 8 }}>
@@ -568,9 +611,9 @@ export default function SettingsScreen() {
                             </Chip>
                           </View>
                           <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                            {formatCurrency(goal.savedCents, { currencyCode, locale })} / {formatCurrency(goal.targetCents, { currencyCode, locale })} {goal.completed ? '• Completed' : ''}
+                            {formatCurrency(savedCents, { currencyCode, locale })} / {formatCurrency(targetCents, { currencyCode, locale })} {goal.completed ? '• Completed' : ''}
                           </Text>
-                          <ProgressBar progress={Math.min(1, progress)} />
+                          <ProgressBar progress={progress} />
                           <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
                             Due: {formatDate(goal.dueDate)}
                           </Text>
@@ -637,10 +680,16 @@ export default function SettingsScreen() {
                   mode="outlined"
                   label="Amount"
                   value={recurringAmount}
-                  onChangeText={setRecurringAmount}
+                  onChangeText={(val) => {
+                    setRecurringAmount(val);
+                    if (recurringError) setRecurringError('');
+                  }}
                   keyboardType="decimal-pad"
                   placeholder="1200.00"
                 />
+                <HelperText type="error" visible={!!recurringError} style={{ marginLeft: 0 }}>
+                  {recurringError}
+                </HelperText>
                 <SegmentedButtons
                   value={recurringType}
                   onValueChange={(val) => setRecurringType(val as 'expense' | 'income')}
@@ -676,7 +725,7 @@ export default function SettingsScreen() {
                     </Chip>
                   ))}
                 </ScrollView>
-                <Button mode="contained" onPress={handleCreateRecurring} disabled={!recurringName.trim() || !recurringAmount || !recurringCategoryId}>
+                <Button mode="contained" onPress={handleCreateRecurring} disabled={!recurringName.trim() || !parseAmountToCents(recurringAmount) || !recurringCategoryId}>
                   Create recurring event
                 </Button>
                 <Button mode="outlined" onPress={() => void applyDueNow()}>

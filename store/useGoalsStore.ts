@@ -23,12 +23,13 @@ export const useGoalsStore = create<GoalState>()(
       goalsEnabled: false,
       addGoal: ({ name, targetCents, dueDate }) => {
         const cleaned = name.trim().slice(0, 32);
-        if (!cleaned || targetCents <= 0) return;
+        const normalizedTarget = Math.round(targetCents);
+        if (!cleaned || !Number.isFinite(normalizedTarget) || normalizedTarget <= 0) return;
 
         const goal: Goal = {
           id: `goal-${generateId()}`,
           name: cleaned,
-          targetCents: Math.max(1, Math.round(targetCents)),
+          targetCents: Math.max(1, normalizedTarget),
           savedCents: 0,
           dueDate,
           createdAt: Date.now(),
@@ -39,12 +40,13 @@ export const useGoalsStore = create<GoalState>()(
         set((state) => ({ goals: [goal, ...state.goals] }));
       },
       contributeToGoal: (goalId, amountCents) => {
-        if (amountCents <= 0) return undefined;
+        const normalizedAmount = Math.round(amountCents);
+        if (!Number.isFinite(normalizedAmount) || normalizedAmount <= 0) return undefined;
         let updated: Goal | undefined;
         set((state) => {
           const goals = state.goals.map((goal) => {
             if (goal.id !== goalId) return goal;
-            const savedCents = Math.min(goal.targetCents, goal.savedCents + Math.round(amountCents));
+            const savedCents = Math.min(goal.targetCents, goal.savedCents + normalizedAmount);
             updated = { ...goal, savedCents, completed: savedCents >= goal.targetCents };
             return updated;
           });
