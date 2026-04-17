@@ -1,6 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
-import { useCallback, useMemo, useState, useRef } from 'react';
+import { useCallback, useMemo, useState, useRef, useEffect } from 'react';
 import { Modal, Pressable, ScrollView, SectionList, StyleSheet, View, Animated } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -81,6 +81,9 @@ export default function HomeScreen() {
   const geminiApiKey = useSettingsStore((state) => state.geminiApiKey);
   const gemmaModel = useSettingsStore((state) => state.gemmaModel);
   const advancedSummariesEnabled = useSettingsStore((state) => state.advancedSummariesEnabled);
+  const passcodeEnabled = useSettingsStore((state) => state.passcodeEnabled);
+  const passcodePin = useSettingsStore((state) => state.passcodePin);
+  const resetSettings = useSettingsStore((state) => state.resetSettings);
 
   const transactions = useTransactionStore((state) => state.transactions);
   const categories = useTransactionStore((state) => state.categories);
@@ -90,6 +93,7 @@ export default function HomeScreen() {
   const addExpense = useTransactionStore((state) => state.addExpense);
   const addIncome = useTransactionStore((state) => state.addIncome);
   const undoTransaction = useTransactionStore((state) => state.undoTransaction);
+  const clearAllData = useTransactionStore((state) => state.clearAllData);
   const locale = language || 'en-US';
   const formatAmount = useCallback(
     (value: number) => formatCurrency(value, { currencyCode, locale }),
@@ -115,9 +119,22 @@ export default function HomeScreen() {
   const [gemmaVisible, setGemmaVisible] = useState(false);
   const [gemmaText, setGemmaText] = useState('');
   const [isGemmaLoading, setIsGemmaLoading] = useState(false);
+  const [sessionUnlocked, setSessionUnlocked] = useState(!passcodeEnabled || !passcodePin);
+  const [passcodeInput, setPasscodeInput] = useState('');
+  const [passcodeError, setPasscodeError] = useState('');
 
   // Animation values for collapsing header
   const scrollY = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (passcodeEnabled && passcodePin) {
+      setSessionUnlocked(false);
+    } else {
+      setSessionUnlocked(true);
+    }
+    setPasscodeInput('');
+    setPasscodeError('');
+  }, [passcodeEnabled, passcodePin]);
 
   const headerHeight = scrollY.interpolate({
     inputRange: [0, 100],
@@ -177,6 +194,18 @@ export default function HomeScreen() {
 
   const pushSnackbar = (text: string, txId: string) => {
     setSnackbar({ visible: true, text, txId });
+  };
+
+  const handleUnlock = async () => {
+    if (passcodeInput === passcodePin) {
+      setSessionUnlocked(true);
+      setPasscodeInput('');
+      setPasscodeError('');
+      await Haptics.selectionAsync();
+    } else {
+      setPasscodeError('Incorrect passcode.');
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    }
   };
 
   const handleKeypadInput = async (key: (typeof keypadRows)[number][number], setValue: (next: string) => void, value: string) => {
@@ -273,6 +302,49 @@ export default function HomeScreen() {
       setIsGemmaLoading(false);
     }
   };
+
+  if (passcodeEnabled && passcodePin && !sessionUnlocked) {
+    return (
+      <SafeAreaView style={[styles.screen, { backgroundColor: theme.colors.background, justifyContent: 'center', padding: 24 }]}>
+        <View style={{ gap: 16 }}>
+          <Text variant="headlineMedium" style={{ color: theme.colors.onSurface, textAlign: 'center' }}>
+            Unlock wallet
+          </Text>
+          <TextInput
+            mode="outlined"
+            label="Passcode"
+            value={passcodeInput}
+            onChangeText={(val) => {
+              setPasscodeInput(val);
+              setPasscodeError('');
+            }}
+            keyboardType="number-pad"
+            secureTextEntry
+            maxLength={8}
+          />
+          {passcodeError ? (
+            <Text variant="bodySmall" style={{ color: theme.colors.error }}>
+              {passcodeError}
+            </Text>
+          ) : null}
+          <Button mode="contained" onPress={() => void handleUnlock()} disabled={!passcodeInput}>
+            Unlock
+          </Button>
+          <Button
+            mode="text"
+            onPress={async () => {
+              clearAllData();
+              resetSettings();
+              setSessionUnlocked(true);
+              await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            }}
+          >
+            Reset all data (clears passcode)
+          </Button>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (!walletMeta.hasCompletedOnboarding) {
     return (

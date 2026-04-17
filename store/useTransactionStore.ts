@@ -13,6 +13,7 @@ const DEFAULT_CATEGORIES: Category[] = [
   { id: 'expense-bills', name: 'Bills', emoji: '🧾', kind: 'expense' },
   { id: 'expense-entertainment', name: 'Fun', emoji: '🎮', kind: 'expense' },
   { id: 'expense-subscriptions', name: 'Subs', emoji: '📺', kind: 'expense' },
+  { id: 'expense-savings', name: 'Savings', emoji: '🏦', kind: 'system', isLocked: true },
   { id: 'expense-misc', name: 'Misc', emoji: '🤝', kind: 'system', isLocked: true },
   { id: 'income-atm', name: 'ATM', emoji: '🏧', kind: 'income' },
   { id: 'income-paycheck', name: 'Paycheck', emoji: '💼', kind: 'income' },
