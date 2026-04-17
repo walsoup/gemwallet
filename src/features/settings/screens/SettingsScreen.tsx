@@ -48,8 +48,8 @@ const regionOptions = [
 ] as const;
 
 const modelOptions = [
+  { value: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Flash Lite (preview, recommended)' },
   { value: 'gemma-2-9b-it', label: 'Gemma 2 9B' },
-  { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
 ] as const;
 
 export default function SettingsScreen() {
@@ -150,7 +150,11 @@ export default function SettingsScreen() {
           </Text>
         </View>
 
-        <Card mode="elevated">
+        <Card
+          mode="elevated"
+          style={{ backgroundColor: theme.colors.surfaceContainer }}
+          contentStyle={{ paddingVertical: 8, gap: 8 }}
+        >
           <Card.Title title="Appearance" subtitle="Material Design 3 surfaces" />
           <Card.Content style={{ gap: 12 }}>
             <SegmentedButtons
@@ -181,7 +185,11 @@ export default function SettingsScreen() {
           </Card.Content>
         </Card>
 
-        <Card mode="elevated">
+        <Card
+          mode="elevated"
+          style={{ backgroundColor: theme.colors.surfaceContainer }}
+          contentStyle={{ paddingVertical: 8, gap: 8 }}
+        >
           <Card.Title title="Gemma & Locale" subtitle="Connect Gemini API access and region defaults" />
           <Card.Content style={{ gap: 12 }}>
             <TextInput
@@ -207,6 +215,7 @@ export default function SettingsScreen() {
               value={gemmaModel}
               onValueChange={(value) => setGemmaModel(value)}
               buttons={modelOptions.map((option) => ({ label: option.label, value: option.value }))}
+              density="regular"
             />
             <Text variant="titleSmall" style={{ color: theme.colors.onSurface }}>
               Language
@@ -218,7 +227,11 @@ export default function SettingsScreen() {
                   mode="outlined"
                   selected={language === option.code}
                   onPress={() => setLanguage(option.code)}
-                  selectedColor={theme.colors.onPrimary}
+                  selectedColor={theme.colors.onSecondaryContainer}
+                  style={{
+                    backgroundColor:
+                      language === option.code ? theme.colors.secondaryContainer : theme.colors.surface,
+                  }}
                 >
                   {option.label}
                 </Chip>
@@ -234,7 +247,11 @@ export default function SettingsScreen() {
                   mode="outlined"
                   selected={currencyCode === option.code}
                   onPress={() => setCurrencyCode(option.code)}
-                  selectedColor={theme.colors.onPrimary}
+                  selectedColor={theme.colors.onSecondaryContainer}
+                  style={{
+                    backgroundColor:
+                      currencyCode === option.code ? theme.colors.secondaryContainer : theme.colors.surface,
+                  }}
                 >
                   {option.label}
                 </Chip>
@@ -250,7 +267,11 @@ export default function SettingsScreen() {
                   mode="outlined"
                   selected={region === option.code}
                   onPress={() => setRegion(option.code)}
-                  selectedColor={theme.colors.onPrimary}
+                  selectedColor={theme.colors.onSecondaryContainer}
+                  style={{
+                    backgroundColor:
+                      region === option.code ? theme.colors.secondaryContainer : theme.colors.surface,
+                  }}
                 >
                   {option.label}
                 </Chip>
@@ -259,7 +280,11 @@ export default function SettingsScreen() {
           </Card.Content>
         </Card>
 
-        <Card mode="elevated">
+        <Card
+          mode="elevated"
+          style={{ backgroundColor: theme.colors.surfaceContainer }}
+          contentStyle={{ paddingVertical: 8, gap: 8 }}
+        >
           <Card.Title title="Security & advanced" />
           <Card.Content style={{ gap: 8 }}>
             <List.Item
@@ -292,7 +317,11 @@ export default function SettingsScreen() {
           </Card.Content>
         </Card>
 
-        <Card mode="elevated">
+        <Card
+          mode="elevated"
+          style={{ backgroundColor: theme.colors.surfaceContainer }}
+          contentStyle={{ paddingVertical: 8, gap: 8 }}
+        >
           <Card.Title title="Category management" />
           <Card.Content style={{ gap: 12 }}>
             <TextInput
@@ -353,7 +382,11 @@ export default function SettingsScreen() {
           </Card.Content>
         </Card>
 
-        <Card mode="elevated">
+        <Card
+          mode="elevated"
+          style={{ backgroundColor: theme.colors.surfaceContainer }}
+          contentStyle={{ paddingVertical: 8, gap: 8 }}
+        >
           <Card.Title title="Data export" subtitle="Generate a CSV preview without leaving the device" />
           <Card.Content style={{ gap: 12 }}>
             <Button

@@ -4,7 +4,7 @@ import type { Transaction } from '../../../../types/finance';
 import { formatCurrency } from '../../../../utils/formatCurrency';
 
 const STREAM_CHUNK_SIZE = 80;
-const DEFAULT_MODEL = 'gemma-2-9b-it';
+const DEFAULT_MODEL = 'gemini-3.1-flash-lite-preview';
 
 type AnalysisOptions = {
   apiKey?: string;
