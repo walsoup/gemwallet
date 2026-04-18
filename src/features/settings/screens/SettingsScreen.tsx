@@ -629,7 +629,7 @@ export default function SettingsScreen() {
                             <Button mode="contained-tonal" onPress={() => void handleContributeToGoal(goal.id)} disabled={!goalContribution[goal.id]}>
                               Add
                             </Button>
-                            <IconButton icon="delete-outline" onPress={() => deleteGoal(goal.id)} />
+                            <IconButton icon="delete-outline" accessibilityLabel={`Delete goal ${goal.title}`} onPress={() => deleteGoal(goal.id)} />
                           </View>
                         </Card.Content>
                       </Card>
@@ -804,6 +804,7 @@ export default function SettingsScreen() {
               right={
                 <TextInput.Icon
                   icon={showApiKey ? 'eye-off-outline' : 'eye-outline'}
+                  accessibilityLabel={showApiKey ? "Hide API key" : "Show API key"}
                   onPress={() => setShowApiKey((prev) => !prev)}
                 />
               }
@@ -1030,7 +1031,7 @@ export default function SettingsScreen() {
                     {item.emoji} {item.name}
                   </Text>
                   {!item.isLocked ? (
-                    <IconButton icon="delete-outline" onPress={() => deleteCategory(item.id)} />
+                    <IconButton icon="delete-outline" accessibilityLabel={`Delete category ${item.name}`} onPress={() => deleteCategory(item.id)} />
                   ) : (
                     <Text variant="labelMedium" style={{ color: theme.colors.onSurfaceVariant }}>
                       locked
