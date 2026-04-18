@@ -971,7 +971,7 @@ export default function HomeScreen() {
             {isGreetingLoading ? <ActivityIndicator size="small" /> : null}
           </View>
         </Animated.View>
-        <IconButton icon="cog-outline" onPress={() => router.push('/settings')} />
+        <IconButton icon="cog-outline" accessibilityLabel="Open settings" onPress={() => router.push('/settings')} />
       </Animated.View>
 
       <Animated.ScrollView 
@@ -1029,7 +1029,7 @@ export default function HomeScreen() {
                   <Text variant="titleMedium" style={{ color: theme.colors.onSurface, fontWeight: '700' }}>
                     Quick setup coach
                   </Text>
-                  <IconButton icon="close" onPress={() => setSetupCoachDismissed(true)} />
+                  <IconButton icon="close" accessibilityLabel="Dismiss quick setup coach" onPress={() => setSetupCoachDismissed(true)} />
                 </View>
                 <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
                   Finish these to unlock smoother tracking.
@@ -1590,7 +1590,7 @@ export default function HomeScreen() {
                             <Button mode="contained-tonal" onPress={() => void handleContributeToGoal(goal.id)} disabled={!goalContribution[goal.id]}>
                               Add
                             </Button>
-                            <IconButton icon="delete-outline" onPress={() => deleteGoal(goal.id)} />
+                            <IconButton icon="delete-outline" accessibilityLabel="Delete goal" onPress={() => deleteGoal(goal.id)} />
                           </View>
                         </Card.Content>
                       </Card>
