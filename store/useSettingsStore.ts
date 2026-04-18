@@ -18,6 +18,8 @@ export type SettingsState = {
   gemmaModel: string;
   advancedSummariesEnabled: boolean;
   includeNotesInExport: boolean;
+  setupCoachDismissed: boolean;
+  backupConfigured: boolean;
   setThemePreference: (preference: ThemePreference) => void;
   setOledTrueBlackEnabled: (enabled: boolean) => void;
   setHighContrastEnabled: (enabled: boolean) => void;
@@ -31,6 +33,8 @@ export type SettingsState = {
   setGemmaModel: (model: string) => void;
   setAdvancedSummariesEnabled: (enabled: boolean) => void;
   setIncludeNotesInExport: (enabled: boolean) => void;
+  setSetupCoachDismissed: (dismissed: boolean) => void;
+  setBackupConfigured: (configured: boolean) => void;
   hydrateFromBackup: (incoming: Partial<SettingsState>) => void;
   resetSettings: () => void;
 };
@@ -49,6 +53,8 @@ const defaultState = {
   gemmaModel: 'gemma-4-31b-it',
   advancedSummariesEnabled: false,
   includeNotesInExport: true,
+  setupCoachDismissed: false,
+  backupConfigured: false,
 };
 
 export const useSettingsStore = create<SettingsState>()(
@@ -68,6 +74,8 @@ export const useSettingsStore = create<SettingsState>()(
       setGemmaModel: (gemmaModel) => set({ gemmaModel }),
       setAdvancedSummariesEnabled: (advancedSummariesEnabled) => set({ advancedSummariesEnabled }),
       setIncludeNotesInExport: (includeNotesInExport) => set({ includeNotesInExport }),
+      setSetupCoachDismissed: (setupCoachDismissed) => set({ setupCoachDismissed }),
+      setBackupConfigured: (backupConfigured) => set({ backupConfigured }),
       hydrateFromBackup: (incoming) =>
         set(() => ({
           ...defaultState,
@@ -94,6 +102,8 @@ export const useSettingsStore = create<SettingsState>()(
           passcodePin: persistedState.passcodePin ?? defaultState.passcodePin,
           advancedSummariesEnabled: persistedState.advancedSummariesEnabled ?? defaultState.advancedSummariesEnabled,
           includeNotesInExport: persistedState.includeNotesInExport ?? defaultState.includeNotesInExport,
+          setupCoachDismissed: persistedState.setupCoachDismissed ?? defaultState.setupCoachDismissed,
+          backupConfigured: persistedState.backupConfigured ?? defaultState.backupConfigured,
         };
       },
     }
