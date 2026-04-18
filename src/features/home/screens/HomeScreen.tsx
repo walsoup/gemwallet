@@ -1367,140 +1367,216 @@ export default function HomeScreen() {
             </View>
           </Card>
 
-          <TextInput
-            mode="outlined"
-            value={search}
-            onChangeText={setSearch}
-            label="Search transactions"
-          right={<TextInput.Icon icon="close" onPress={() => setSearch('')} />}
-          style={{ borderRadius: 24, marginVertical: 8 }}
-        />
-
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-          <Chip
-            selected={!selectedExpenseCategoryId}
-            onPress={() => setSelectedExpenseCategoryId(null)}
-            style={[
-              styles.filterChip,
-              {
-                backgroundColor: !selectedExpenseCategoryId
-                  ? theme.colors.secondaryContainer
-                  : theme.colors.surface,
-                borderColor: theme.colors.outlineVariant,
-              },
-            ]}
-            selectedColor={theme.colors.onSecondaryContainer}
+          <Card
+            mode="elevated"
+            style={[styles.tableCard, { backgroundColor: theme.colors.surface }]}
+            contentStyle={{ padding: 12, gap: 12 }}
           >
-            All
-          </Chip>
-          {expenseCategories.map((item) => (
-            <Chip
-              key={item.id}
-              selected={selectedExpenseCategoryId === item.id}
-              onPress={() => {
-                setSelectedExpenseCategoryId((current) => (current === item.id ? null : item.id));
-              }}
-              style={[
-                styles.filterChip,
-                {
-                  backgroundColor:
-                    selectedExpenseCategoryId === item.id
+            <View style={styles.tableHeaderRow}>
+              <View>
+                <Text variant="titleMedium" style={{ color: theme.colors.onSurface, fontWeight: '700' }}>
+                  Transactions
+                </Text>
+                <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, fontVariant: ['tabular-nums'] }}>
+                  {filteredTransactions.length ? `${filteredTransactions.length} entries shown` : 'No entries to show'}
+                </Text>
+              </View>
+              <Chip
+                icon="tune"
+                mode="outlined"
+                style={{ borderColor: theme.colors.outlineVariant }}
+                textStyle={{ color: theme.colors.onSurface }}
+                onPress={() => setSelectedExpenseCategoryId(null)}
+              >
+                Reset filters
+              </Chip>
+            </View>
+
+            <TextInput
+              mode="outlined"
+              value={search}
+              onChangeText={setSearch}
+              label="Search transactions"
+              right={<TextInput.Icon icon="close" onPress={() => setSearch('')} />}
+              style={{ borderRadius: 24 }}
+            />
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+              <Chip
+                selected={!selectedExpenseCategoryId}
+                onPress={() => setSelectedExpenseCategoryId(null)}
+                style={[
+                  styles.filterChip,
+                  {
+                    backgroundColor: !selectedExpenseCategoryId
                       ? theme.colors.secondaryContainer
                       : theme.colors.surface,
+                    borderColor: theme.colors.outlineVariant,
+                  },
+                ]}
+                selectedColor={theme.colors.onSecondaryContainer}
+              >
+                All
+              </Chip>
+              {expenseCategories.map((item) => (
+                <Chip
+                  key={item.id}
+                  selected={selectedExpenseCategoryId === item.id}
+                  onPress={() => {
+                    setSelectedExpenseCategoryId((current) => (current === item.id ? null : item.id));
+                  }}
+                  style={[
+                    styles.filterChip,
+                    {
+                      backgroundColor:
+                        selectedExpenseCategoryId === item.id
+                          ? theme.colors.secondaryContainer
+                          : theme.colors.surface,
+                      borderColor: theme.colors.outlineVariant,
+                    },
+                  ]}
+                  selectedColor={theme.colors.onSecondaryContainer}
+                >
+                  {item.emoji} {item.name}
+                </Chip>
+              ))}
+            </ScrollView>
+
+            <View
+              style={[
+                styles.ledgerColumns,
+                {
+                  backgroundColor: theme.colors.surfaceContainerHigh,
                   borderColor: theme.colors.outlineVariant,
                 },
               ]}
-              selectedColor={theme.colors.onSecondaryContainer}
             >
-              {item.emoji} {item.name}
-            </Chip>
-          ))}
-        </ScrollView>
+              <Text variant="labelSmall" style={[styles.ledgerColumnText, { color: theme.colors.onSurfaceVariant }]}>
+                Item
+              </Text>
+              <Text variant="labelSmall" style={[styles.ledgerColumnTime, { color: theme.colors.onSurfaceVariant }]}>
+                Time
+              </Text>
+              <Text variant="labelSmall" style={[styles.ledgerColumnAmount, { color: theme.colors.onSurfaceVariant }]}>
+                Amount
+              </Text>
+            </View>
 
-        <SectionList
-          sections={groupedTransactions}
-          keyExtractor={(item) => item.id}
-          scrollEnabled={false}
-          stickySectionHeadersEnabled={false}
-          renderSectionHeader={({ section }) => (
-            <Text variant="titleSmall" style={{ color: theme.colors.onSurfaceVariant, marginTop: 16, marginBottom: 8 }}>
-              {section.title}
-            </Text>
-          )}
-          renderItem={({ item }) => {
-            const category = categoryById(categories, item.categoryId);
-            return (
-              <Animated.View
-                style={{
-                  opacity: animatedRows.current[item.id] ?? 1,
-                  transform: [
-                    {
-                      translateY:
-                        animatedRows.current[item.id]?.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [18, 0],
-                        }) ?? 0,
-                    },
-                    {
-                      scale:
-                        animatedRows.current[item.id]?.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [0.97, 1],
-                        }) ?? 1,
-                    },
-                  ],
-                }}
-              >
+            <SectionList
+              sections={groupedTransactions}
+              keyExtractor={(item) => item.id}
+              scrollEnabled={false}
+              stickySectionHeadersEnabled={false}
+              contentContainerStyle={{ gap: 6 }}
+              renderSectionHeader={({ section }) => (
                 <View
                   style={[
-                    styles.transactionRow,
+                    styles.sectionHeaderRow,
                     {
                       backgroundColor: theme.colors.surfaceContainerLow,
                       borderColor: theme.colors.outlineVariant,
                     },
                   ]}
                 >
-                  <View style={[styles.emojiCircle, { backgroundColor: theme.colors.secondaryContainer }]}>
-                    <Text variant="titleLarge">{category?.emoji ?? '💸'}</Text>
-                  </View>
-
-                  <View style={styles.txCenter}>
-                    <Text variant="titleMedium" style={{ color: theme.colors.onSurface, fontWeight: '600' }} numberOfLines={1}>
-                      {item.note || category?.name || 'Transaction'}
-                    </Text>
-                    <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                      {formatTime(item.timestamp, locale)}
-                    </Text>
-                  </View>
-
-                  <Text
-                    variant="titleMedium"
-                    style={{
-                      color:
-                        item.type === 'income'
-                          ? theme.colors.tertiary
-                          : balanceCents < 0
-                            ? theme.colors.error
-                            : theme.colors.onSurface,
-                      textAlign: 'right',
-                      minWidth: 96,
-                      fontWeight: 'bold',
-                    }}
-                  >
-                    {item.type === 'income' ? '+' : '-'}{formatAmount(item.amountCents)}
+                  <Text variant="labelLarge" style={{ color: theme.colors.onSurface }}>
+                    {section.title}
                   </Text>
                 </View>
-              </Animated.View>
-            );
-          }}
-          ItemSeparatorComponent={() => <Divider style={{ opacity: 0.5 }} />}
-          ListEmptyComponent={
-            <Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant, marginTop: 24, textAlign: 'center' }}>
-              No matching transactions.
-            </Text>
-          }
-        />
-      </Animated.ScrollView>
+              )}
+              renderItem={({ item, index }) => {
+                const category = categoryById(categories, item.categoryId);
+                const isStriped = index % 2 === 0;
+                return (
+                  <Animated.View
+                    style={{
+                      opacity: animatedRows.current[item.id] ?? 1,
+                      transform: [
+                        {
+                          translateY:
+                            animatedRows.current[item.id]?.interpolate({
+                              inputRange: [0, 1],
+                              outputRange: [18, 0],
+                            }) ?? 0,
+                        },
+                        {
+                          scale:
+                            animatedRows.current[item.id]?.interpolate({
+                              inputRange: [0, 1],
+                              outputRange: [0.97, 1],
+                            }) ?? 1,
+                        },
+                      ],
+                    }}
+                  >
+                    <View
+                      style={[
+                        styles.transactionRow,
+                        {
+                          backgroundColor: isStriped ? theme.colors.surfaceContainerLow : theme.colors.surface,
+                          borderColor: theme.colors.outlineVariant,
+                        },
+                      ]}
+                    >
+                      <View style={styles.tableCellPrimary}>
+                        <View style={[styles.emojiCircle, { backgroundColor: theme.colors.secondaryContainer }]}>
+                          <Text variant="titleLarge">{category?.emoji ?? '💸'}</Text>
+                        </View>
+                        <View style={styles.txCenter}>
+                          <Text variant="titleMedium" style={{ color: theme.colors.onSurface, fontWeight: '600' }} numberOfLines={1}>
+                            {item.note || category?.name || 'Transaction'}
+                          </Text>
+                          <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }} numberOfLines={1}>
+                            {category?.name ?? 'Uncategorized'}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.tableCellTime}>
+                        <Text
+                          variant="bodySmall"
+                          style={{ color: theme.colors.onSurfaceVariant, fontVariant: ['tabular-nums'] }}
+                          numberOfLines={1}
+                        >
+                          {formatTime(item.timestamp, locale)}
+                        </Text>
+                      </View>
+
+                      <View style={styles.tableCellAmount}>
+                        <Text
+                          variant="titleMedium"
+                          style={{
+                            color:
+                              item.type === 'income'
+                                ? theme.colors.tertiary
+                                : balanceCents < 0
+                                  ? theme.colors.error
+                                  : theme.colors.onSurface,
+                            textAlign: 'right',
+                            fontWeight: 'bold',
+                            fontVariant: ['tabular-nums'],
+                          }}
+                          numberOfLines={1}
+                        >
+                          {item.type === 'income' ? '+' : '-'}
+                          {formatAmount(item.amountCents)}
+                        </Text>
+                        <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                          {item.type === 'income' ? 'Income' : 'Expense'}
+                        </Text>
+                      </View>
+                    </View>
+                  </Animated.View>
+                );
+              }}
+              ItemSeparatorComponent={() => <Divider style={{ opacity: 0.3 }} />}
+              ListEmptyComponent={
+                <Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant, marginTop: 12, textAlign: 'center' }}>
+                  No matching transactions.
+                </Text>
+              }
+            />
+          </Card>
+        </Animated.ScrollView>
 
       {/* Ask Gemma FAB */}
       {geminiApiKey?.trim() ? (
@@ -1970,19 +2046,53 @@ const styles = StyleSheet.create({
   filterRow: {
     gap: 8,
     paddingVertical: 8,
+    paddingHorizontal: 4,
   },
   filterChip: {
     borderRadius: 16,
     borderWidth: 1,
   },
+  tableCard: {
+    borderRadius: 24,
+  },
+  tableHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  ledgerColumns: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  ledgerColumnText: {
+    flex: 1,
+    fontWeight: '700',
+  },
+  ledgerColumnTime: {
+    width: 86,
+    textAlign: 'center',
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+  },
+  ledgerColumnAmount: {
+    width: 120,
+    textAlign: 'right',
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+  },
   transactionRow: {
     minHeight: 76,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
-    paddingVertical: 12,
+    gap: 12,
+    paddingVertical: 14,
     paddingHorizontal: 12,
-    borderRadius: 18,
+    borderRadius: 16,
     borderWidth: 1,
   },
   emojiCircle: {
@@ -1995,6 +2105,29 @@ const styles = StyleSheet.create({
   txCenter: {
     flex: 1,
     justifyContent: 'center',
+    gap: 2,
+  },
+  tableCellPrimary: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  tableCellTime: {
+    width: 86,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tableCellAmount: {
+    width: 120,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  sectionHeaderRow: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
   },
   gemmaFab: {
     position: 'absolute',
