@@ -1386,7 +1386,10 @@ export default function HomeScreen() {
                 mode="outlined"
                 style={{ borderColor: theme.colors.outlineVariant }}
                 textStyle={{ color: theme.colors.onSurface }}
-                onPress={() => setSelectedExpenseCategoryId(null)}
+                onPress={() => {
+                  setSelectedExpenseCategoryId(null);
+                  setSearch('');
+                }}
               >
                 Reset filters
               </Chip>
