@@ -1,5 +1,5 @@
 import * as Haptics from 'expo-haptics';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -10,7 +10,6 @@ import {
   HelperText,
   IconButton,
   List,
-  ProgressBar,
   SegmentedButtons,
   Switch,
   Text,
@@ -61,15 +60,6 @@ const modelOptions = [
   { value: 'gemma-2-9b-it', label: 'Gemma 2 9B' },
 ] as const;
 
-function parseAmountToCents(input: string) {
-  const normalized = input.replace(/[^0-9.,]/g, '').replace(',', '.');
-  const parsed = Number.parseFloat(normalized);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    return null;
-  }
-  return Math.round(parsed * 100);
-}
-
 export default function SettingsScreen() {
   const theme = useTheme();
   const [categoryName, setCategoryName] = useState('');
@@ -78,17 +68,6 @@ export default function SettingsScreen() {
   const [showApiKey, setShowApiKey] = useState(false);
   const [passcodeDraft, setPasscodeDraft] = useState('');
   const [passcodeConfirm, setPasscodeConfirm] = useState('');
-  const [goalName, setGoalName] = useState('');
-  const [goalTarget, setGoalTarget] = useState('');
-  const [goalDueDate, setGoalDueDate] = useState('');
-  const [goalContribution, setGoalContribution] = useState<Record<string, string>>({});
-  const [goalError, setGoalError] = useState('');
-  const [recurringName, setRecurringName] = useState('');
-  const [recurringAmount, setRecurringAmount] = useState('');
-  const [recurringType, setRecurringType] = useState<'expense' | 'income'>('expense');
-  const [recurringInterval, setRecurringInterval] = useState<'weekly' | 'monthly'>('monthly');
-  const [recurringCategoryId, setRecurringCategoryId] = useState<string | null>(null);
-  const [recurringError, setRecurringError] = useState('');
   const [backupPassphrase, setBackupPassphrase] = useState('');
   const [backupConfirm, setBackupConfirm] = useState('');
   const [backupOutput, setBackupOutput] = useState('');
@@ -108,6 +87,9 @@ export default function SettingsScreen() {
   const gemmaModel = useSettingsStore((state) => state.gemmaModel);
   const advancedSummariesEnabled = useSettingsStore((state) => state.advancedSummariesEnabled);
   const includeNotesInExport = useSettingsStore((state) => state.includeNotesInExport);
+  const setupCoachDismissed = useSettingsStore((state) => state.setupCoachDismissed);
+  const backupConfigured = useSettingsStore((state) => state.backupConfigured);
+  const setBackupConfigured = useSettingsStore((state) => state.setBackupConfigured);
   const setThemePreference = useSettingsStore((state) => state.setThemePreference);
   const setOledTrueBlackEnabled = useSettingsStore((state) => state.setOledTrueBlackEnabled);
   const setHighContrastEnabled = useSettingsStore((state) => state.setHighContrastEnabled);
@@ -125,19 +107,8 @@ export default function SettingsScreen() {
   const locale = language || 'en-US';
   const goalsEnabled = useGoalsStore((state) => state.goalsEnabled);
   const goals = useGoalsStore((state) => state.goals);
-  const addGoal = useGoalsStore((state) => state.addGoal);
-  const contributeToGoal = useGoalsStore((state) => state.contributeToGoal);
-  const toggleGoal = useGoalsStore((state) => state.toggleGoal);
-  const deleteGoal = useGoalsStore((state) => state.deleteGoal);
-  const setGoalsEnabled = useGoalsStore((state) => state.setGoalsEnabled);
   const recurringEnabled = useRecurringStore((state) => state.recurringEnabled);
   const recurringEvents = useRecurringStore((state) => state.events);
-  const setRecurringEnabled = useRecurringStore((state) => state.setRecurringEnabled);
-  const addRecurringEvent = useRecurringStore((state) => state.addEvent);
-  const toggleRecurringEvent = useRecurringStore((state) => state.toggleEvent);
-  const deleteRecurringEvent = useRecurringStore((state) => state.deleteEvent);
-  const applyDueRecurringEvents = useRecurringStore((state) => state.applyDueEvents);
-  const runRecurringEventNow = useRecurringStore((state) => state.runEventNow);
   const hydrateRecurring = useRecurringStore((state) => state.hydrateFromBackup);
 
   const categories = useTransactionStore((state) => state.categories);
@@ -146,8 +117,6 @@ export default function SettingsScreen() {
   const addCustomCategory = useTransactionStore((state) => state.addCustomCategory);
   const deleteCategory = useTransactionStore((state) => state.deleteCategory);
   const clearAllData = useTransactionStore((state) => state.clearAllData);
-  const addExpense = useTransactionStore((state) => state.addExpense);
-  const addIncome = useTransactionStore((state) => state.addIncome);
   const hydrateTransactions = useTransactionStore((state) => state.hydrateFromBackup);
   const hydrateSettings = useSettingsStore((state) => state.hydrateFromBackup);
   const hydrateGoals = useGoalsStore((state) => state.hydrateFromBackup);
@@ -194,41 +163,6 @@ export default function SettingsScreen() {
     return [header, ...lines].join('\n');
   }, [categories, currencyCode, includeNotesInExport, locale, region, transactions]);
 
-  const formatDate = useCallback(
-    (timestamp?: number) => {
-      if (!timestamp) return 'No date';
-      return new Date(timestamp).toLocaleDateString(locale || 'en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    },
-    [locale]
-  );
-
-  const expenseCategories = useMemo(
-    () => categories.filter((item) => item.kind === 'expense'),
-    [categories]
-  );
-
-  const incomeCategories = useMemo(
-    () => categories.filter((item) => item.kind === 'income'),
-    [categories]
-  );
-
-  const recurringCategoryList = recurringType === 'income' ? incomeCategories : expenseCategories;
-
-  const ensureRecurringCategory = useCallback(() => {
-    if (!recurringCategoryList.length) {
-      setRecurringCategoryId(null);
-      return;
-    }
-    const hasCurrent = recurringCategoryList.some((item) => item.id === recurringCategoryId);
-    if (!hasCurrent) {
-      setRecurringCategoryId(recurringCategoryList[0].id);
-    }
-  }, [recurringCategoryId, recurringCategoryList]);
-
-  useEffect(() => {
-    ensureRecurringCategory();
-  }, [ensureRecurringCategory]);
-
   const handleSavePasscode = () => {
     if (passcodeDraft.length < 4 || passcodeDraft !== passcodeConfirm) {
       setPasscodeEnabled(false);
@@ -238,84 +172,6 @@ export default function SettingsScreen() {
     setPasscodeEnabled(true);
     setPasscodeDraft('');
     setPasscodeConfirm('');
-  };
-
-  const handleCreateGoal = async () => {
-    setGoalError('');
-    if (!goalsEnabled || !goalName.trim()) return;
-    const target = parseAmountToCents(goalTarget);
-    if (target === null) {
-      setGoalError('Enter a valid target amount.');
-      return;
-    }
-    const due = goalDueDate ? Date.parse(goalDueDate) : undefined;
-    addGoal({ name: goalName, targetCents: target, dueDate: Number.isFinite(due) ? due : undefined });
-    setGoalName('');
-    setGoalTarget('');
-    setGoalDueDate('');
-    await Haptics.selectionAsync();
-  };
-
-  const handleContributeToGoal = async (goalId: string) => {
-    const amount = parseAmountToCents(goalContribution[goalId] || '');
-    if (!amount) return;
-    const updated = contributeToGoal(goalId, amount);
-    if (updated) {
-      addExpense({ amountCents: amount, categoryId: 'expense-savings', note: `Goal: ${updated.name}` });
-      setGoalContribution((prev) => ({ ...prev, [goalId]: '' }));
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
-  };
-
-  const handleCreateRecurring = async () => {
-    setRecurringError('');
-    ensureRecurringCategory();
-    const categoryId =
-      recurringCategoryId && recurringCategoryList.some((item) => item.id === recurringCategoryId)
-        ? recurringCategoryId
-        : recurringCategoryList[0]?.id ?? null;
-    if (!recurringEnabled || !recurringName.trim() || !categoryId) return;
-    const amount = parseAmountToCents(recurringAmount);
-    if (amount === null) {
-      setRecurringError('Enter a valid amount.');
-      return;
-    }
-    addRecurringEvent({
-      name: recurringName,
-      amountCents: amount,
-      type: recurringType,
-      categoryId,
-      interval: recurringInterval,
-    });
-    setRecurringName('');
-    setRecurringAmount('');
-    await Haptics.selectionAsync();
-  };
-
-  const applyDueNow = async () => {
-    applyDueRecurringEvents(Date.now(), (event) => {
-      const amountCents = Number.isFinite(event.amountCents) && event.amountCents > 0 ? Math.round(event.amountCents) : null;
-      if (!amountCents) return;
-      if (event.type === 'income') {
-        addIncome({ amountCents, categoryId: event.categoryId, note: `Recurring: ${event.name}` });
-      } else {
-        addExpense({ amountCents, categoryId: event.categoryId, note: `Recurring: ${event.name}` });
-      }
-    });
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  };
-
-  const runSingleRecurring = async (id: string) => {
-    runRecurringEventNow(id, (event) => {
-      const amountCents = Number.isFinite(event.amountCents) && event.amountCents > 0 ? Math.round(event.amountCents) : null;
-      if (!amountCents) return;
-      if (event.type === 'income') {
-        addIncome({ amountCents, categoryId: event.categoryId, note: `Recurring: ${event.name}` });
-      } else {
-        addExpense({ amountCents, categoryId: event.categoryId, note: `Recurring: ${event.name}` });
-      }
-    }, Date.now());
-    await Haptics.selectionAsync();
   };
 
   type BackupSnapshot = {
@@ -345,6 +201,8 @@ export default function SettingsScreen() {
       gemmaModel,
       advancedSummariesEnabled,
       includeNotesInExport,
+      setupCoachDismissed,
+      backupConfigured,
     },
     transactions,
     categories,
@@ -367,6 +225,7 @@ export default function SettingsScreen() {
     setBackupPassphrase('');
     setBackupConfirm('');
     setBackupMessage('Backup created. Save it securely.');
+    setBackupConfigured(true);
   };
 
   const handleRestoreBackup = () => {
@@ -386,6 +245,7 @@ export default function SettingsScreen() {
       setBackupInput('');
       setBackupPassphrase('');
       setBackupConfirm('');
+      setBackupConfigured(true);
     } catch (error) {
       setBackupMessage(error instanceof Error ? error.message : 'Restore failed');
     }
@@ -404,9 +264,6 @@ export default function SettingsScreen() {
           <Text variant="displaySmall" style={{ color: theme.colors.onSurface }}>
             Settings
           </Text>
-          <Text variant="titleMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-            Material 3 expressive layout with tonal surfaces, dynamic color, and AI controls.
-          </Text>
         </View>
 
         <Card
@@ -416,11 +273,8 @@ export default function SettingsScreen() {
         >
           <Card.Title
             title="Appearance"
-            subtitle="Material Design 3 expressive surfaces"
             titleVariant="titleLarge"
-            subtitleVariant="bodyMedium"
             titleStyle={{ color: theme.colors.onSurface }}
-            subtitleStyle={{ color: theme.colors.onSurfaceVariant }}
           />
           <Card.Content style={{ gap: 16 }}>
             <SegmentedButtons
@@ -482,7 +336,13 @@ export default function SettingsScreen() {
               onChangeText={setBackupConfirm}
               secureTextEntry
             />
-            <Button mode="contained" onPress={handleCreateBackup} disabled={!backupPassphrase || backupPassphrase !== backupConfirm}>
+            <Button
+              mode="contained"
+              onPress={handleCreateBackup}
+              disabled={!backupPassphrase || backupPassphrase !== backupConfirm}
+              contentStyle={{ paddingVertical: 10 }}
+              style={{ paddingBottom: 6 }}
+            >
               Generate encrypted backup
             </Button>
             {backupOutput ? (
@@ -535,256 +395,6 @@ export default function SettingsScreen() {
           contentStyle={{ paddingVertical: 12, gap: 12 }}
         >
           <Card.Title
-            title="Savings goals"
-            subtitle="Enable goals, set targets, and log deposits."
-            titleVariant="titleLarge"
-            subtitleVariant="bodyMedium"
-            titleStyle={{ color: theme.colors.onSurface }}
-            subtitleStyle={{ color: theme.colors.onSurfaceVariant }}
-          />
-          <Card.Content style={{ gap: 12 }}>
-            <List.Item
-              title="Goals enabled"
-              description="Track progress with local-only data."
-              titleStyle={{ color: theme.colors.onSurface }}
-              descriptionStyle={{ color: theme.colors.onSurfaceVariant }}
-              right={() => <Switch value={goalsEnabled} onValueChange={setGoalsEnabled} />}
-              style={{ paddingHorizontal: 0 }}
-            />
-            {goalsEnabled ? (
-              <>
-                <TextInput
-                  mode="outlined"
-                  label="Goal name"
-                  value={goalName}
-                  onChangeText={setGoalName}
-                  placeholder="Emergency fund"
-                />
-                <TextInput
-                  mode="outlined"
-                  label="Target amount"
-                  value={goalTarget}
-                  onChangeText={(val) => {
-                    setGoalTarget(val);
-                    if (goalError) setGoalError('');
-                  }}
-                  keyboardType="decimal-pad"
-                  placeholder="500.00"
-                />
-                <TextInput
-                  mode="outlined"
-                  label="Due date (optional, YYYY-MM-DD)"
-                  value={goalDueDate}
-                  onChangeText={setGoalDueDate}
-                  placeholder="2025-12-31"
-                />
-                <HelperText type="error" visible={!!goalError} style={{ marginLeft: 0 }}>
-                  {goalError}
-                </HelperText>
-                <Button mode="contained" onPress={handleCreateGoal} disabled={!goalName.trim() || !parseAmountToCents(goalTarget)}>
-                  Create goal
-                </Button>
-                <Divider />
-                {goals.length === 0 ? (
-                  <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                    No goals yet.
-                  </Text>
-                ) : (
-                  goals.map((goal) => {
-                    const targetCents = Number.isFinite(goal.targetCents) && goal.targetCents > 0 ? goal.targetCents : 0;
-                    const savedCents = Number.isFinite(goal.savedCents) && goal.savedCents >= 0 ? goal.savedCents : 0;
-                    const progressRaw = targetCents ? savedCents / targetCents : 0;
-                    const progress = Number.isFinite(progressRaw) ? Math.min(1, Math.max(0, progressRaw)) : 0;
-                    return (
-                      <Card key={goal.id} mode="outlined" style={{ backgroundColor: theme.colors.surfaceVariant }}>
-                        <Card.Content style={{ gap: 8 }}>
-                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Text variant="titleMedium" style={{ color: theme.colors.onSurface }}>
-                              {goal.name}
-                            </Text>
-                            <Chip
-                              mode="outlined"
-                              selected={goal.enabled}
-                              onPress={() => toggleGoal(goal.id, !goal.enabled)}
-                              selectedColor={theme.colors.onSecondaryContainer}
-                            >
-                              {goal.enabled ? 'Enabled' : 'Paused'}
-                            </Chip>
-                          </View>
-                          <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                            {formatCurrency(savedCents, { currencyCode, locale })} / {formatCurrency(targetCents, { currencyCode, locale })} {goal.completed ? '• Completed' : ''}
-                          </Text>
-                          <ProgressBar progress={progress} />
-                          <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                            Due: {formatDate(goal.dueDate)}
-                          </Text>
-                          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-                            <TextInput
-                              mode="outlined"
-                              style={{ flex: 1 }}
-                              label="Deposit amount"
-                              value={goalContribution[goal.id] ?? ''}
-                              onChangeText={(val) => setGoalContribution((prev) => ({ ...prev, [goal.id]: val }))}
-                              keyboardType="decimal-pad"
-                            />
-                            <Button mode="contained-tonal" onPress={() => void handleContributeToGoal(goal.id)} disabled={!goalContribution[goal.id]}>
-                              Add
-                            </Button>
-                            <IconButton icon="delete-outline" onPress={() => deleteGoal(goal.id)} />
-                          </View>
-                        </Card.Content>
-                      </Card>
-                    );
-                  })
-                )}
-              </>
-            ) : (
-              <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                Toggle on to start creating goals.
-              </Text>
-            )}
-          </Card.Content>
-        </Card>
-
-        <Card
-          mode="elevated"
-          style={{ backgroundColor: theme.colors.surfaceContainer }}
-          contentStyle={{ paddingVertical: 12, gap: 12 }}
-        >
-          <Card.Title
-            title="Recurring cash events"
-            subtitle="Auto-log frequent income or expenses."
-            titleVariant="titleLarge"
-            subtitleVariant="bodyMedium"
-            titleStyle={{ color: theme.colors.onSurface }}
-            subtitleStyle={{ color: theme.colors.onSurfaceVariant }}
-          />
-          <Card.Content style={{ gap: 12 }}>
-            <List.Item
-              title="Recurring enabled"
-              description="Keep schedules local; apply when due."
-              titleStyle={{ color: theme.colors.onSurface }}
-              descriptionStyle={{ color: theme.colors.onSurfaceVariant }}
-              right={() => <Switch value={recurringEnabled} onValueChange={setRecurringEnabled} />}
-              style={{ paddingHorizontal: 0 }}
-            />
-            {recurringEnabled ? (
-              <>
-                <TextInput
-                  mode="outlined"
-                  label="Event name"
-                  value={recurringName}
-                  onChangeText={setRecurringName}
-                  placeholder="Rent"
-                />
-                <TextInput
-                  mode="outlined"
-                  label="Amount"
-                  value={recurringAmount}
-                  onChangeText={(val) => {
-                    setRecurringAmount(val);
-                    if (recurringError) setRecurringError('');
-                  }}
-                  keyboardType="decimal-pad"
-                  placeholder="1200.00"
-                />
-                <HelperText type="error" visible={!!recurringError} style={{ marginLeft: 0 }}>
-                  {recurringError}
-                </HelperText>
-                <SegmentedButtons
-                  value={recurringType}
-                  onValueChange={(val) => setRecurringType(val as 'expense' | 'income')}
-                  buttons={[
-                    { value: 'expense', label: 'Expense', icon: 'minus' },
-                    { value: 'income', label: 'Income', icon: 'plus' },
-                  ]}
-                />
-                <SegmentedButtons
-                  value={recurringInterval}
-                  onValueChange={(val) => setRecurringInterval(val as 'weekly' | 'monthly')}
-                  buttons={[
-                    { value: 'weekly', label: 'Weekly' },
-                    { value: 'monthly', label: 'Monthly' },
-                  ]}
-                />
-                <Text variant="titleSmall" style={{ color: theme.colors.onSurface }}>
-                  Category
-                </Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-                  {recurringCategoryList.map((item) => (
-                    <Chip
-                      key={item.id}
-                      selected={recurringCategoryId === item.id}
-                      onPress={() => setRecurringCategoryId(item.id)}
-                      selectedColor={theme.colors.onSecondaryContainer}
-                      style={{
-                        backgroundColor:
-                          recurringCategoryId === item.id ? theme.colors.secondaryContainer : theme.colors.surface,
-                      }}
-                    >
-                      {item.emoji} {item.name}
-                    </Chip>
-                  ))}
-                </ScrollView>
-                <Button mode="contained" onPress={handleCreateRecurring} disabled={!recurringName.trim() || !parseAmountToCents(recurringAmount) || !recurringCategoryId}>
-                  Create recurring event
-                </Button>
-                <Button mode="outlined" onPress={() => void applyDueNow()}>
-                  Apply due now
-                </Button>
-                <Divider />
-                {recurringEvents.length === 0 ? (
-                  <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                    No recurring events yet.
-                  </Text>
-                ) : (
-                  recurringEvents.map((event) => (
-                    <Card key={event.id} mode="outlined" style={{ backgroundColor: theme.colors.surfaceVariant }}>
-                      <Card.Content style={{ gap: 8 }}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Text variant="titleMedium" style={{ color: theme.colors.onSurface }}>
-                            {event.name}
-                          </Text>
-                          <Chip
-                            mode="outlined"
-                            selected={event.enabled}
-                            onPress={() => toggleRecurringEvent(event.id, !event.enabled)}
-                            selectedColor={theme.colors.onSecondaryContainer}
-                          >
-                            {event.enabled ? 'Enabled' : 'Paused'}
-                          </Chip>
-                        </View>
-                        <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                          {event.type === 'income' ? '+' : '-'}
-                          {formatCurrency(event.amountCents, { currencyCode, locale })} • {event.interval} • Next: {formatDate(event.nextRun)}
-                        </Text>
-                        <View style={{ flexDirection: 'row', gap: 8 }}>
-                          <Button mode="contained-tonal" onPress={() => void runSingleRecurring(event.id)}>
-                            Run now
-                          </Button>
-                          <Button mode="text" onPress={() => deleteRecurringEvent(event.id)}>
-                            Delete
-                          </Button>
-                        </View>
-                      </Card.Content>
-                    </Card>
-                  ))
-                )}
-              </>
-            ) : (
-              <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                Toggle on to manage recurring cash events.
-              </Text>
-            )}
-          </Card.Content>
-        </Card>
-
-        <Card
-          mode="elevated"
-          style={{ backgroundColor: theme.colors.surfaceContainer }}
-          contentStyle={{ paddingVertical: 12, gap: 12 }}
-        >
-          <Card.Title
             title="Gemma & Locale"
             subtitle="Connect Gemini API access and region defaults"
             titleVariant="titleLarge"
@@ -812,12 +422,25 @@ export default function SettingsScreen() {
             <HelperText type="info" visible>
               Stored locally and used only to call the Gemma model for insights.
             </HelperText>
-            <SegmentedButtons
-              value={gemmaModel}
-              onValueChange={(value) => setGemmaModel(value)}
-              buttons={modelOptions.map((option) => ({ label: option.label, value: option.value }))}
-              density="regular"
-            />
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {modelOptions.map((option) => (
+                <Chip
+                  key={option.value}
+                  mode="outlined"
+                  selected={gemmaModel === option.value}
+                  onPress={() => setGemmaModel(option.value)}
+                  selectedColor={theme.colors.onSecondaryContainer}
+                  style={{
+                    backgroundColor:
+                      gemmaModel === option.value ? theme.colors.secondaryContainer : theme.colors.surface,
+                    paddingVertical: 4,
+                  }}
+                  textStyle={{ textAlign: 'center', lineHeight: 16 }}
+                >
+                  {option.label}
+                </Chip>
+              ))}
+            </View>
             <Text variant="titleSmall" style={{ color: theme.colors.onSurface }}>
               Language
             </Text>
@@ -1052,6 +675,7 @@ export default function SettingsScreen() {
             subtitle="Generate a CSV preview without leaving the device"
             titleVariant="titleLarge"
             subtitleVariant="bodyMedium"
+            subtitleNumberOfLines={3}
             titleStyle={{ color: theme.colors.onSurface }}
             subtitleStyle={{ color: theme.colors.onSurfaceVariant }}
           />
