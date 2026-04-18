@@ -674,7 +674,7 @@ export default function HomeScreen() {
             {greeting()}
           </Text>
         </Animated.View>
-        <IconButton icon="cog-outline" onPress={() => router.push('/settings')} />
+        <IconButton icon="cog-outline" accessibilityLabel="Open settings" onPress={() => router.push('/settings')} />
       </Animated.View>
 
       <Animated.ScrollView 
@@ -818,7 +818,7 @@ export default function HomeScreen() {
             value={search}
             onChangeText={setSearch}
             label="Search transactions"
-          right={<TextInput.Icon icon="close" onPress={() => setSearch('')} />}
+          right={<TextInput.Icon icon="close" accessibilityLabel="Clear search" onPress={() => setSearch('')} />}
           style={{ borderRadius: 24, marginVertical: 8 }}
         />
 
@@ -931,6 +931,7 @@ export default function HomeScreen() {
         <FAB
           icon="sparkles"
           label="Ask Gemma"
+          accessibilityLabel="Ask Gemma"
           style={[styles.gemmaFab, { backgroundColor: theme.colors.tertiaryContainer }]}
           color={theme.colors.onTertiaryContainer}
           onPress={() => {
@@ -941,6 +942,7 @@ export default function HomeScreen() {
 
       <FAB
         icon="plus"
+        accessibilityLabel="Add transaction"
         style={[styles.fab, { backgroundColor: theme.colors.primaryContainer }]}
         color={theme.colors.onPrimaryContainer}
         onPress={() => {
