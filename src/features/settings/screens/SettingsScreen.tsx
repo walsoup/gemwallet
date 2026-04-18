@@ -132,6 +132,7 @@ export default function SettingsScreen() {
   const setGoalsEnabled = useGoalsStore((state) => state.setGoalsEnabled);
   const recurringEnabled = useRecurringStore((state) => state.recurringEnabled);
   const recurringEvents = useRecurringStore((state) => state.events);
+  const setRecurringEnabled = useRecurringStore((state) => state.setRecurringEnabled);
   const addRecurringEvent = useRecurringStore((state) => state.addEvent);
   const toggleRecurringEvent = useRecurringStore((state) => state.toggleEvent);
   const deleteRecurringEvent = useRecurringStore((state) => state.deleteEvent);
