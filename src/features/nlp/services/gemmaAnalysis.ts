@@ -20,6 +20,7 @@ type AnalysisOptions = {
   locale: string;
   region: string;
   model?: string;
+  localModelId?: string;
   advanced?: boolean;
   addExpense?: (params: { amountCents: number; categoryId: string; note?: string }) => Transaction;
 };
@@ -55,7 +56,7 @@ function summarize(transactions: Transaction[], options: Pick<AnalysisOptions, '
   ].join('\n');
 }
 
-function buildPrompt(transactions: Transaction[], options: AnalysisOptions) {
+function buildPrompt(transactions: Transaction[], options: AnalysisOptions, userQuestion?: string) {
   const recent = transactions.slice(0, 30);
   const rows = recent
     .map((tx) => {
@@ -68,6 +69,7 @@ function buildPrompt(transactions: Transaction[], options: AnalysisOptions) {
   return [
     'Summarize this cash ledger for a personal finance assistant.',
     `Locale ${options.locale}, Region ${options.region}, Currency ${options.currencyCode}.`,
+    userQuestion ? `User question: ${userQuestion}` : '',
     'Use Markdown formatting heavily. Use **bold** for important numbers.',
     'Present the balance trend and biggest categories in a clean Markdown table.',
     'Provide one clear next action bullet point at the end.',
@@ -192,6 +194,7 @@ export async function generatePersonalGreeting(
          systemPrompt: 'You are GemWallet, a concise finance assistant. Reply with a single warm greeting sentence.',
          maxTokens: 48,
          temperature: 0.2,
+         modelId: options.localModelId,
        });
        if (!result.ok) return null;
        const cleaned = sanitizeModelOutput(result.text) || result.text;
@@ -230,14 +233,15 @@ export async function generatePersonalGreeting(
 export async function* streamFinancialAnalysis(
   transactions: Transaction[],
   options: AnalysisOptions,
-  callbacks?: AnalysisCallbacks
+  callbacks?: AnalysisCallbacks,
+  userQuestion?: string
 ) {
   const fallback = summarize(transactions, {
     currencyCode: options.currencyCode,
     locale: options.locale,
   });
 
-  const prompt = buildPrompt(transactions, options);
+  const prompt = buildPrompt(transactions, options, userQuestion);
   const preferredModel = options.model || DEFAULT_MODEL;
 
   try {
@@ -253,6 +257,7 @@ export async function* streamFinancialAnalysis(
           'You are a personal finance analyst for GemWallet. Provide concise Markdown with trends, tables, and one clear next action.',
         maxTokens: options.advanced ? 360 : MAX_TOKENS_BASE,
         temperature: options.advanced ? 0.5 : 0.28,
+        modelId: options.localModelId,
       });
 
       if (!localResult.ok) {

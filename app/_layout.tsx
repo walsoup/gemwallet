@@ -261,6 +261,15 @@ function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="chat"
+        options={{
+          title: 'Chat',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="message-text-outline" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="planning"
         options={{
           title: 'Planning',

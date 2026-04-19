@@ -16,6 +16,7 @@ export type SettingsPersistedShape = {
   geminiApiKey: string;
   huggingFaceToken: string;
   gemmaModel: string;
+  localModelId: string;
   localModelDownloaded: boolean;
   smartCategorizationEnabled: boolean;
   advancedSummariesEnabled: boolean;
@@ -38,6 +39,7 @@ export const defaultSettingsState: SettingsPersistedShape = {
   geminiApiKey: '',
   huggingFaceToken: '',
   gemmaModel: 'gemma-4-31b-it',
+  localModelId: 'gemma-4-e2b-it',
   localModelDownloaded: false,
   smartCategorizationEnabled: true,
   advancedSummariesEnabled: false,
@@ -58,6 +60,7 @@ export function migrateSettingsState(persistedState: unknown): SettingsPersisted
     geminiApiKey: legacy.geminiApiKey ?? '',
     huggingFaceToken: legacy.huggingFaceToken ?? '',
     gemmaModel: legacy.gemmaModel ?? defaultSettingsState.gemmaModel,
+    localModelId: legacy.localModelId ?? defaultSettingsState.localModelId,
     localModelDownloaded: legacy.localModelDownloaded ?? defaultSettingsState.localModelDownloaded,
     smartCategorizationEnabled:
       legacy.smartCategorizationEnabled ?? defaultSettingsState.smartCategorizationEnabled,

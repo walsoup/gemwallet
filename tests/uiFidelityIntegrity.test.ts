@@ -15,6 +15,7 @@ describe('UI fidelity and integrity contracts', () => {
 
     assert.match(layout, /<Tabs\.Screen\s+name="index"/);
     assert.match(layout, /<Tabs\.Screen\s+name="analytics"/);
+    assert.match(layout, /<Tabs\.Screen\s+name="chat"/);
     assert.match(layout, /<Tabs\.Screen\s+name="planning"/);
     assert.match(layout, /<Tabs\.Screen\s+name="settings"/);
   });

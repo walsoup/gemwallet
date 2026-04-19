@@ -1,16 +1,25 @@
 const dynamicImport = new Function('id', 'return import(id);') as <T>(id: string) => Promise<T>;
 
 const DEFAULT_MODEL_URL =
-  'https://huggingface.co/litert-community/gemma-3n-e2b-it-int4/resolve/main/model.litertlm';
+  'https://huggingface.co/litert-community/gemma-4-e2b-it/resolve/main/model.litertlm';
 
 type FileSystemModule = typeof import('expo-file-system');
 type LiteRtModule = typeof import('react-native-litert-lm');
 type LiteRtInstance = ReturnType<LiteRtModule['createLLM']>;
 
+export type LiteRtModelOption = {
+  id: string;
+  label: string;
+  url: string;
+  sizeHint: string;
+  notes?: string;
+};
+
 let cachedFileSystem: FileSystemModule | null = null;
 let cachedModule: LiteRtModule | null = null;
 let cachedInstance: LiteRtInstance | null = null;
 let cachedModelPath: string | null = null;
+let cachedAvailableModels: LiteRtModelOption[] | null = null;
 
 async function loadFileSystem(): Promise<FileSystemModule | null> {
   if (cachedFileSystem) return cachedFileSystem;
@@ -36,7 +45,7 @@ async function loadLiteRtModule(): Promise<LiteRtModule | null> {
 
 async function resolveModelUrl() {
   const mod = await loadLiteRtModule();
-  return mod?.GEMMA_3N_E2B_IT_INT4 ?? DEFAULT_MODEL_URL;
+  return mod?.GEMMA_4_E2B_IT ?? DEFAULT_MODEL_URL;
 }
 
 function fileNameFromUrl(url: string) {
@@ -51,31 +60,75 @@ async function resolveCachePath(fileName: string) {
   return { fs, dir, path };
 }
 
-export async function getLiteRtModelInfo() {
-  const modelUrl = await resolveModelUrl();
-  const fileName = fileNameFromUrl(modelUrl);
+export async function availableLiteRtModels(): Promise<LiteRtModelOption[]> {
+  if (cachedAvailableModels) return cachedAvailableModels;
+
+  const mod = await loadLiteRtModule();
+  const models: LiteRtModelOption[] = [
+    {
+      id: 'gemma-4-e2b-it',
+      label: 'Gemma 4 E2B (multimodal)',
+      url: mod?.GEMMA_4_E2B_IT ?? 'https://huggingface.co/litert-community/gemma-4-e2b-it/resolve/main/model.litertlm',
+      sizeHint: '2.6 GB',
+      notes: 'Best quality, needs ~6GB RAM',
+    },
+    {
+      id: 'gemma-4-e4b-it',
+      label: 'Gemma 4 E4B (higher quality)',
+      url: mod?.GEMMA_4_E4B_IT ?? 'https://huggingface.co/litert-community/gemma-4-e4b-it/resolve/main/model.litertlm',
+      sizeHint: '3.6 GB',
+      notes: 'Sharper responses, higher RAM',
+    },
+    {
+      id: 'gemma-3n-e2b-it-int4',
+      label: 'Gemma 3n Int4 (fast, small)',
+      url:
+        mod?.GEMMA_3N_E2B_IT_INT4 ??
+        'https://huggingface.co/litert-community/gemma-3n-e2b-it-int4/resolve/main/model.litertlm',
+      sizeHint: '1.3 GB',
+      notes: 'Smallest footprint, good for low memory',
+    },
+  ];
+
+  cachedAvailableModels = models;
+  return models;
+}
+
+async function resolveModelById(modelId?: string): Promise<LiteRtModelOption> {
+  const models = await availableLiteRtModels();
+  const fallback = models[0];
+  if (!modelId) return fallback;
+  return models.find((m) => m.id === modelId) ?? fallback;
+}
+
+export async function getLiteRtModelInfo(modelId?: string) {
+  const model = await resolveModelById(modelId);
+  const fileName = fileNameFromUrl(model.url);
   const { fs, path } = await resolveCachePath(fileName);
 
   if (!fs) {
     return {
-      url: modelUrl,
+      url: model.url,
       path,
       exists: false,
       size: undefined,
+      model,
     };
   }
 
   const info = await fs.getInfoAsync(path);
   return {
-    url: modelUrl,
+    url: model.url,
     path,
     exists: info.exists && info.isFile,
     size: info.size,
+    model,
   };
 }
 
-export async function downloadLiteRtModel(onProgress?: (progress: number) => void) {
-  const { fs, dir, path } = await resolveCachePath(fileNameFromUrl(await resolveModelUrl()));
+export async function downloadLiteRtModel(onProgress?: (progress: number) => void, modelId?: string) {
+  const target = await resolveModelById(modelId);
+  const { fs, dir, path } = await resolveCachePath(fileNameFromUrl(target.url));
   if (!fs) {
     throw new Error('LiteRT downloads are not supported in this environment');
   }
@@ -87,7 +140,7 @@ export async function downloadLiteRtModel(onProgress?: (progress: number) => voi
   }
 
   const downloadTask = fs.createDownloadResumable(
-    await resolveModelUrl(),
+    target.url,
     path,
     {},
     (progressEvent) => {
@@ -122,6 +175,7 @@ async function prepareLiteRtEngine(config: {
   systemPrompt: string;
   maxTokens: number;
   temperature?: number;
+  modelId?: string;
 }) {
   const mod = await loadLiteRtModule();
   if (!mod) return { reason: 'runtime-missing' as const };
@@ -129,7 +183,7 @@ async function prepareLiteRtEngine(config: {
   const fs = await loadFileSystem();
   if (!fs) return { reason: 'runtime-missing' as const };
 
-  const info = await getLiteRtModelInfo();
+  const info = await getLiteRtModelInfo(config.modelId);
   if (!info.exists) return { reason: 'model-missing' as const, path: info.path };
 
   if (!cachedInstance || cachedModelPath !== info.path) {
@@ -151,7 +205,7 @@ async function prepareLiteRtEngine(config: {
 
 export async function runLiteRtCompletion(
   prompt: string,
-  config: { systemPrompt: string; maxTokens: number; temperature?: number }
+  config: { systemPrompt: string; maxTokens: number; temperature?: number; modelId?: string }
 ): Promise<
   | { ok: true; text: string }
   | { ok: false; reason: 'runtime-missing' | 'model-missing' | 'inference-failed'; error?: string }

@@ -1,5 +1,4 @@
 import * as Haptics from 'expo-haptics';
-import { useRouter } from 'expo-router';
 import { useCallback, useMemo, useState, useRef, useEffect } from 'react';
 import {
   Modal,
@@ -26,7 +25,6 @@ import {
   Button,
   Chip,
   FAB,
-  IconButton,
   Snackbar,
   Text,
   TextInput,
@@ -144,7 +142,6 @@ function BouncyPressable({
 
 export default function HomeScreen() {
   const theme = useAppTheme();
-  const router = useRouter();
   const insets = useSafeAreaInsets();
 
   const currencyCode = useSettingsStore((state) => state.currencyCode);
@@ -154,6 +151,7 @@ export default function HomeScreen() {
   const geminiApiKey = useSettingsStore((state) => state.geminiApiKey);
   const huggingFaceToken = useSettingsStore((state) => state.huggingFaceToken);
   const gemmaModel = useSettingsStore((state) => state.gemmaModel);
+  const localModelId = useSettingsStore((state) => state.localModelId);
   const localModelDownloaded = useSettingsStore((state) => state.localModelDownloaded);
   const advancedSummariesEnabled = useSettingsStore((state) => state.advancedSummariesEnabled);
   const passcodeEnabled = useSettingsStore((state) => state.passcodeEnabled);
@@ -247,7 +245,8 @@ export default function HomeScreen() {
           currencyCode,
           locale,
           region,
-          model: gemmaModel,
+          model: aiProvider === 'local' ? localModelId : gemmaModel,
+          localModelId,
         });
         if (cancelled) {
           return;
@@ -377,7 +376,8 @@ export default function HomeScreen() {
           currencyCode,
           locale,
           region,
-          model: gemmaModel,
+          model: aiProvider === 'local' ? localModelId : gemmaModel,
+          localModelId,
           advanced: advancedSummariesEnabled,
         },
         {
@@ -405,7 +405,6 @@ export default function HomeScreen() {
     }
   };
 
-  const settingsBounce = useBouncyPress(0.9);
   const addFundsBounce = useBouncyPress(0.9);
   const aiFabBounce = useBouncyPress(0.88);
   const unlockBounce = useBouncyPress(0.94);
@@ -601,19 +600,6 @@ export default function HomeScreen() {
                 </Text>
                 {isGreetingLoading ? <ActivityIndicator size="small" color={theme.colors.primary} /> : null}
               </View>
-            </Animated.View>
-            <Animated.View style={settingsBounce.animatedStyle}>
-              <IconButton
-                icon="cog"
-                size={26}
-                iconColor={theme.colors.onSurfaceVariant}
-                onPress={() => {
-                  triggerHaptic('medium');
-                  router.push('/settings');
-                }}
-                onPressIn={settingsBounce.onPressIn}
-                onPressOut={settingsBounce.onPressOut}
-              />
             </Animated.View>
           </View>
 

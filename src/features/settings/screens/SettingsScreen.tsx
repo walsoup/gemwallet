@@ -21,7 +21,12 @@ import { useAppTheme } from '../../../../providers/AppThemeProvider';
 import { useTransactionStore } from '../../../../store/useTransactionStore';
 import { formatCurrency } from '../../../../utils/formatCurrency';
 import { useBouncyPress } from '../../../../hooks/useBouncyPress';
-import { deleteLiteRtModel, downloadLiteRtModel, getLiteRtModelInfo } from '../../nlp/services/litertRuntime';
+import {
+  availableLiteRtModels,
+  deleteLiteRtModel,
+  downloadLiteRtModel,
+  getLiteRtModelInfo,
+} from '../../nlp/services/litertRuntime';
 
 const currencyOptions = [
   { code: 'USD', label: 'USD ($)' },
@@ -189,6 +194,7 @@ export default function SettingsScreen() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState('');
   const [modelSizeBytes, setModelSizeBytes] = useState<number | null>(null);
+  const [liteRtModels, setLiteRtModels] = useState<{ id: string; label: string; sizeHint: string; notes?: string }[]>([]);
   const themeSegmentBounce = useBouncyPress(0.94);
   const aiSegmentBounce = useBouncyPress(0.94);
 
@@ -205,12 +211,13 @@ export default function SettingsScreen() {
   const geminiApiKey = useSettingsStore((state) => state.geminiApiKey);
   const huggingFaceToken = useSettingsStore((state) => state.huggingFaceToken);
   const gemmaModel = useSettingsStore((state) => state.gemmaModel);
+  const localModelId = useSettingsStore((state) => state.localModelId);
   const localModelDownloaded = useSettingsStore((state) => state.localModelDownloaded);
 
   const smartCategorizationEnabled = useSettingsStore((state) => state.smartCategorizationEnabled);
   const advancedSummariesEnabled = useSettingsStore((state) => state.advancedSummariesEnabled);
   const includeNotesInExport = useSettingsStore((state) => state.includeNotesInExport);
-  
+
   const setThemePreference = useSettingsStore((state) => state.setThemePreference);
   const setOledTrueBlackEnabled = useSettingsStore((state) => state.setOledTrueBlackEnabled);
   const setHighContrastEnabled = useSettingsStore((state) => state.setHighContrastEnabled);
@@ -224,6 +231,7 @@ export default function SettingsScreen() {
   const setGeminiApiKey = useSettingsStore((state) => state.setGeminiApiKey);
   const setHuggingFaceToken = useSettingsStore((state) => state.setHuggingFaceToken);
   const setGemmaModel = useSettingsStore((state) => state.setGemmaModel);
+  const setLocalModelId = useSettingsStore((state) => state.setLocalModelId);
   const setLocalModelDownloaded = useSettingsStore((state) => state.setLocalModelDownloaded);
   const setSmartCategorizationEnabled = useSettingsStore((state) => state.setSmartCategorizationEnabled);
   const setAdvancedSummariesEnabled = useSettingsStore((state) => state.setAdvancedSummariesEnabled);
@@ -234,6 +242,16 @@ export default function SettingsScreen() {
   const categories = useTransactionStore((state) => state.categories);
   const transactions = useTransactionStore((state) => state.transactions);
   const clearAllData = useTransactionStore((state) => state.clearAllData);
+  const selectedLiteRtModel = useMemo(
+    () => liteRtModels.find((m) => m.id === localModelId),
+    [liteRtModels, localModelId]
+  );
+
+  useEffect(() => {
+    availableLiteRtModels()
+      .then((models) => setLiteRtModels(models))
+      .catch(() => {});
+  }, []);
 
   const exportRows = useMemo(() => {
     const byId = new Map(categories.map((item) => [item.id, item]));
@@ -290,7 +308,7 @@ export default function SettingsScreen() {
 
   const syncLocalModelState = useCallback(async () => {
     try {
-      const info = await getLiteRtModelInfo();
+      const info = await getLiteRtModelInfo(localModelId);
       if (info.exists) {
         setLocalModelDownloaded(true);
         setDownloadProgress(1);
@@ -302,7 +320,7 @@ export default function SettingsScreen() {
     } catch {
       // ignore sync failures; state will refresh on next attempt
     }
-  }, [localModelDownloaded, setLocalModelDownloaded]);
+  }, [localModelDownloaded, localModelId, setLocalModelDownloaded]);
 
   useEffect(() => {
     void syncLocalModelState();
@@ -313,7 +331,7 @@ export default function SettingsScreen() {
     setIsDownloading(true);
     setDownloadProgress(0);
     try {
-      await downloadLiteRtModel((progress) => setDownloadProgress(progress));
+      await downloadLiteRtModel((progress) => setDownloadProgress(progress), localModelId);
       await syncLocalModelState();
     } catch (error) {
       console.warn('LiteRT download failed', error);
@@ -537,11 +555,36 @@ export default function SettingsScreen() {
                 {!localModelDownloaded ? (
                   <>
                     <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>
-                      Download Gemma 3n Int4 for LiteRT
+                      Choose a LiteRT model to download
                     </Text>
                     <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                      Runs fully on-device via LiteRT with no network calls. Size: {formatBytes(modelSizeBytes) ?? '~1.3 GB'}.
+                      Runs fully on-device via LiteRT with no network calls. {selectedLiteRtModel ? `${selectedLiteRtModel.label} • ${selectedLiteRtModel.sizeHint}` : ''}
                     </Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 4 }}>
+                      {liteRtModels.map((model) => {
+                        const selected = model.id === localModelId;
+                        return (
+                          <BouncyPressable
+                            key={model.id}
+                            onPress={() => setLocalModelId(model.id)}
+                            scaleDown={0.92}
+                            style={{ flexGrow: 0 }}
+                          >
+                            <Chip
+                              mode="outlined"
+                              selected={selected}
+                              style={{
+                                backgroundColor: selected ? theme.colors.secondaryContainer : theme.colors.surface,
+                                borderColor: selected ? theme.colors.primary : theme.colors.outlineVariant,
+                              }}
+                              selectedColor={theme.colors.onSecondaryContainer}
+                            >
+                              {model.label} • {model.sizeHint}
+                            </Chip>
+                          </BouncyPressable>
+                        );
+                      })}
+                    </ScrollView>
                     {downloadError ? (
                       <HelperText type="error" visible>
                         {downloadError}
@@ -566,6 +609,7 @@ export default function SettingsScreen() {
                       LiteRT model is active.
                     </Text>
                     <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                      {selectedLiteRtModel ? `${selectedLiteRtModel.label} • ${selectedLiteRtModel.sizeHint}. ` : ''}
                       All analysis will be performed on-device without network requests.{modelSizeBytes ? ` (${formatBytes(modelSizeBytes)} cached)` : ''}
                     </Text>
                     <BouncyButton mode="outlined" onPress={handleDeleteLocalModel} textColor={theme.colors.error} haptic="heavy">
