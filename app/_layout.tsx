@@ -272,9 +272,9 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
 function TabLayout() {
   return (
     <Tabs
+      tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{
         headerShown: false,
-        tabBar: (props) => <CustomTabBar {...props} />,
       }}
     >
       <Tabs.Screen

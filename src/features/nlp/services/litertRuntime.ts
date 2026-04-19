@@ -1,8 +1,13 @@
 const dynamicImport = new Function('id', 'return import(id);') as <T>(id: string) => Promise<T>;
 
-type FileSystemModule = typeof import('expo-file-system');
+type FileSystemModule = typeof import('expo-file-system/legacy');
 type LiteRtModule = typeof import('react-native-litert-lm');
 type LiteRtInstance = ReturnType<LiteRtModule['createLLM']>;
+
+type PrepareEngineResult =
+  | { reason: 'runtime-missing'; path?: undefined }
+  | { reason: 'model-missing'; path: string }
+  | { engine: LiteRtInstance; reason?: undefined };
 
 export type LiteRtModelOption = {
   id: string;
@@ -21,7 +26,7 @@ let cachedAvailableModels: LiteRtModelOption[] | null = null;
 async function loadFileSystem(): Promise<FileSystemModule | null> {
   if (cachedFileSystem) return cachedFileSystem;
   try {
-    cachedFileSystem = (await dynamicImport<FileSystemModule>('expo-file-system')) as FileSystemModule;
+    cachedFileSystem = (await dynamicImport<FileSystemModule>('expo-file-system/legacy')) as FileSystemModule;
     return cachedFileSystem;
   } catch (error) {
     console.warn('Expo FileSystem unavailable in this environment', error);
@@ -112,8 +117,8 @@ export async function getLiteRtModelInfo(modelId?: string) {
   return {
     url: model.url,
     path,
-    exists: info.exists && info.isFile,
-    size: info.size,
+    exists: info.exists && info.isDirectory === false,
+    size: info.exists ? info.size : undefined,
     model,
   };
 }
@@ -168,7 +173,7 @@ async function prepareLiteRtEngine(config: {
   maxTokens: number;
   temperature?: number;
   modelId?: string;
-}) {
+}): Promise<PrepareEngineResult> {
   const mod = await loadLiteRtModule();
   if (!mod) return { reason: 'runtime-missing' as const };
 
@@ -184,15 +189,16 @@ async function prepareLiteRtEngine(config: {
     cachedModelPath = info.path;
   }
 
+  const engine = cachedInstance;
   const backend = mod.getRecommendedBackend?.() ?? 'cpu';
-  await cachedInstance.loadModel(info.path, {
+  await engine.loadModel(info.path, {
     backend,
     systemPrompt: config.systemPrompt,
     maxTokens: Math.max(64, config.maxTokens),
     temperature: config.temperature ?? 0.35,
   });
 
-  return { engine: cachedInstance };
+  return { engine };
 }
 
 export async function runLiteRtCompletion(

@@ -771,8 +771,6 @@ export default function HomeScreen() {
             triggerHaptic('heavy');
             void askGemma();
           }}
-          onPressIn={aiFabBounce.onPressIn}
-          onPressOut={aiFabBounce.onPressOut}
         />
       </Animated.View>
 
