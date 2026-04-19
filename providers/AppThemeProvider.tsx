@@ -71,11 +71,19 @@ export function AppThemeProvider({ children }: PropsWithChildren) {
   const themePreference = useSettingsStore((state) => state.themePreference);
   const oledTrueBlackEnabled = useSettingsStore((state) => state.oledTrueBlackEnabled);
   const highContrastEnabled = useSettingsStore((state) => state.highContrastEnabled);
+  const themePrimary = useSettingsStore((state) => state.themePrimary);
+  const themeSecondary = useSettingsStore((state) => state.themeSecondary);
 
   const isDark =
     themePreference === 'system' ? colorScheme === 'dark' : themePreference === 'dark';
 
-  const { theme: m3Theme } = useMaterial3Theme({ fallbackSourceColor: '#FF6B6B' });
+  const { theme: m3Theme } = useMaterial3Theme({ fallbackSourceColor: themePrimary || '#FF6B6B' });
+
+  const safeHex = (hex: string, fallback: string) => {
+    if (typeof hex !== 'string') return fallback;
+    const normalized = hex.startsWith('#') ? hex : `#${hex}`;
+    return /^#([0-9A-Fa-f]{6})$/.test(normalized) ? normalized : fallback;
+  };
 
   const theme = useMemo(() => {
     const base = isDark ? MD3DarkTheme : MD3LightTheme;
@@ -83,6 +91,8 @@ export function AppThemeProvider({ children }: PropsWithChildren) {
 
     // Use the Velvet Kinetic colors in dark mode, M3 dynamic in light
     const colors = isDark ? { ...m3Colors, ...VELVET_DARK_COLORS } : m3Colors;
+    const primaryOverride = safeHex(themePrimary, colors.primary);
+    const secondaryOverride = safeHex(themeSecondary, colors.secondary);
 
     const isTrueBlack = isDark && oledTrueBlackEnabled;
     const background = isTrueBlack ? '#000000' : colors.background;
@@ -95,6 +105,12 @@ export function AppThemeProvider({ children }: PropsWithChildren) {
       colors: {
         ...base.colors,
         ...colors,
+        primary: primaryOverride,
+        primaryContainer: primaryOverride,
+        secondary: secondaryOverride,
+        secondaryContainer: secondaryOverride,
+        onPrimaryContainer: colors.onPrimaryContainer ?? base.colors.onPrimaryContainer,
+        onSecondaryContainer: colors.onSecondaryContainer ?? base.colors.onSecondaryContainer,
         background,
         surface,
         surfaceVariant,

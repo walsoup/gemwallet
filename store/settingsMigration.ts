@@ -6,6 +6,8 @@ export type SettingsPersistedShape = {
   themePreference: ThemePreference;
   oledTrueBlackEnabled: boolean;
   highContrastEnabled: boolean;
+  themePrimary: string;
+  themeSecondary: string;
   secureAccessEnabled: boolean;
   passcodeEnabled: boolean;
   passcodePin: string;
@@ -36,6 +38,8 @@ export const defaultSettingsState: SettingsPersistedShape = {
   language: 'en-US',
   region: 'US',
   aiProvider: 'google',
+  themePrimary: '#ff6b6b',
+  themeSecondary: '#52dea2',
   geminiApiKey: '',
   huggingFaceToken: '',
   gemmaModel: 'gemma-4-31b-it',
@@ -57,6 +61,8 @@ export function migrateSettingsState(persistedState: unknown): SettingsPersisted
     ...defaultSettingsState,
     ...legacy,
     aiProvider: legacy.aiProvider ?? defaultSettingsState.aiProvider,
+    themePrimary: legacy.themePrimary ?? defaultSettingsState.themePrimary,
+    themeSecondary: legacy.themeSecondary ?? defaultSettingsState.themeSecondary,
     geminiApiKey: legacy.geminiApiKey ?? '',
     huggingFaceToken: legacy.huggingFaceToken ?? '',
     gemmaModel: legacy.gemmaModel ?? defaultSettingsState.gemmaModel,

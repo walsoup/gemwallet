@@ -2,7 +2,9 @@ import * as Haptics from 'expo-haptics';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ActivityIndicator, Button, Card, Chip, Surface, Text, TextInput } from 'react-native-paper';
+import { ActivityIndicator, Button, Card, Chip, IconButton, Surface, Text, TextInput } from 'react-native-paper';
+import * as ImagePicker from 'expo-image-picker';
+import { Audio } from 'expo-av';
 
 import { useAppTheme } from '../../../../providers/AppThemeProvider';
 import { useTransactionStore } from '../../../../store/useTransactionStore';
@@ -17,6 +19,17 @@ type ChatMessage = {
   id: string;
   role: 'user' | 'assistant';
   text: string;
+};
+
+type VoiceAttachment = {
+  uri: string;
+  durationMs: number;
+  note: string;
+};
+
+type ImageAttachment = {
+  uri: string;
+  note: string;
 };
 
 function generateId() {
@@ -45,6 +58,9 @@ export default function ChatScreen() {
   const localModelDownloaded = useSettingsStore((state) => state.localModelDownloaded);
   const advancedSummariesEnabled = useSettingsStore((state) => state.advancedSummariesEnabled);
   const [input, setInput] = useState('');
+  const [voiceAttachment, setVoiceAttachment] = useState<VoiceAttachment | null>(null);
+  const [imageAttachment, setImageAttachment] = useState<ImageAttachment | null>(null);
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'intro',
@@ -55,6 +71,8 @@ export default function ChatScreen() {
   const [isStreaming, setIsStreaming] = useState(false);
   const scrollRef = useRef<ScrollView | null>(null);
   const locale = language || 'en-US';
+  const [voiceNoteHint, setVoiceNoteHint] = useState('');
+  const [imageNoteHint, setImageNoteHint] = useState('');
 
   const scrollToBottom = () => {
     setTimeout(() => {
@@ -71,10 +89,82 @@ export default function ChatScreen() {
     scrollToBottom();
   }, []);
 
+  const stopRecording = useCallback(async () => {
+    if (!recording) return null;
+    try {
+      await recording.stopAndUnloadAsync();
+      const status = await recording.getStatusAsync();
+      const uri = recording.getURI();
+      setRecording(null);
+      if (uri && status.isDoneRecording) {
+        setVoiceAttachment({
+          uri,
+          durationMs: status.durationMillis ?? 0,
+          note: voiceNoteHint,
+        });
+      }
+      return uri;
+    } catch {
+      setRecording(null);
+      return null;
+    }
+  }, [recording, voiceNoteHint]);
+
+  const startRecording = useCallback(async () => {
+    try {
+      const { status } = await Audio.requestPermissionsAsync();
+      if (status !== 'granted') {
+        appendSystemMessage('Microphone permission denied.');
+        return;
+      }
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+      });
+      const result = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      setRecording(result.recording);
+    } catch {
+      appendSystemMessage('Unable to start recording.');
+    }
+  }, [appendSystemMessage]);
+
+  const pickImage = useCallback(async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      appendSystemMessage('Gallery permission denied.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: false,
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets.length) {
+      setImageAttachment({ uri: result.assets[0].uri, note: imageNoteHint });
+    }
+  }, [appendSystemMessage, imageNoteHint]);
+
   const handleSend = useCallback(async () => {
     if (!input.trim() || isStreaming) return;
-    const userText = input.trim();
+    const attachments: string[] = [];
+    if (voiceAttachment) {
+      attachments.push(
+        `Voice note (${Math.round(voiceAttachment.durationMs / 1000)}s): ${voiceAttachment.note || 'no note'}`
+      );
+    }
+    if (imageAttachment) {
+      attachments.push(`Receipt photo: ${imageAttachment.note || imageAttachment.uri}`);
+    }
+
+    const userText = [input.trim(), attachments.length ? `\n\nAttachments:\n${attachments.join('\n')}` : '']
+      .filter(Boolean)
+      .join('');
     setInput('');
+    setVoiceAttachment((current) => (current ? { ...current, note: voiceNoteHint } : null));
+    setImageAttachment((current) => (current ? { ...current, note: imageNoteHint } : null));
     const userMessage: ChatMessage = { id: generateId(), role: 'user', text: userText };
     const assistantMessage: ChatMessage = { id: generateId(), role: 'assistant', text: '' };
     setMessages((prev) => [...prev, userMessage, assistantMessage]);
@@ -194,6 +284,10 @@ export default function ChatScreen() {
     setRecurringEnabled,
     addGoal,
     appendSystemMessage,
+    voiceAttachment,
+    imageAttachment,
+    voiceNoteHint,
+    imageNoteHint,
   ]);
 
   const totalSpend = transactions
@@ -252,6 +346,29 @@ export default function ChatScreen() {
           contentContainerStyle={{ paddingBottom: 16, gap: 10 }}
           showsVerticalScrollIndicator={false}
         >
+          {(voiceAttachment || imageAttachment) ? (
+            <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              {voiceAttachment ? (
+                <Chip
+                  icon="microphone"
+                  onClose={() => setVoiceAttachment(null)}
+                  style={{ backgroundColor: theme.colors.surfaceVariant }}
+                >
+                  Voice • {Math.round(voiceAttachment.durationMs / 1000)}s
+                </Chip>
+              ) : null}
+              {imageAttachment ? (
+                <Chip
+                  icon="image"
+                  onClose={() => setImageAttachment(null)}
+                  style={{ backgroundColor: theme.colors.surfaceVariant }}
+                >
+                  Photo attached
+                </Chip>
+              ) : null}
+            </View>
+          ) : null}
+
           {messages.map((msg) => (
             <View
               key={msg.id}
@@ -282,6 +399,25 @@ export default function ChatScreen() {
             outlineStyle={{ borderRadius: 18 }}
           />
           <View style={{ width: 12 }} />
+          <IconButton
+            mode={recording ? 'contained' : 'outlined'}
+            icon={recording ? 'stop' : 'microphone'}
+            onPress={() => {
+              if (recording) {
+                void stopRecording();
+              } else {
+                void startRecording();
+              }
+            }}
+          />
+          <IconButton
+            mode="outlined"
+            icon="image-plus"
+            onPress={() => {
+              void pickImage();
+            }}
+          />
+          <View style={{ width: 4 }} />
           <Button
             mode="contained"
             icon="send"

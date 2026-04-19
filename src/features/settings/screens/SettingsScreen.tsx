@@ -203,6 +203,8 @@ export default function SettingsScreen() {
   const highContrastEnabled = useSettingsStore((state) => state.highContrastEnabled);
   const secureAccessEnabled = useSettingsStore((state) => state.secureAccessEnabled);
   const passcodeEnabled = useSettingsStore((state) => state.passcodeEnabled);
+  const themePrimary = useSettingsStore((state) => state.themePrimary);
+  const themeSecondary = useSettingsStore((state) => state.themeSecondary);
   const currencyCode = useSettingsStore((state) => state.currencyCode);
   const language = useSettingsStore((state) => state.language);
   const region = useSettingsStore((state) => state.region);
@@ -224,6 +226,8 @@ export default function SettingsScreen() {
   const setSecureAccessEnabled = useSettingsStore((state) => state.setSecureAccessEnabled);
   const setPasscodeEnabled = useSettingsStore((state) => state.setPasscodeEnabled);
   const setPasscodePin = useSettingsStore((state) => state.setPasscodePin);
+  const setThemePrimary = useSettingsStore((state) => state.setThemePrimary);
+  const setThemeSecondary = useSettingsStore((state) => state.setThemeSecondary);
   const setCurrencyCode = useSettingsStore((state) => state.setCurrencyCode);
   const setLanguage = useSettingsStore((state) => state.setLanguage);
   const setRegion = useSettingsStore((state) => state.setRegion);
@@ -427,6 +431,37 @@ export default function SettingsScreen() {
             titleStyle={{ color: theme.colors.onSurface }}
           />
           <Card.Content style={{ gap: 16 }}>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <View style={{ flex: 1, gap: 6 }}>
+                <Text variant="titleSmall" style={{ color: theme.colors.onSurface }}>
+                  Primary color
+                </Text>
+                <TextInput
+                  mode="outlined"
+                  value={themePrimary}
+                  onChangeText={(val) => setThemePrimary(val)}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  placeholder="#ff6b6b"
+                  left={<TextInput.Icon icon="palette" />}
+                />
+              </View>
+              <View style={{ flex: 1, gap: 6 }}>
+                <Text variant="titleSmall" style={{ color: theme.colors.onSurface }}>
+                  Secondary color
+                </Text>
+                <TextInput
+                  mode="outlined"
+                  value={themeSecondary}
+                  onChangeText={(val) => setThemeSecondary(val)}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  placeholder="#52dea2"
+                  left={<TextInput.Icon icon="palette-swatch" />}
+                />
+              </View>
+            </View>
+
             <Animated.View style={themeSegmentBounce.animatedStyle}>
               <SegmentedButtons
                 value={themePreference}

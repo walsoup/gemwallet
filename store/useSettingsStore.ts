@@ -15,6 +15,8 @@ export type SettingsState = {
   themePreference: ThemePreference;
   oledTrueBlackEnabled: boolean;
   highContrastEnabled: boolean;
+  themePrimary: string;
+  themeSecondary: string;
   secureAccessEnabled: boolean;
   passcodeEnabled: boolean;
   passcodePin: string;
@@ -35,6 +37,8 @@ export type SettingsState = {
   setThemePreference: (preference: ThemePreference) => void;
   setOledTrueBlackEnabled: (enabled: boolean) => void;
   setHighContrastEnabled: (enabled: boolean) => void;
+  setThemePrimary: (color: string) => void;
+  setThemeSecondary: (color: string) => void;
   setSecureAccessEnabled: (enabled: boolean) => void;
   setPasscodeEnabled: (enabled: boolean) => void;
   setPasscodePin: (pin: string) => void;
@@ -65,6 +69,8 @@ export const useSettingsStore = create<SettingsState>()(
       setThemePreference: (themePreference) => set({ themePreference }),
       setOledTrueBlackEnabled: (oledTrueBlackEnabled) => set({ oledTrueBlackEnabled }),
       setHighContrastEnabled: (highContrastEnabled) => set({ highContrastEnabled }),
+      setThemePrimary: (themePrimary) => set({ themePrimary: themePrimary.trim() }),
+      setThemeSecondary: (themeSecondary) => set({ themeSecondary: themeSecondary.trim() }),
       setSecureAccessEnabled: (secureAccessEnabled) => set({ secureAccessEnabled }),
       setPasscodeEnabled: (passcodeEnabled) => set({ passcodeEnabled }),
       setPasscodePin: (passcodePin) => set({ passcodePin }),
