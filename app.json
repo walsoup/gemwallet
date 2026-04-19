@@ -26,8 +26,7 @@
       "package": "com.walsoup.gemwallet"
     },
     "plugins": [
-      "expo-router",
-      "react-native-litert-lm"
+      "expo-router"
     ],
     "experiments": {
       "typedRoutes": true
