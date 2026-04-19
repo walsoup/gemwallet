@@ -2,7 +2,7 @@ import * as Haptics from 'expo-haptics';
 import { Tabs } from 'expo-router';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
   FadeInDown,
@@ -36,6 +36,87 @@ function useBouncyScale(pressedScale = 0.9) {
   return { animatedStyle, pressIn, pressOut };
 }
 
+function TabButton({
+  route,
+  index,
+  label,
+  options,
+  isFocused,
+  onLayout,
+  onPress,
+  onLongPress,
+  theme,
+}: {
+  route: BottomTabBarProps['state']['routes'][number];
+  index: number;
+  label: string;
+  options: BottomTabBarProps['descriptors'][string]['options'];
+  isFocused: boolean;
+  onLayout: (layout: TabMeasurement) => void;
+  onPress: () => void;
+  onLongPress: () => void;
+  theme: ReturnType<typeof useAppTheme>;
+}) {
+  const { animatedStyle, pressIn, pressOut } = useBouncyScale(0.9);
+  const color = isFocused ? theme.colors.primary : theme.colors.onSurfaceVariant;
+  const icon =
+    options.tabBarIcon?.({
+      focused: isFocused,
+      color,
+      size: 26,
+    }) ?? <MaterialCommunityIcons name="shape" size={26} color={color} />;
+
+  return (
+    <Pressable
+      onLayout={(e) =>
+        onLayout({
+          x: e.nativeEvent.layout.x,
+          width: e.nativeEvent.layout.width,
+        })
+      }
+      onPress={onPress}
+      onPressIn={pressIn}
+      onPressOut={pressOut}
+      onLongPress={onLongPress}
+      style={{ flex: 1 }}
+    >
+      <Animated.View
+        layout={Layout.springify().mass(1).damping(14).stiffness(240)}
+        entering={FadeInDown.springify().mass(0.8).damping(12).stiffness(260)}
+        style={[styles.navItem, animatedStyle]}
+      >
+        <Animated.View
+          style={[
+            styles.iconWrapper,
+            {
+              backgroundColor: withTiming(isFocused ? theme.colors.primaryContainer : 'transparent', {
+                duration: 220,
+              }),
+              borderColor: withTiming(isFocused ? theme.colors.primary : theme.colors.outlineVariant, {
+                duration: 220,
+              }),
+            },
+          ]}
+        >
+          {icon}
+        </Animated.View>
+        <Text
+          variant="titleSmall"
+          style={{
+            color,
+            fontWeight: '800',
+            letterSpacing: 0.25,
+            marginTop: 6,
+          }}
+          numberOfLines={1}
+        >
+          {label}
+        </Text>
+      </Animated.View>
+    </Pressable>
+  );
+}
+
 function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();
@@ -59,27 +140,30 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
     [descriptors, state.routes]
   );
 
-  const updateIndicator = (routeKey: string) => {
-    const layout = measurements.current[routeKey];
-    if (!layout) return;
-    indicatorX.value = withSpring(layout.x - 10, {
-      damping: 12,
-      stiffness: 200,
-      mass: 0.9,
-    });
-    indicatorWidth.value = withSpring(layout.width + 20, {
-      damping: 14,
-      stiffness: 220,
-      mass: 0.9,
-    });
-  };
+  const updateIndicator = useCallback(
+    (routeKey: string) => {
+      const layout = measurements.current[routeKey];
+      if (!layout) return;
+      indicatorX.value = withSpring(layout.x - 10, {
+        damping: 12,
+        stiffness: 200,
+        mass: 0.9,
+      });
+      indicatorWidth.value = withSpring(layout.width + 20, {
+        damping: 14,
+        stiffness: 220,
+        mass: 0.9,
+      });
+    },
+    [indicatorWidth, indicatorX]
+  );
 
   useEffect(() => {
     const activeRoute = tabs[state.index]?.route.key;
     if (activeRoute) {
       updateIndicator(activeRoute);
     }
-  }, [state.index, tabs]);
+  }, [state.index, tabs, updateIndicator]);
 
   const indicatorStyle = useAnimatedStyle(() => ({
     width: indicatorWidth.value,
@@ -117,89 +201,40 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
           ]}
         />
         <View style={styles.navRow}>
-          {tabs.map(({ route, index, label, options }) => {
-            const isFocused = state.index === index;
-            const { animatedStyle, pressIn, pressOut } = useBouncyScale(0.9);
-            const color = isFocused ? theme.colors.primary : theme.colors.onSurfaceVariant;
-            const icon =
-              options.tabBarIcon?.({
-                focused: isFocused,
-                color,
-                size: 26,
-              }) ?? <MaterialCommunityIcons name="shape" size={26} color={color} />;
-
-            return (
-              <Pressable
-                key={route.key}
-                onLayout={(e) => {
-                  measurements.current[route.key] = {
-                    x: e.nativeEvent.layout.x,
-                    width: e.nativeEvent.layout.width,
-                  };
-                  if (isFocused) {
-                    updateIndicator(route.key);
-                  }
-                }}
-                onPress={() => {
-                  const event = navigation.emit({
-                    type: 'tabPress',
-                    target: route.key,
-                    canPreventDefault: true,
-                  });
-
-                  if (!isFocused && !event.defaultPrevented) {
-                    navigation.navigate(route.name, route.params);
-                  }
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
-                }}
-                onPressIn={pressIn}
-                onPressOut={pressOut}
-                onLongPress={() =>
-                  navigation.emit({
-                    type: 'tabLongPress',
-                    target: route.key,
-                  })
+          {tabs.map(({ route, index, label, options }) => (
+            <TabButton
+              key={route.key}
+              route={route}
+              index={index}
+              label={label as string}
+              options={options}
+              isFocused={state.index === index}
+              onLayout={(layout) => {
+                measurements.current[route.key] = layout;
+                if (state.index === index) {
+                  updateIndicator(route.key);
                 }
-                style={{ flex: 1 }}
-              >
-                <Animated.View
-                  layout={Layout.springify().mass(1).damping(14).stiffness(240)}
-                  entering={FadeInDown.springify().mass(0.8).damping(12).stiffness(260)}
-                  style={[styles.navItem, animatedStyle]}
-                >
-                  <Animated.View
-                    style={[
-                      styles.iconWrapper,
-                      {
-                        backgroundColor: withTiming(
-                          isFocused ? theme.colors.primaryContainer : 'transparent',
-                          { duration: 220 }
-                        ),
-                        borderColor: withTiming(
-                          isFocused ? theme.colors.primary : theme.colors.outlineVariant,
-                          { duration: 220 }
-                        ),
-                      },
-                    ]}
-                  >
-                    {icon}
-                  </Animated.View>
-                  <Text
-                    variant="titleSmall"
-                    style={{
-                      color,
-                      fontWeight: '800',
-                      letterSpacing: 0.25,
-                      marginTop: 6,
-                    }}
-                    numberOfLines={1}
-                  >
-                    {label as string}
-                  </Text>
-                </Animated.View>
-              </Pressable>
-            );
-          })}
+              }}
+              onPress={() => {
+                const event = navigation.emit({
+                  type: 'tabPress',
+                  target: route.key,
+                  canPreventDefault: true,
+                });
+                if (state.index !== index && !event.defaultPrevented) {
+                  navigation.navigate(route.name, route.params);
+                }
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+              }}
+              onLongPress={() =>
+                navigation.emit({
+                  type: 'tabLongPress',
+                  target: route.key,
+                })
+              }
+              theme={theme}
+            />
+          ))}
         </View>
 
         <Animated.View

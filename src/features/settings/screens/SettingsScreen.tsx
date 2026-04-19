@@ -20,7 +20,7 @@ import type { AiProvider } from '../../../../store/useSettingsStore';
 import { useAppTheme } from '../../../../providers/AppThemeProvider';
 import { useTransactionStore } from '../../../../store/useTransactionStore';
 import { formatCurrency } from '../../../../utils/formatCurrency';
-import { useBouncyPress } from '../../../../hooks/useBouncyPress';
+import { useBouncyPress } from '../../../hooks/useBouncyPress';
 import {
   availableLiteRtModels,
   deleteLiteRtModel,

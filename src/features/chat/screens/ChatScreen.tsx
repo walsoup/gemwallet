@@ -8,7 +8,7 @@ import { useAppTheme } from '../../../../providers/AppThemeProvider';
 import { useTransactionStore } from '../../../../store/useTransactionStore';
 import { useSettingsStore } from '../../../../store/useSettingsStore';
 import { streamFinancialAnalysis } from '../../nlp/services/gemmaAnalysis';
-import { useBouncyPress } from '../../../../hooks/useBouncyPress';
+import { useBouncyPress } from '../../../hooks/useBouncyPress';
 import { formatCurrency } from '../../../../utils/formatCurrency';
 import { useRecurringStore } from '../../../../store/useRecurringStore';
 import { useGoalsStore } from '../../../../store/useGoalsStore';

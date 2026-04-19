@@ -1,8 +1,5 @@
 const dynamicImport = new Function('id', 'return import(id);') as <T>(id: string) => Promise<T>;
 
-const DEFAULT_MODEL_URL =
-  'https://huggingface.co/litert-community/gemma-4-e2b-it/resolve/main/model.litertlm';
-
 type FileSystemModule = typeof import('expo-file-system');
 type LiteRtModule = typeof import('react-native-litert-lm');
 type LiteRtInstance = ReturnType<LiteRtModule['createLLM']>;
