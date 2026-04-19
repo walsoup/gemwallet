@@ -2,48 +2,47 @@ import * as Haptics from 'expo-haptics';
 import { Tabs } from 'expo-router';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import React, { useMemo, useRef } from 'react';
-import { Animated, StyleSheet, TouchableWithoutFeedback, View } from 'react-native';
+import React, { useEffect, useMemo, useRef } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
+import Animated, {
+  FadeInDown,
+  Layout,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FAB, Surface, Text } from 'react-native-paper';
 
 import { AppThemeProvider, useAppTheme } from '../providers/AppThemeProvider';
 
-function BouncyPressable({
-  onPress,
-  onLongPress,
-  children,
-}: {
-  onPress: () => void;
-  onLongPress?: () => void;
-  children: React.ReactNode;
-}) {
-  const scale = useRef(new Animated.Value(1)).current;
+type TabMeasurement = { x: number; width: number };
 
-  const animateTo = (value: number) =>
-    Animated.spring(scale, {
-      toValue: value,
-      useNativeDriver: true,
-      speed: 18,
-      bounciness: 8,
-    }).start();
+function useBouncyScale(pressedScale = 0.9) {
+  const scale = useSharedValue(1);
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
 
-  return (
-    <TouchableWithoutFeedback
-      onPressIn={() => animateTo(0.96)}
-      onPressOut={() => animateTo(1)}
-      onPress={onPress}
-      onLongPress={onLongPress}
-    >
-      <Animated.View style={{ transform: [{ scale }] }}>{children}</Animated.View>
-    </TouchableWithoutFeedback>
-  );
+  const pressIn = () => {
+    scale.value = withSpring(pressedScale, { damping: 10, stiffness: 520, mass: 0.7 });
+  };
+  const pressOut = () => {
+    scale.value = withSpring(1, { damping: 12, stiffness: 320, mass: 0.7 });
+  };
+
+  return { animatedStyle, pressIn, pressOut };
 }
 
 function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();
+  const measurements = useRef<Record<string, TabMeasurement>>({});
+  const indicatorX = useSharedValue(0);
+  const indicatorWidth = useSharedValue(88);
+  const fabScale = useSharedValue(1);
 
   const tabs = useMemo(
     () =>
@@ -60,8 +59,45 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
     [descriptors, state.routes]
   );
 
+  const updateIndicator = (routeKey: string) => {
+    const layout = measurements.current[routeKey];
+    if (!layout) return;
+    indicatorX.value = withSpring(layout.x - 10, {
+      damping: 12,
+      stiffness: 200,
+      mass: 0.9,
+    });
+    indicatorWidth.value = withSpring(layout.width + 20, {
+      damping: 14,
+      stiffness: 220,
+      mass: 0.9,
+    });
+  };
+
+  useEffect(() => {
+    const activeRoute = tabs[state.index]?.route.key;
+    if (activeRoute) {
+      updateIndicator(activeRoute);
+    }
+  }, [state.index, tabs]);
+
+  const indicatorStyle = useAnimatedStyle(() => ({
+    width: indicatorWidth.value,
+    transform: [{ translateX: indicatorX.value }],
+  }));
+
+  const fabAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: fabScale.value }],
+  }));
+
   return (
-    <View style={{ paddingHorizontal: 16, paddingBottom: Math.max(insets.bottom, 12), paddingTop: 8 }}>
+    <View
+      style={{
+        paddingHorizontal: 14,
+        paddingBottom: Math.max(insets.bottom, 14),
+        paddingTop: 10,
+      }}
+    >
       <Surface
         style={[
           styles.navSurface,
@@ -70,77 +106,129 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             borderColor: theme.colors.outlineVariant,
           },
         ]}
-        elevation={3}
+        elevation={4}
       >
+        <Animated.View style={[styles.indicatorRail, { backgroundColor: theme.colors.surfaceVariant }]} />
+        <Animated.View
+          style={[
+            styles.activePill,
+            indicatorStyle,
+            { backgroundColor: theme.colors.surfaceContainerHighest, shadowColor: theme.colors.primary },
+          ]}
+        />
         <View style={styles.navRow}>
           {tabs.map(({ route, index, label, options }) => {
             const isFocused = state.index === index;
-            const onPress = () => {
-              const event = navigation.emit({
-                type: 'tabPress',
-                target: route.key,
-                canPreventDefault: true,
-              });
-
-              if (!isFocused && !event.defaultPrevented) {
-                navigation.navigate(route.name, route.params);
-                Haptics.selectionAsync().catch(() => {});
-              }
-            };
-
-            const onLongPress = () => {
-              navigation.emit({
-                type: 'tabLongPress',
-                target: route.key,
-              });
-            };
-
+            const { animatedStyle, pressIn, pressOut } = useBouncyScale(0.9);
             const color = isFocused ? theme.colors.primary : theme.colors.onSurfaceVariant;
             const icon =
               options.tabBarIcon?.({
                 focused: isFocused,
                 color,
-                size: 24,
-              }) ?? <MaterialCommunityIcons name="shape" size={24} color={color} />;
+                size: 26,
+              }) ?? <MaterialCommunityIcons name="shape" size={26} color={color} />;
 
             return (
-              <BouncyPressable key={route.key} onPress={onPress} onLongPress={onLongPress}>
-                <View style={styles.navItem}>
-                  <View style={[styles.iconWrapper, isFocused && { backgroundColor: theme.colors.surface }]}>
+              <Pressable
+                key={route.key}
+                onLayout={(e) => {
+                  measurements.current[route.key] = {
+                    x: e.nativeEvent.layout.x,
+                    width: e.nativeEvent.layout.width,
+                  };
+                  if (isFocused) {
+                    updateIndicator(route.key);
+                  }
+                }}
+                onPress={() => {
+                  const event = navigation.emit({
+                    type: 'tabPress',
+                    target: route.key,
+                    canPreventDefault: true,
+                  });
+
+                  if (!isFocused && !event.defaultPrevented) {
+                    navigation.navigate(route.name, route.params);
+                  }
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+                }}
+                onPressIn={pressIn}
+                onPressOut={pressOut}
+                onLongPress={() =>
+                  navigation.emit({
+                    type: 'tabLongPress',
+                    target: route.key,
+                  })
+                }
+                style={{ flex: 1 }}
+              >
+                <Animated.View
+                  layout={Layout.springify().mass(1).damping(14).stiffness(240)}
+                  entering={FadeInDown.springify().mass(0.8).damping(12).stiffness(260)}
+                  style={[styles.navItem, animatedStyle]}
+                >
+                  <Animated.View
+                    style={[
+                      styles.iconWrapper,
+                      {
+                        backgroundColor: withTiming(
+                          isFocused ? theme.colors.primaryContainer : 'transparent',
+                          { duration: 220 }
+                        ),
+                        borderColor: withTiming(
+                          isFocused ? theme.colors.primary : theme.colors.outlineVariant,
+                          { duration: 220 }
+                        ),
+                      },
+                    ]}
+                  >
                     {icon}
-                  </View>
+                  </Animated.View>
                   <Text
-                    variant="labelMedium"
+                    variant="titleSmall"
                     style={{
                       color,
-                      fontWeight: '700',
-                      marginTop: 4,
-                      letterSpacing: 0.15,
+                      fontWeight: '800',
+                      letterSpacing: 0.25,
+                      marginTop: 6,
                     }}
+                    numberOfLines={1}
                   >
                     {label as string}
                   </Text>
-                </View>
-              </BouncyPressable>
+                </Animated.View>
+              </Pressable>
             );
           })}
         </View>
 
-        <View style={styles.fabContainer}>
-          <BouncyPressable
+        <Animated.View
+          entering={FadeInDown.delay(80).springify().damping(10).stiffness(320)}
+          style={[styles.fabContainer, { bottom: -42 }]}
+        >
+          <Pressable
+            onPressIn={() => {
+              fabScale.value = withSpring(0.86, { damping: 6, stiffness: 900, mass: 0.7 });
+            }}
+            onPressOut={() => {
+              fabScale.value = withSpring(1.02, { damping: 10, stiffness: 640, mass: 0.8 });
+            }}
             onPress={() => {
-              navigation.navigate('planning');
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+              navigation.navigate('planning', { recurringOpen: 'true' } as never);
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+              fabScale.value = withSpring(1.08, { damping: 7, stiffness: 760, mass: 0.75 });
             }}
           >
-            <FAB
-              size="medium"
-              icon="plus"
-              style={{ backgroundColor: theme.colors.primary }}
-              color={theme.colors.onPrimary}
-            />
-          </BouncyPressable>
-        </View>
+            <Animated.View style={[styles.fabWrapper, fabAnimatedStyle]}>
+              <FAB
+                size="large"
+                icon="calendar-clock"
+                style={{ backgroundColor: theme.colors.primary, transform: [{ translateY: 2 }] }}
+                color={theme.colors.onPrimary}
+              />
+            </Animated.View>
+          </Pressable>
+        </Animated.View>
       </Surface>
     </View>
   );
@@ -208,33 +296,61 @@ export default function RootLayout() {
 
 const styles = StyleSheet.create({
   navSurface: {
-    borderRadius: 24,
-    paddingVertical: 18,
+    borderRadius: 28,
+    paddingVertical: 22,
     paddingHorizontal: 18,
     overflow: 'visible',
+    position: 'relative',
   },
   navRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 8,
   },
   navItem: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    minWidth: 70,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    minWidth: 76,
   },
   iconWrapper: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 50,
+    height: 50,
+    borderRadius: 26,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  indicatorRail: {
+    position: 'absolute',
+    left: 12,
+    right: 12,
+    top: 16,
+    bottom: 16,
+    borderRadius: 28,
+    opacity: 0.35,
+  },
+  activePill: {
+    position: 'absolute',
+    top: 14,
+    bottom: 14,
+    borderRadius: 30,
+    shadowOpacity: 0.28,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 6 },
+  },
   fabContainer: {
     position: 'absolute',
-    top: -26,
     alignSelf: 'center',
+    shadowOpacity: 0.35,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 10 },
+  },
+  fabWrapper: {
+    borderRadius: 38,
+    overflow: 'visible',
+    transform: [{ translateY: 4 }],
   },
 });

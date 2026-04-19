@@ -1,4 +1,5 @@
 import * as Haptics from 'expo-haptics';
+import { useLocalSearchParams } from 'expo-router';
 import type { ReactNode } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, ScrollView, StyleSheet, View } from 'react-native';
@@ -131,6 +132,7 @@ export default function PlanningScreen() {
   const [formError, setFormError] = useState('');
 
   const heroScale = useRef(new Animated.Value(0.94)).current;
+  const { recurringOpen } = useLocalSearchParams<{ recurringOpen?: string }>();
 
   useEffect(() => {
     Animated.spring(heroScale, {
@@ -140,6 +142,13 @@ export default function PlanningScreen() {
       useNativeDriver: true,
     }).start();
   }, [heroScale, goals.length, events.length]);
+
+  useEffect(() => {
+    if (recurringOpen === 'true' || recurringOpen === '1') {
+      setRecurringSheetVisible(true);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    }
+  }, [recurringOpen]);
 
   const filteredCategories = useMemo(
     () =>

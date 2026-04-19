@@ -1,6 +1,7 @@
 import * as Haptics from 'expo-haptics';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, View, StyleProp, ViewStyle } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Button,
@@ -8,9 +9,7 @@ import {
   Chip,
   Divider,
   HelperText,
-  List,
   SegmentedButtons,
-  Switch,
   Text,
   TextInput,
   ProgressBar,
@@ -21,6 +20,7 @@ import type { AiProvider } from '../../../../store/useSettingsStore';
 import { useAppTheme } from '../../../../providers/AppThemeProvider';
 import { useTransactionStore } from '../../../../store/useTransactionStore';
 import { formatCurrency } from '../../../../utils/formatCurrency';
+import { useBouncyPress } from '../../../../hooks/useBouncyPress';
 
 const currencyOptions = [
   { code: 'USD', label: 'USD ($)' },
@@ -50,6 +50,127 @@ const regionOptions = [
   { code: 'MA', label: 'Morocco' },
 ] as const;
 
+type HapticWeight = 'light' | 'medium' | 'heavy';
+
+function triggerHaptic(weight: HapticWeight = 'medium') {
+  const style =
+    weight === 'heavy'
+      ? Haptics.ImpactFeedbackStyle.Heavy
+      : weight === 'light'
+        ? Haptics.ImpactFeedbackStyle.Light
+        : Haptics.ImpactFeedbackStyle.Medium;
+  Haptics.impactAsync(style).catch(() => {});
+}
+
+function BouncyPressable({
+  children,
+  onPress,
+  scaleDown = 0.92,
+  style,
+}: {
+  children: React.ReactNode;
+  onPress?: () => void;
+  scaleDown?: number;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const { animatedStyle, onPressIn, onPressOut } = useBouncyPress(scaleDown);
+  return (
+    <Pressable
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+      onPress={() => {
+        triggerHaptic('medium');
+        onPress?.();
+      }}
+      style={{ flexGrow: 1 }}
+    >
+      <Animated.View style={[animatedStyle, style]}>{children}</Animated.View>
+    </Pressable>
+  );
+}
+
+function TonalToggle({
+  label,
+  description,
+  value,
+  onChange,
+}: {
+  label: string;
+  description?: string;
+  value: boolean;
+  onChange: (next: boolean) => void;
+}) {
+  const theme = useAppTheme();
+  return (
+    <View style={styles.toggleRow}>
+      <View style={{ flex: 1, gap: 4 }}>
+        <Text variant="titleMedium" style={{ color: theme.colors.onSurface, fontWeight: '700' }}>
+          {label}
+        </Text>
+        {description ? (
+          <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+            {description}
+          </Text>
+        ) : null}
+      </View>
+      <View style={{ width: 160 }}>
+        <View style={[styles.toggleShell, { borderColor: theme.colors.outlineVariant }]}>
+          {(['off', 'on'] as const).map((key) => {
+            const active = (value && key === 'on') || (!value && key === 'off');
+            return (
+              <BouncyPressable
+                key={key}
+                onPress={() => onChange(key === 'on')}
+                scaleDown={0.9}
+                style={[
+                  styles.togglePill,
+                  {
+                    backgroundColor: active ? theme.colors.secondaryContainer : theme.colors.surface,
+                    borderColor: active ? theme.colors.primary : 'transparent',
+                  },
+                ]}
+              >
+                <Text
+                  variant="labelLarge"
+                  style={{
+                    color: active ? theme.colors.onSecondaryContainer : theme.colors.onSurfaceVariant,
+                    fontWeight: '800',
+                  }}
+                >
+                  {key === 'on' ? 'On' : 'Off'}
+                </Text>
+              </BouncyPressable>
+            );
+          })}
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function BouncyButton({
+  haptic = 'medium',
+  children,
+  ...props
+}: React.ComponentProps<typeof Button> & { haptic?: HapticWeight }) {
+  const { animatedStyle, onPressIn, onPressOut } = useBouncyPress(0.94);
+  return (
+    <Animated.View style={animatedStyle}>
+      <Button
+        {...props}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        onPress={(...args) => {
+          triggerHaptic(haptic);
+          props.onPress?.(...args);
+        }}
+      >
+        {children}
+      </Button>
+    </Animated.View>
+  );
+}
+
 export default function SettingsScreen() {
   const theme = useAppTheme();
   const downloadIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -60,6 +181,8 @@ export default function SettingsScreen() {
   const [passcodeConfirm, setPasscodeConfirm] = useState('');
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [isDownloading, setIsDownloading] = useState(false);
+  const themeSegmentBounce = useBouncyPress(0.94);
+  const aiSegmentBounce = useBouncyPress(0.94);
 
   const themePreference = useSettingsStore((state) => state.themePreference);
   const oledTrueBlackEnabled = useSettingsStore((state) => state.oledTrueBlackEnabled);
@@ -201,12 +324,12 @@ export default function SettingsScreen() {
   }, []);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.surfaceContainerLowest }}>
       <ScrollView
         contentContainerStyle={[
           styles.scroll,
           {
-            backgroundColor: theme.colors.background,
+            backgroundColor: theme.colors.surfaceContainerLowest,
           },
         ]}
       >
@@ -233,30 +356,36 @@ export default function SettingsScreen() {
             </Text>
           </Card.Content>
           <Card.Content style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            <Chip mode="flat" style={{ backgroundColor: theme.colors.surface }} textStyle={{ color: theme.colors.onSurface }}>
-              {currencyCode} • {region}
-            </Chip>
-            <Chip
-              mode="flat"
-              style={{ backgroundColor: theme.colors.surface }}
-              textStyle={{ color: theme.colors.onSurface }}
-            >
-              Theme: {themePreference}
-            </Chip>
-            <Chip
-              mode="flat"
-              style={{ backgroundColor: theme.colors.surface }}
-              textStyle={{ color: theme.colors.onSurface }}
-              icon={secureAccessEnabled ? 'shield-check' : 'shield-off'}
-            >
-              {secureAccessEnabled ? 'Secure access' : 'Unlocked'}
-            </Chip>
+            <BouncyPressable onPress={() => {}} scaleDown={0.94} style={{ flexGrow: 0 }}>
+              <Chip mode="flat" style={{ backgroundColor: theme.colors.surface }} textStyle={{ color: theme.colors.onSurface }}>
+                {currencyCode} • {region}
+              </Chip>
+            </BouncyPressable>
+            <BouncyPressable onPress={() => {}} scaleDown={0.94} style={{ flexGrow: 0 }}>
+              <Chip
+                mode="flat"
+                style={{ backgroundColor: theme.colors.surface }}
+                textStyle={{ color: theme.colors.onSurface }}
+              >
+                Theme: {themePreference}
+              </Chip>
+            </BouncyPressable>
+            <BouncyPressable onPress={() => {}} scaleDown={0.94} style={{ flexGrow: 0 }}>
+              <Chip
+                mode="flat"
+                style={{ backgroundColor: theme.colors.surface }}
+                textStyle={{ color: theme.colors.onSurface }}
+                icon={secureAccessEnabled ? 'shield-check' : 'shield-off'}
+              >
+                {secureAccessEnabled ? 'Secure access' : 'Unlocked'}
+              </Chip>
+            </BouncyPressable>
           </Card.Content>
         </Card>
 
         <Card
           mode="elevated"
-          style={{ backgroundColor: theme.colors.surfaceContainer }}
+          style={{ backgroundColor: theme.colors.surfaceContainerHigh, borderRadius: 30 }}
           contentStyle={{ paddingVertical: 12, gap: 12 }}
         >
           <Card.Title
@@ -265,30 +394,38 @@ export default function SettingsScreen() {
             titleStyle={{ color: theme.colors.onSurface }}
           />
           <Card.Content style={{ gap: 16 }}>
-            <SegmentedButtons
-              value={themePreference}
-              onValueChange={(value) => setThemePreference(value as 'system' | 'light' | 'dark')}
-              buttons={[
-                { label: 'System', value: 'system' },
-                { label: 'Light', value: 'light' },
-                { label: 'Dark', value: 'dark' },
-              ]}
-            />
-            <List.Item
-              title="OLED true black"
+            <Animated.View style={themeSegmentBounce.animatedStyle}>
+              <SegmentedButtons
+                value={themePreference}
+                onValueChange={(value) => {
+                  triggerHaptic('medium');
+                  setThemePreference(value as 'system' | 'light' | 'dark');
+                }}
+                buttons={[
+                  { label: 'System', value: 'system' },
+                  { label: 'Light', value: 'light' },
+                  { label: 'Dark', value: 'dark' },
+                ]}
+                style={{ borderRadius: 18 }}
+              />
+            </Animated.View>
+            <TonalToggle
+              label="OLED true black"
               description="Use pure black backgrounds on OLED displays."
-              titleStyle={{ color: theme.colors.onSurface }}
-              descriptionStyle={{ color: theme.colors.onSurfaceVariant }}
-              right={() => <Switch value={oledTrueBlackEnabled} onValueChange={setOledTrueBlackEnabled} />}
-              style={{ paddingHorizontal: 0 }}
+              value={oledTrueBlackEnabled}
+              onChange={(next) => {
+                triggerHaptic('medium');
+                setOledTrueBlackEnabled(next);
+              }}
             />
-            <List.Item
-              title="High contrast mode"
+            <TonalToggle
+              label="High contrast mode"
               description="Increase outline contrast for legibility."
-              titleStyle={{ color: theme.colors.onSurface }}
-              descriptionStyle={{ color: theme.colors.onSurfaceVariant }}
-              right={() => <Switch value={highContrastEnabled} onValueChange={setHighContrastEnabled} />}
-              style={{ paddingHorizontal: 0 }}
+              value={highContrastEnabled}
+              onChange={(next) => {
+                triggerHaptic('medium');
+                setHighContrastEnabled(next);
+              }}
             />
           </Card.Content>
         </Card>
@@ -296,7 +433,7 @@ export default function SettingsScreen() {
         {/* AI Configuration Card */}
         <Card
           mode="elevated"
-          style={{ backgroundColor: theme.colors.surfaceContainer }}
+          style={{ backgroundColor: theme.colors.surfaceContainerHigh, borderRadius: 30 }}
           contentStyle={{ paddingVertical: 12, gap: 12 }}
         >
           <Card.Title
@@ -308,15 +445,20 @@ export default function SettingsScreen() {
             subtitleStyle={{ color: theme.colors.onSurfaceVariant }}
           />
           <Card.Content style={{ gap: 16 }}>
-            <SegmentedButtons
-              value={aiProvider}
-              onValueChange={(value) => setAiProvider(value as AiProvider)}
-              buttons={[
-                { label: 'Google API', value: 'google' },
-                { label: 'HF API', value: 'huggingface' },
-                { label: 'Local Device', value: 'local' },
-              ]}
-            />
+            <Animated.View style={aiSegmentBounce.animatedStyle}>
+              <SegmentedButtons
+                value={aiProvider}
+                onValueChange={(value) => {
+                  triggerHaptic('medium');
+                  setAiProvider(value as AiProvider);
+                }}
+                buttons={[
+                  { label: 'Google API', value: 'google' },
+                  { label: 'HF API', value: 'huggingface' },
+                  { label: 'Local Device', value: 'local' },
+                ]}
+              />
+            </Animated.View>
             
             {aiProvider === 'google' && (
               <View style={{ gap: 12 }}>
@@ -393,9 +535,9 @@ export default function SettingsScreen() {
                         </Text>
                       </View>
                     ) : (
-                      <Button mode="contained" onPress={handleSimulateDownload} icon="download">
+                      <BouncyButton mode="contained" onPress={handleSimulateDownload} icon="download" haptic="heavy">
                         Download Model
-                      </Button>
+                      </BouncyButton>
                     )}
                   </>
                 ) : (
@@ -406,9 +548,9 @@ export default function SettingsScreen() {
                     <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
                       All analysis will be performed on-device without network requests.
                     </Text>
-                    <Button mode="outlined" onPress={handleDeleteLocalModel} textColor={theme.colors.error}>
+                    <BouncyButton mode="outlined" onPress={handleDeleteLocalModel} textColor={theme.colors.error} haptic="heavy">
                       Delete downloaded model
-                    </Button>
+                    </BouncyButton>
                   </>
                 )}
               </View>
@@ -416,31 +558,31 @@ export default function SettingsScreen() {
 
             <Divider />
 
-            <List.Item
-              title="Smart Categorization"
+            <TonalToggle
+              label="Smart Categorization"
               description="Use AI to automatically suggest categories for manual entries."
-              titleStyle={{ color: theme.colors.onSurface }}
-              descriptionStyle={{ color: theme.colors.onSurfaceVariant }}
-              right={() => <Switch value={smartCategorizationEnabled} onValueChange={setSmartCategorizationEnabled} />}
-              style={{ paddingHorizontal: 0 }}
+              value={smartCategorizationEnabled}
+              onChange={(next) => {
+                triggerHaptic('medium');
+                setSmartCategorizationEnabled(next);
+              }}
             />
 
-            <List.Item
-              title="Advanced summaries"
+            <TonalToggle
+              label="Advanced summaries"
               description="Get deeper recommendations, trends, and next steps."
-              titleStyle={{ color: theme.colors.onSurface }}
-              descriptionStyle={{ color: theme.colors.onSurfaceVariant }}
-              right={() => (
-                <Switch value={advancedSummariesEnabled} onValueChange={setAdvancedSummariesEnabled} />
-              )}
-              style={{ paddingHorizontal: 0 }}
+              value={advancedSummariesEnabled}
+              onChange={(next) => {
+                triggerHaptic('medium');
+                setAdvancedSummariesEnabled(next);
+              }}
             />
           </Card.Content>
         </Card>
 
         <Card
           mode="elevated"
-          style={{ backgroundColor: theme.colors.surfaceContainer }}
+          style={{ backgroundColor: theme.colors.surfaceContainerHigh, borderRadius: 30 }}
           contentStyle={{ paddingVertical: 12, gap: 12 }}
         >
           <Card.Title
@@ -457,19 +599,24 @@ export default function SettingsScreen() {
             </Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
               {languageOptions.map((option) => (
-                <Chip
+                <BouncyPressable
                   key={option.code}
-                  mode="outlined"
-                  selected={language === option.code}
                   onPress={() => setLanguage(option.code)}
-                  selectedColor={theme.colors.onSecondaryContainer}
-                  style={{
-                    backgroundColor:
-                      language === option.code ? theme.colors.secondaryContainer : theme.colors.surface,
-                  }}
+                  scaleDown={0.9}
+                  style={{ flexGrow: 0 }}
                 >
-                  {option.label}
-                </Chip>
+                  <Chip
+                    mode="outlined"
+                    selected={language === option.code}
+                    selectedColor={theme.colors.onSecondaryContainer}
+                    style={{
+                      backgroundColor:
+                        language === option.code ? theme.colors.secondaryContainer : theme.colors.surface,
+                    }}
+                  >
+                    {option.label}
+                  </Chip>
+                </BouncyPressable>
               ))}
             </View>
             <Text variant="titleSmall" style={{ color: theme.colors.onSurface }}>
@@ -477,19 +624,24 @@ export default function SettingsScreen() {
             </Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
               {currencyOptions.map((option) => (
-                <Chip
+                <BouncyPressable
                   key={option.code}
-                  mode="outlined"
-                  selected={currencyCode === option.code}
                   onPress={() => setCurrencyCode(option.code)}
-                  selectedColor={theme.colors.onSecondaryContainer}
-                  style={{
-                    backgroundColor:
-                      currencyCode === option.code ? theme.colors.secondaryContainer : theme.colors.surface,
-                  }}
+                  scaleDown={0.9}
+                  style={{ flexGrow: 0 }}
                 >
-                  {option.label}
-                </Chip>
+                  <Chip
+                    mode="outlined"
+                    selected={currencyCode === option.code}
+                    selectedColor={theme.colors.onSecondaryContainer}
+                    style={{
+                      backgroundColor:
+                        currencyCode === option.code ? theme.colors.secondaryContainer : theme.colors.surface,
+                    }}
+                  >
+                    {option.label}
+                  </Chip>
+                </BouncyPressable>
               ))}
             </View>
             <Text variant="titleSmall" style={{ color: theme.colors.onSurface }}>
@@ -497,31 +649,37 @@ export default function SettingsScreen() {
             </Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
               {regionOptions.map((option) => (
-                <Chip
+                <BouncyPressable
                   key={option.code}
-                  mode="outlined"
-                  selected={region === option.code}
                   onPress={() => setRegion(option.code)}
-                  selectedColor={theme.colors.onSecondaryContainer}
-                  style={{
-                    backgroundColor:
-                      region === option.code ? theme.colors.secondaryContainer : theme.colors.surface,
-                  }}
+                  scaleDown={0.9}
+                  style={{ flexGrow: 0 }}
                 >
-                  {option.label}
-                </Chip>
+                  <Chip
+                    mode="outlined"
+                    selected={region === option.code}
+                    selectedColor={theme.colors.onSecondaryContainer}
+                    style={{
+                      backgroundColor:
+                        region === option.code ? theme.colors.secondaryContainer : theme.colors.surface,
+                    }}
+                  >
+                    {option.label}
+                  </Chip>
+                </BouncyPressable>
               ))}
             </View>
             <Divider />
-            <List.Item
-              title="Include notes in CSV"
+            <TonalToggle
+              label="Include notes in CSV"
               description="Keep memo fields when exporting transactions."
-              titleStyle={{ color: theme.colors.onSurface }}
-              descriptionStyle={{ color: theme.colors.onSurfaceVariant }}
-              right={() => <Switch value={includeNotesInExport} onValueChange={setIncludeNotesInExport} />}
-              style={{ paddingHorizontal: 0 }}
+              value={includeNotesInExport}
+              onChange={(next) => {
+                triggerHaptic('medium');
+                setIncludeNotesInExport(next);
+              }}
             />
-            <Button
+            <BouncyButton
               mode="outlined"
               onPress={async () => {
                 setExportPreview(exportRows);
@@ -529,7 +687,7 @@ export default function SettingsScreen() {
               }}
             >
               Generate local CSV preview
-            </Button>
+            </BouncyButton>
             {exportPreview ? (
               <View
                 style={{
@@ -550,7 +708,7 @@ export default function SettingsScreen() {
 
         <Card
           mode="elevated"
-          style={{ backgroundColor: theme.colors.surfaceContainer }}
+          style={{ backgroundColor: theme.colors.surfaceContainerHigh, borderRadius: 30 }}
           contentStyle={{ paddingVertical: 12, gap: 12 }}
         >
           <Card.Title
@@ -559,21 +717,22 @@ export default function SettingsScreen() {
             titleStyle={{ color: theme.colors.onSurface }}
           />
           <Card.Content style={{ gap: 12 }}>
-            <List.Item
-              title="Secure app access"
+            <TonalToggle
+              label="Secure app access"
               description="Require a device lock or biometric check before opening."
-              titleStyle={{ color: theme.colors.onSurface }}
-              descriptionStyle={{ color: theme.colors.onSurfaceVariant }}
-              right={() => <Switch value={secureAccessEnabled} onValueChange={setSecureAccessEnabled} />}
-              style={{ paddingHorizontal: 0 }}
+              value={secureAccessEnabled}
+              onChange={(next) => {
+                triggerHaptic('medium');
+                setSecureAccessEnabled(next);
+              }}
             />
             <Divider />
-            <List.Item
-              title="Local passcode lock"
+            <TonalToggle
+              label="Local passcode lock"
               description="Gate the app with a PIN stored only on-device."
-              titleStyle={{ color: theme.colors.onSurface }}
-              descriptionStyle={{ color: theme.colors.onSurfaceVariant }}
-              right={() => <Switch value={passcodeEnabled} onValueChange={(enabled) => {
+              value={passcodeEnabled}
+              onChange={(enabled) => {
+                triggerHaptic('medium');
                 if (!enabled) {
                   setPasscodeEnabled(false);
                   setPasscodePin('');
@@ -589,8 +748,7 @@ export default function SettingsScreen() {
                     setPasscodeConfirm('');
                   }
                 }
-              }} />}
-              style={{ paddingHorizontal: 0 }}
+              }}
             />
             {passcodeEnabled ? (
               <HelperText type="info" visible style={{ marginLeft: 0 }}>
@@ -615,15 +773,16 @@ export default function SettingsScreen() {
               secureTextEntry
               maxLength={8}
             />
-            <Button mode="contained" onPress={handleSavePasscode} disabled={passcodeDraft.length < 4 || passcodeDraft !== passcodeConfirm}>
+            <BouncyButton mode="contained" onPress={handleSavePasscode} disabled={passcodeDraft.length < 4 || passcodeDraft !== passcodeConfirm}>
               Save passcode
-            </Button>
+            </BouncyButton>
             <Divider />
             
-            <Button
+            <BouncyButton
               mode="contained"
               buttonColor={theme.colors.errorContainer}
               textColor={theme.colors.onErrorContainer}
+              haptic="heavy"
               onPress={async () => {
                 clearAllData();
                 resetSettings();
@@ -632,7 +791,7 @@ export default function SettingsScreen() {
               }}
             >
               Reset all local wallet data
-            </Button>
+            </BouncyButton>
           </Card.Content>
         </Card>
       </ScrollView>
@@ -651,6 +810,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   heroCard: {
-    borderRadius: 20,
+    borderRadius: 32,
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  toggleShell: {
+    flexDirection: 'row',
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderRadius: 22,
+    padding: 4,
+    gap: 6,
+  },
+  togglePill: {
+    flex: 1,
+    borderRadius: 18,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
   },
 });
