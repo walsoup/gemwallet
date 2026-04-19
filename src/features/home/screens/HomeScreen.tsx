@@ -6,10 +6,21 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  StyleProp,
   View,
   Platform,
   UIManager,
+  ViewStyle,
 } from 'react-native';
+import Animated, {
+  FadeInDown,
+  FadeInUp,
+  FadeInRight,
+  FadeInLeft,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Button,
@@ -20,9 +31,9 @@ import {
   Text,
   TextInput,
   SegmentedButtons,
-  TouchableRipple,
   ActivityIndicator,
-  Card
+  Card,
+  Surface,
 } from 'react-native-paper';
 import Markdown from 'react-native-markdown-display';
 
@@ -70,6 +81,65 @@ function fallbackGreeting() {
   if (hour < 12) return 'Good morning';
   if (hour < 18) return 'Good afternoon';
   return 'Good evening';
+}
+
+type HapticWeight = 'light' | 'medium' | 'heavy';
+
+function triggerHaptic(weight: HapticWeight = 'medium') {
+  const style =
+    weight === 'heavy'
+      ? Haptics.ImpactFeedbackStyle.Heavy
+      : weight === 'light'
+        ? Haptics.ImpactFeedbackStyle.Light
+        : Haptics.ImpactFeedbackStyle.Medium;
+  Haptics.impactAsync(style).catch(() => {});
+}
+
+function useBouncyPress(scaleDown = 0.93) {
+  const scale = useSharedValue(1);
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const onPressIn = () => {
+    scale.value = withSpring(scaleDown, { damping: 10, stiffness: 520, mass: 0.7 });
+  };
+  const onPressOut = () => {
+    scale.value = withSpring(1, { damping: 14, stiffness: 360, mass: 0.8 });
+  };
+
+  return { animatedStyle, onPressIn, onPressOut };
+}
+
+function BouncyPressable({
+  children,
+  onPress,
+  haptic = 'medium',
+  scaleDown = 0.93,
+  style,
+  pressableStyle,
+}: {
+  children: React.ReactNode;
+  onPress: () => void;
+  haptic?: HapticWeight;
+  scaleDown?: number;
+  style?: StyleProp<ViewStyle>;
+  pressableStyle?: StyleProp<ViewStyle>;
+}) {
+  const { animatedStyle, onPressIn, onPressOut } = useBouncyPress(scaleDown);
+  return (
+    <Pressable
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+      onPress={() => {
+        triggerHaptic(haptic);
+        onPress();
+      }}
+      style={pressableStyle}
+    >
+      <Animated.View style={[animatedStyle, style]}>{children}</Animated.View>
+    </Pressable>
+  );
 }
 
 export default function HomeScreen() {
@@ -335,6 +405,18 @@ export default function HomeScreen() {
     }
   };
 
+  const settingsBounce = useBouncyPress(0.9);
+  const addFundsBounce = useBouncyPress(0.9);
+  const sendBounce = useBouncyPress(0.9);
+  const aiFabBounce = useBouncyPress(0.88);
+  const unlockBounce = useBouncyPress(0.94);
+  const resetBounce = useBouncyPress(0.94);
+  const setBalanceBounce = useBouncyPress(0.94);
+  const enableFeaturesBounce = useBouncyPress(0.94);
+  const skipBounce = useBouncyPress(0.94);
+  const continueManualBounce = useBouncyPress(0.94);
+  const closeGemmaBounce = useBouncyPress(0.94);
+
   if (passcodeEnabled && passcodePin && !sessionUnlocked) {
     return (
       <SafeAreaView style={[styles.screen, { backgroundColor: theme.colors.background, justifyContent: 'center', padding: 24 }]}>
@@ -359,20 +441,37 @@ export default function HomeScreen() {
               {passcodeError}
             </Text>
           ) : null}
-          <Button mode="contained" onPress={() => void handleUnlock()} disabled={!passcodeInput}>
-            Unlock
-          </Button>
-          <Button
-            mode="text"
-            onPress={async () => {
-              clearAllData();
-              resetSettings();
-              setSessionUnlocked(true);
-              await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-            }}
-          >
-            Reset all data (clears passcode)
-          </Button>
+          <Animated.View style={unlockBounce.animatedStyle}>
+            <Button
+              mode="contained"
+              onPress={() => {
+                if (!passcodeInput) return;
+                triggerHaptic('medium');
+                void handleUnlock();
+              }}
+              disabled={!passcodeInput}
+              onPressIn={unlockBounce.onPressIn}
+              onPressOut={unlockBounce.onPressOut}
+            >
+              Unlock
+            </Button>
+          </Animated.View>
+          <Animated.View style={resetBounce.animatedStyle}>
+            <Button
+              mode="text"
+              onPress={async () => {
+                triggerHaptic('medium');
+                clearAllData();
+                resetSettings();
+                setSessionUnlocked(true);
+                await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+              }}
+              onPressIn={resetBounce.onPressIn}
+              onPressOut={resetBounce.onPressOut}
+            >
+              Reset all data (clears passcode)
+            </Button>
+          </Animated.View>
         </View>
       </SafeAreaView>
     );
@@ -399,31 +498,41 @@ export default function HomeScreen() {
                 {keypadRows.map((row) => (
                   <View key={row.join('')} style={styles.keypadRow}>
                     {row.map((key) => (
-                      <TouchableRipple
+                      <BouncyPressable
                         key={key}
                         onPress={() => {
+                          triggerHaptic('light');
                           void handleKeypadInput(key, setOpeningBalance, openingBalance);
                         }}
+                        haptic="light"
+                        scaleDown={0.9}
+                        pressableStyle={{ flex: 1 }}
                         style={[styles.keypadKey, { backgroundColor: theme.colors.surfaceVariant }]}
-                        borderless
                       >
                         <Text variant="headlineSmall" style={{ color: theme.colors.onSurface }}>
                           {key}
                         </Text>
-                      </TouchableRipple>
+                      </BouncyPressable>
                     ))}
                   </View>
                 ))}
               </View>
 
-              <Button
-                mode="contained"
-                disabled={amountTextToCents(openingBalance) <= 0}
-                onPress={() => setOnboardingPhase('voice')}
-                style={styles.pillButton}
-              >
-                Set balance
-              </Button>
+              <Animated.View style={setBalanceBounce.animatedStyle}>
+                <Button
+                  mode="contained"
+                  disabled={amountTextToCents(openingBalance) <= 0}
+                  onPress={() => {
+                    triggerHaptic('medium');
+                    setOnboardingPhase('voice');
+                  }}
+                  style={styles.pillButton}
+                  onPressIn={setBalanceBounce.onPressIn}
+                  onPressOut={setBalanceBounce.onPressOut}
+                >
+                  Set balance
+                </Button>
+              </Animated.View>
             </>
           ) : (
             <Card style={[styles.voiceCard, { backgroundColor: theme.colors.surfaceVariant }]}>
@@ -435,30 +544,40 @@ export default function HomeScreen() {
                   Log expenses seamlessly with AI insights.
                 </Text>
                 <View style={styles.voiceButtons}>
-                  <Button
-                    mode="contained"
-                    onPress={() => {
-                      completeOnboarding({
-                        initialBalanceCents: amountTextToCents(openingBalance),
-                        voiceAssistantEnabled: true,
-                      });
-                    }}
-                    style={styles.pillButton}
-                  >
-                    Enable features
-                  </Button>
-                  <Button
-                    mode="outlined"
-                    onPress={() => {
-                      completeOnboarding({
-                        initialBalanceCents: amountTextToCents(openingBalance),
-                        voiceAssistantEnabled: false,
-                      });
-                    }}
-                    style={styles.pillButton}
-                  >
-                    Skip for now
-                  </Button>
+                  <Animated.View style={enableFeaturesBounce.animatedStyle}>
+                    <Button
+                      mode="contained"
+                      onPress={() => {
+                        triggerHaptic('medium');
+                        completeOnboarding({
+                          initialBalanceCents: amountTextToCents(openingBalance),
+                          voiceAssistantEnabled: true,
+                        });
+                      }}
+                      style={styles.pillButton}
+                      onPressIn={enableFeaturesBounce.onPressIn}
+                      onPressOut={enableFeaturesBounce.onPressOut}
+                    >
+                      Enable features
+                    </Button>
+                  </Animated.View>
+                  <Animated.View style={skipBounce.animatedStyle}>
+                    <Button
+                      mode="outlined"
+                      onPress={() => {
+                        triggerHaptic('light');
+                        completeOnboarding({
+                          initialBalanceCents: amountTextToCents(openingBalance),
+                          voiceAssistantEnabled: false,
+                        });
+                      }}
+                      style={styles.pillButton}
+                      onPressIn={skipBounce.onPressIn}
+                      onPressOut={skipBounce.onPressOut}
+                    >
+                      Skip for now
+                    </Button>
+                  </Animated.View>
                 </View>
               </Card.Content>
             </Card>
@@ -469,114 +588,152 @@ export default function HomeScreen() {
   }
 
   return (
-    <View style={[styles.screen, { backgroundColor: theme.colors.surface }]}>
-      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Text variant="titleMedium" style={{ color: theme.colors.onSurfaceVariant, opacity: 0.8 }}>
-              {personalGreeting}
-            </Text>
-            {isGreetingLoading ? <ActivityIndicator size="small" color={theme.colors.primary} /> : null}
+    <View style={[styles.screen, { backgroundColor: theme.colors.surfaceContainerLowest }]}>
+      <Animated.View entering={FadeInDown.springify().mass(1).damping(12).stiffness(280)} style={[styles.header, { paddingTop: insets.top + 12 }]}>
+        <Surface style={[styles.heroShell, { backgroundColor: theme.colors.surfaceContainerHigh }]} elevation={4}>
+          <View style={styles.headerRow}>
+            <Animated.View entering={FadeInLeft.springify().mass(0.8).damping(12).stiffness(260)} style={{ flex: 1 }}>
+              <Text variant="titleLarge" style={{ color: theme.colors.onSurfaceVariant, letterSpacing: -0.15 }}>
+                {personalGreeting}
+              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 }}>
+                <Text variant="displaySmall" style={{ color: theme.colors.onSurface, fontWeight: '800', letterSpacing: -0.3 }}>
+                  {formatAmount(balanceCents)}
+                </Text>
+                {isGreetingLoading ? <ActivityIndicator size="small" color={theme.colors.primary} /> : null}
+              </View>
+            </Animated.View>
+            <Animated.View style={settingsBounce.animatedStyle}>
+              <IconButton
+                icon="cog"
+                size={26}
+                iconColor={theme.colors.onSurfaceVariant}
+                onPress={() => {
+                  triggerHaptic('medium');
+                  router.push('/settings');
+                }}
+                onPressIn={settingsBounce.onPressIn}
+                onPressOut={settingsBounce.onPressOut}
+              />
+            </Animated.View>
           </View>
-          <IconButton
-            icon="cog"
-            size={24}
-            iconColor={theme.colors.onSurfaceVariant}
-            onPress={() => router.push('/settings')}
-          />
-        </View>
 
-        <View style={styles.heroSection}>
-          <Text variant="labelLarge" style={{ color: theme.colors.onSurfaceVariant }}>
-            Available Cash
-          </Text>
-          <View style={styles.balanceContainer}>
-            <View style={[styles.balanceGlow, { backgroundColor: applyOpacity(theme.colors.primary, 0.15) }]} />
-            <Text
-              variant="displayLarge"
-              style={{
-                color: theme.colors.onSurface,
-                fontWeight: 'bold',
-                fontSize: 48,
-              }}
-            >
-              {formatAmount(balanceCents)}
-            </Text>
-          </View>
-          <View style={styles.quickActionsRow}>
-            <Button
-              mode="contained"
-              icon="plus"
-              onPress={() => void openManualFlow()}
-              style={[styles.heroButton, { backgroundColor: theme.colors.primary }]}
-              labelStyle={{ color: theme.colors.onPrimary }}
-            >
-              Add Funds
-            </Button>
-            <Button
-              mode="contained"
-              icon="send"
-              onPress={() => void openManualFlow()}
-              style={[styles.heroButton, { backgroundColor: theme.colors.surfaceContainerHigh }]}
-              labelStyle={{ color: theme.colors.onSurface }}
-            >
-              Send
-            </Button>
-          </View>
-        </View>
-      </View>
+          <Animated.View entering={FadeInDown.delay(70).springify().damping(10).stiffness(320)} style={styles.heroSection}>
+            <View style={styles.balanceContainer}>
+              <View style={[styles.balanceGlow, { backgroundColor: applyOpacity(theme.colors.primary, 0.18) }]} />
+              <Text variant="titleMedium" style={{ color: theme.colors.onSurfaceVariant, letterSpacing: 0.2 }}>
+                Available Cash
+              </Text>
+            </View>
+            <View style={styles.quickActionsRow}>
+              <Animated.View style={addFundsBounce.animatedStyle}>
+                <Button
+                  mode="contained-tonal"
+                  icon="plus"
+                  onPress={() => {
+                    triggerHaptic('heavy');
+                    void openManualFlow();
+                  }}
+                  onPressIn={addFundsBounce.onPressIn}
+                  onPressOut={addFundsBounce.onPressOut}
+                  style={[styles.heroButton, { backgroundColor: theme.colors.primaryContainer }]}
+                  labelStyle={{ color: theme.colors.onPrimaryContainer, letterSpacing: 0 }}
+                  contentStyle={{ height: 52 }}
+                >
+                  Add Funds
+                </Button>
+              </Animated.View>
+              <Animated.View style={sendBounce.animatedStyle}>
+                <Button
+                  mode="contained"
+                  icon="send"
+                  onPress={() => {
+                    triggerHaptic('medium');
+                    void openManualFlow();
+                  }}
+                  onPressIn={sendBounce.onPressIn}
+                  onPressOut={sendBounce.onPressOut}
+                  style={[styles.heroButton, { backgroundColor: theme.colors.secondaryContainer }]}
+                  labelStyle={{ color: theme.colors.onSecondaryContainer, letterSpacing: 0 }}
+                  contentStyle={{ height: 52 }}
+                >
+                  Send
+                </Button>
+              </Animated.View>
+            </View>
+          </Animated.View>
+        </Surface>
+      </Animated.View>
 
-      <View style={[styles.bottomSheet, { backgroundColor: theme.colors.surfaceContainerLowest }]}>
+      <Surface style={[styles.bottomSheet, { backgroundColor: theme.colors.surfaceContainerHighest }]} elevation={4}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-
-          <TextInput
-            mode="outlined"
-            value={search}
-            onChangeText={setSearch}
-            placeholder="Search transactions"
-            left={<TextInput.Icon icon="magnify" color={theme.colors.onSurfaceVariant} />}
-            right={search ? <TextInput.Icon icon="close-circle" onPress={() => setSearch('')} /> : null}
-            style={styles.searchBar}
-            outlineStyle={{ borderRadius: 20, borderColor: theme.colors.outlineVariant }}
-          />
+          <Animated.View entering={FadeInDown.delay(80).springify().damping(12).stiffness(280)}>
+            <TextInput
+              mode="outlined"
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Search transactions"
+              left={<TextInput.Icon icon="magnify" color={theme.colors.onSurfaceVariant} />}
+              right={search ? <TextInput.Icon icon="close-circle" onPress={() => setSearch('')} /> : null}
+              style={styles.searchBar}
+              outlineStyle={{ borderRadius: 22, borderColor: theme.colors.outlineVariant }}
+            />
+          </Animated.View>
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-            <Chip
-              selected={!selectedExpenseCategoryId}
-              onPress={() => setSelectedExpenseCategoryId(null)}
-              style={[
-                styles.filterChip,
-                {
-                  backgroundColor: !selectedExpenseCategoryId
-                    ? theme.colors.secondaryContainer
-                    : theme.colors.surface,
-                  borderColor: theme.colors.outlineVariant,
-                },
-              ]}
-              selectedColor={theme.colors.onSecondaryContainer}
-            >
-              All
-            </Chip>
-            {expenseCategories.map((item) => (
-              <Chip
-                key={item.id}
-                selected={selectedExpenseCategoryId === item.id}
-                onPress={() => setSelectedExpenseCategoryId((current) => (current === item.id ? null : item.id))}
+            <Animated.View entering={FadeInRight.delay(90).springify().damping(10).stiffness(300)}>
+              <BouncyPressable
+                onPress={() => setSelectedExpenseCategoryId(null)}
+                haptic="medium"
+                scaleDown={0.9}
                 style={[
                   styles.filterChip,
                   {
-                    backgroundColor:
-                      selectedExpenseCategoryId === item.id
-                        ? theme.colors.secondaryContainer
-                        : theme.colors.surface,
+                    backgroundColor: !selectedExpenseCategoryId
+                      ? theme.colors.secondaryContainer
+                      : theme.colors.surface,
                     borderColor: theme.colors.outlineVariant,
                   },
                 ]}
-                selectedColor={theme.colors.onSecondaryContainer}
+                pressableStyle={{ marginRight: 8 }}
               >
-                {item.emoji} {item.name}
-              </Chip>
-            ))}
+                <Text style={{ color: theme.colors.onSecondaryContainer, fontWeight: '700' }}>All</Text>
+              </BouncyPressable>
+            </Animated.View>
+            {expenseCategories.map((item, index) => {
+              const selected = selectedExpenseCategoryId === item.id;
+              return (
+                <Animated.View
+                  key={item.id}
+                  entering={FadeInRight.delay(110 + index * 40).springify().damping(12).stiffness(320)}
+                >
+                  <BouncyPressable
+                    onPress={() =>
+                      setSelectedExpenseCategoryId((current) => (current === item.id ? null : item.id))
+                    }
+                    haptic="light"
+                    scaleDown={0.9}
+                    style={[
+                      styles.filterChip,
+                      {
+                        backgroundColor: selected ? theme.colors.secondaryContainer : theme.colors.surface,
+                        borderColor: selected ? theme.colors.primary : theme.colors.outlineVariant,
+                      },
+                    ]}
+                    pressableStyle={{ marginRight: 8 }}
+                  >
+                    <Text
+                      style={{
+                        color: selected ? theme.colors.onSecondaryContainer : theme.colors.onSurface,
+                        fontWeight: '700',
+                      }}
+                    >
+                      {item.emoji} {item.name}
+                    </Text>
+                  </BouncyPressable>
+                </Animated.View>
+              );
+            })}
           </ScrollView>
 
           <View style={styles.transactionsList}>
@@ -585,51 +742,79 @@ export default function HomeScreen() {
                 No recent transactions
               </Text>
             ) : (
-              filteredTransactions.map((item) => {
+              filteredTransactions.map((item, index) => {
                 const category = categoryById(categories, item.categoryId);
                 const isIncome = item.type === 'income';
                 return (
-                  <View key={item.id} style={[styles.txRow, { borderBottomColor: theme.colors.outlineVariant }]}>
-                    <View style={[styles.txIconContainer, { backgroundColor: theme.colors.surfaceContainerHigh }]}>
-                      <Text style={{ fontSize: 20 }}>{category?.emoji ?? '💸'}</Text>
-                    </View>
-                    <View style={styles.txDetails}>
-                      <Text variant="titleMedium" style={{ color: theme.colors.onSurface, fontWeight: '600' }} numberOfLines={1}>
-                        {item.note || category?.name || 'Transaction'}
-                      </Text>
-                      <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                        {formatTime(item.timestamp, locale)} • {category?.name ?? 'General'}
-                      </Text>
-                    </View>
-                    <Text
-                      variant="titleMedium"
-                      style={{
-                        color: isIncome ? theme.colors.tertiary : theme.colors.onSurface,
-                        fontWeight: '700',
-                      }}
+                  <Animated.View
+                    key={item.id}
+                    entering={FadeInUp.delay(120 + index * 70).springify().damping(14).stiffness(320)}
+                  >
+                    <BouncyPressable
+                      onPress={() => triggerHaptic('medium')}
+                      haptic="medium"
+                      scaleDown={0.94}
+                      style={[
+                        styles.txRow,
+                        {
+                          borderColor: theme.colors.outlineVariant,
+                          backgroundColor: theme.colors.surfaceContainerLow,
+                        },
+                      ]}
                     >
-                      {isIncome ? '+' : '-'}{formatAmount(item.amountCents)}
-                    </Text>
-                  </View>
+                      <View style={[styles.txIconContainer, { backgroundColor: theme.colors.surfaceContainerHigh }]}>
+                        <Text style={{ fontSize: 20 }}>{category?.emoji ?? '💸'}</Text>
+                      </View>
+                      <View style={styles.txDetails}>
+                        <Text variant="titleMedium" style={{ color: theme.colors.onSurface, fontWeight: '700' }} numberOfLines={1}>
+                          {item.note || category?.name || 'Transaction'}
+                        </Text>
+                        <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                          {formatTime(item.timestamp, locale)} • {category?.name ?? 'General'}
+                        </Text>
+                      </View>
+                      <Text
+                        variant="titleMedium"
+                        style={{
+                          color: isIncome ? theme.colors.tertiary : theme.colors.onSurface,
+                          fontWeight: '800',
+                        }}
+                      >
+                        {isIncome ? '+' : '-'}{formatAmount(item.amountCents)}
+                      </Text>
+                    </BouncyPressable>
+                  </Animated.View>
                 );
               })
             )}
           </View>
         </ScrollView>
-      </View>
+      </Surface>
 
-      <FAB
-        icon="sparkles"
-        style={[styles.aiFab, { backgroundColor: theme.colors.primaryContainer }]}
-        color={theme.colors.onPrimaryContainer}
-        onPress={() => void askGemma()}
-      />
+      <Animated.View style={[styles.aiFabWrapper, aiFabBounce.animatedStyle]} entering={FadeInUp.delay(180).springify().damping(10).stiffness(320)}>
+        <FAB
+          icon="sparkles"
+          style={[styles.aiFab, { backgroundColor: theme.colors.primaryContainer }]}
+          color={theme.colors.onPrimaryContainer}
+          onPress={() => {
+            aiFabBounce.onPressIn();
+            setTimeout(() => aiFabBounce.onPressOut(), 140);
+            triggerHaptic('heavy');
+            void askGemma();
+          }}
+          onPressIn={aiFabBounce.onPressIn}
+          onPressOut={aiFabBounce.onPressOut}
+        />
+      </Animated.View>
 
       <Modal visible={manualVisible} transparent animationType="slide" onRequestClose={() => setManualVisible(false)}>
         <View style={styles.sheetRoot}>
           <Pressable
             style={[styles.modalBackdrop, { backgroundColor: theme.colors.backdrop }]}
-            onPress={() => setManualVisible(false)}
+            onPress={() => {
+              triggerHaptic('medium');
+              setManualVisible(false);
+            }}
           />
           <View
             style={[
@@ -667,30 +852,42 @@ export default function HomeScreen() {
                   {keypadRows.map((row) => (
                     <View key={row.join('')} style={styles.keypadRow}>
                       {row.map((key) => (
-                        <TouchableRipple
+                        <BouncyPressable
                           key={key}
-                          onPress={() => void handleKeypadInput(key, setManualAmount, manualAmount)}
+                          onPress={() => {
+                            triggerHaptic('light');
+                            void handleKeypadInput(key, setManualAmount, manualAmount);
+                          }}
+                          haptic="light"
+                          scaleDown={0.9}
+                          pressableStyle={{ flex: 1 }}
                           style={[styles.keypadKey, { backgroundColor: theme.colors.surfaceContainer }]}
-                          borderless
                         >
                           <Text variant="headlineSmall" style={{ color: theme.colors.onSurface, fontWeight: '600' }}>
                             {key}
                           </Text>
-                        </TouchableRipple>
+                        </BouncyPressable>
                       ))}
                     </View>
                   ))}
                 </View>
 
-                <Button
-                  mode="contained"
-                  disabled={amountTextToCents(manualAmount) <= 0}
-                  onPress={() => setManualPhase('category')}
-                  style={[styles.pillButton, { marginTop: 16 }]}
-                  contentStyle={{ height: 56 }}
-                >
-                  Continue
-                </Button>
+                <Animated.View style={continueManualBounce.animatedStyle}>
+                  <Button
+                    mode="contained"
+                    disabled={amountTextToCents(manualAmount) <= 0}
+                    onPress={() => {
+                      triggerHaptic('medium');
+                      setManualPhase('category');
+                    }}
+                    style={[styles.pillButton, { marginTop: 16 }]}
+                    contentStyle={{ height: 56 }}
+                    onPressIn={continueManualBounce.onPressIn}
+                    onPressOut={continueManualBounce.onPressOut}
+                  >
+                    Continue
+                  </Button>
+                </Animated.View>
               </>
             ) : (
               <>
@@ -714,33 +911,35 @@ export default function HomeScreen() {
                 />
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 12 }}>
                   {['Receipt', 'IOU', 'Reimbursable'].map((tag) => (
-                    <Chip
+                    <BouncyPressable
                       key={tag}
                       onPress={() => setManualNote((prev) => (prev ? `${prev} ${tag}` : tag))}
-                      mode="outlined"
+                      haptic="light"
+                      scaleDown={0.92}
+                      pressableStyle={{}}
                     >
-                      {tag}
-                    </Chip>
+                      <Chip mode="outlined">{tag}</Chip>
+                    </BouncyPressable>
                   ))}
                 </ScrollView>
                 <ScrollView contentContainerStyle={styles.categoryGrid}>
                   {activeCategories.map((item) => (
-                    <TouchableRipple
+                    <BouncyPressable
                       key={item.id}
                       onPress={() => void saveManual(item.id)}
+                      haptic="medium"
+                      scaleDown={0.92}
+                      pressableStyle={{ width: '30%' }}
                       style={[
                         styles.categoryCell,
                         { backgroundColor: theme.colors.surfaceContainer },
                       ]}
-                      borderless
                     >
-                      <>
-                        <Text variant="headlineMedium">{item.emoji}</Text>
-                        <Text variant="labelLarge" style={{ color: theme.colors.onSurface, marginTop: 4 }}>
-                          {item.name}
-                        </Text>
-                      </>
-                    </TouchableRipple>
+                      <Text variant="headlineMedium">{item.emoji}</Text>
+                      <Text variant="labelLarge" style={{ color: theme.colors.onSurface, marginTop: 4 }}>
+                        {item.name}
+                      </Text>
+                    </BouncyPressable>
                   ))}
                 </ScrollView>
               </>
@@ -753,7 +952,10 @@ export default function HomeScreen() {
         <View style={styles.sheetRoot}>
           <Pressable
             style={[styles.modalBackdrop, { backgroundColor: theme.colors.backdrop }]}
-            onPress={() => setGemmaVisible(false)}
+            onPress={() => {
+              triggerHaptic('medium');
+              setGemmaVisible(false);
+            }}
           />
           <View
             style={[
@@ -795,13 +997,20 @@ export default function HomeScreen() {
               )}
             </ScrollView>
 
-            <Button
-              mode="contained"
-              onPress={() => setGemmaVisible(false)}
-              style={[styles.pillButton, { marginTop: 24 }]}
-            >
-              Close
-            </Button>
+            <Animated.View style={closeGemmaBounce.animatedStyle}>
+              <Button
+                mode="contained"
+                onPress={() => {
+                  triggerHaptic('medium');
+                  setGemmaVisible(false);
+                }}
+                style={[styles.pillButton, { marginTop: 24 }]}
+                onPressIn={closeGemmaBounce.onPressIn}
+                onPressOut={closeGemmaBounce.onPressOut}
+              >
+                Close
+              </Button>
+            </Animated.View>
           </View>
         </View>
       </Modal>
@@ -832,75 +1041,91 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    paddingBottom: 24,
+    paddingBottom: 18,
+    paddingHorizontal: 16,
+  },
+  heroShell: {
+    borderRadius: 32,
+    paddingHorizontal: 20,
+    paddingVertical: 22,
+    gap: 16,
+    overflow: 'hidden',
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   heroSection: {
-    alignItems: 'center',
-    marginTop: 24,
-    gap: 8,
+    marginTop: 12,
+    gap: 14,
   },
   balanceContainer: {
     position: 'relative',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'center',
-    paddingVertical: 12,
+    paddingVertical: 8,
   },
   balanceGlow: {
     position: 'absolute',
-    width: 200,
-    height: 100,
-    borderRadius: 100,
-    opacity: 0.9,
+    width: 260,
+    height: 120,
+    borderRadius: 120,
+    opacity: 0.8,
     shadowColor: '#000000',
-    shadowOpacity: 0.18,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 2,
+    shadowOpacity: 0.14,
+    shadowRadius: 26,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 6,
   },
   quickActionsRow: {
     flexDirection: 'row',
     gap: 12,
-    marginTop: 16,
+    marginTop: 12,
   },
   heroButton: {
-    borderRadius: 24,
-    paddingHorizontal: 12,
+    borderRadius: 28,
+    paddingHorizontal: 14,
   },
   bottomSheet: {
     flex: 1,
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    paddingTop: 24,
-    paddingHorizontal: 20,
+    borderTopLeftRadius: 36,
+    borderTopRightRadius: 36,
+    paddingTop: 26,
+    paddingHorizontal: 18,
   },
   scrollContent: {
-    paddingBottom: 100,
+    paddingBottom: 120,
   },
   searchBar: {
-    height: 52,
-    marginBottom: 16,
+    height: 56,
+    marginBottom: 18,
   },
   filterRow: {
     gap: 8,
-    paddingBottom: 24,
+    paddingBottom: 22,
   },
   filterChip: {
-    borderRadius: 20,
+    borderRadius: 22,
     borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
   },
   transactionsList: {
-    gap: 16,
+    gap: 14,
   },
   txRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderRadius: 22,
   },
   txIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 16,
@@ -912,8 +1137,14 @@ const styles = StyleSheet.create({
   aiFab: {
     position: 'absolute',
     right: 20,
-    bottom: 24,
-    borderRadius: 16,
+    bottom: 28,
+    borderRadius: 22,
+    elevation: 10,
+  },
+  aiFabWrapper: {
+    position: 'absolute',
+    right: 12,
+    bottom: 12,
   },
   onboardingContainer: {
     flex: 1,
@@ -930,8 +1161,8 @@ const styles = StyleSheet.create({
   },
   keypadKey: {
     flex: 1,
-    minHeight: 68,
-    borderRadius: 34,
+    minHeight: 72,
+    borderRadius: 36,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -973,9 +1204,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   categoryCell: {
-    width: '30%',
     aspectRatio: 1,
-    borderRadius: 24,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
   },
