@@ -54,11 +54,17 @@ export function decryptBackup<T>(encoded: string, passphrase: string): T {
   const salt = CryptoJS.enc.Hex.parse(parsed.salt);
   const iv = CryptoJS.enc.Hex.parse(parsed.iv);
   const key = deriveKey(passphrase, salt);
-  const bytes = CryptoJS.AES.decrypt(parsed.cipherText, key, { iv });
-  const plaintext = bytes.toString(CryptoJS.enc.Utf8);
-  if (!plaintext) throw new Error('Invalid passphrase');
+  let envelope: BackupEnvelope;
 
-  const envelope = JSON.parse(plaintext) as BackupEnvelope;
+  try {
+    const bytes = CryptoJS.AES.decrypt(parsed.cipherText, key, { iv });
+    const plaintext = bytes.toString(CryptoJS.enc.Utf8);
+    if (!plaintext) throw new Error('Invalid passphrase');
+    envelope = JSON.parse(plaintext) as BackupEnvelope;
+  } catch {
+    throw new Error('Invalid passphrase');
+  }
+
   if (envelope.version !== 1) {
     throw new Error('Unsupported backup version');
   }

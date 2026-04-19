@@ -1,5 +1,5 @@
 import * as Haptics from 'expo-haptics';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -8,23 +8,19 @@ import {
   Chip,
   Divider,
   HelperText,
-  IconButton,
   List,
   SegmentedButtons,
   Switch,
   Text,
   TextInput,
-  useTheme,
+  ProgressBar,
 } from 'react-native-paper';
 
 import { useSettingsStore } from '../../../../store/useSettingsStore';
-import type { SettingsState } from '../../../../store/useSettingsStore';
+import type { AiProvider } from '../../../../store/useSettingsStore';
+import { useAppTheme } from '../../../../providers/AppThemeProvider';
 import { useTransactionStore } from '../../../../store/useTransactionStore';
-import { useGoalsStore } from '../../../../store/useGoalsStore';
-import { useRecurringStore } from '../../../../store/useRecurringStore';
-import type { Category, Goal, RecurringCashEvent, Transaction, WalletMeta } from '../../../../types/finance';
 import { formatCurrency } from '../../../../utils/formatCurrency';
-import { decryptBackup, encryptBackup } from '../../../../utils/backup';
 
 const currencyOptions = [
   { code: 'USD', label: 'USD ($)' },
@@ -54,42 +50,36 @@ const regionOptions = [
   { code: 'MA', label: 'Morocco' },
 ] as const;
 
-const modelOptions = [
-  { value: 'gemma-4-31b-it', label: 'Gemma 4 31B (default)' },
-  { value: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Flash Lite (fallback)' },
-  { value: 'gemma-2-9b-it', label: 'Gemma 2 9B' },
-] as const;
-
 export default function SettingsScreen() {
-  const theme = useTheme();
-  const [categoryName, setCategoryName] = useState('');
-  const [categoryEmoji, setCategoryEmoji] = useState('🧩');
+  const theme = useAppTheme();
+  const downloadIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [exportPreview, setExportPreview] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
+  const [showHfToken, setShowHfToken] = useState(false);
   const [passcodeDraft, setPasscodeDraft] = useState('');
   const [passcodeConfirm, setPasscodeConfirm] = useState('');
-  const [backupPassphrase, setBackupPassphrase] = useState('');
-  const [backupConfirm, setBackupConfirm] = useState('');
-  const [backupOutput, setBackupOutput] = useState('');
-  const [backupInput, setBackupInput] = useState('');
-  const [backupMessage, setBackupMessage] = useState('');
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const themePreference = useSettingsStore((state) => state.themePreference);
   const oledTrueBlackEnabled = useSettingsStore((state) => state.oledTrueBlackEnabled);
   const highContrastEnabled = useSettingsStore((state) => state.highContrastEnabled);
   const secureAccessEnabled = useSettingsStore((state) => state.secureAccessEnabled);
   const passcodeEnabled = useSettingsStore((state) => state.passcodeEnabled);
-  const passcodePin = useSettingsStore((state) => state.passcodePin);
   const currencyCode = useSettingsStore((state) => state.currencyCode);
   const language = useSettingsStore((state) => state.language);
   const region = useSettingsStore((state) => state.region);
+  
+  const aiProvider = useSettingsStore((state) => state.aiProvider);
   const geminiApiKey = useSettingsStore((state) => state.geminiApiKey);
+  const huggingFaceToken = useSettingsStore((state) => state.huggingFaceToken);
   const gemmaModel = useSettingsStore((state) => state.gemmaModel);
+  const localModelDownloaded = useSettingsStore((state) => state.localModelDownloaded);
+
+  const smartCategorizationEnabled = useSettingsStore((state) => state.smartCategorizationEnabled);
   const advancedSummariesEnabled = useSettingsStore((state) => state.advancedSummariesEnabled);
   const includeNotesInExport = useSettingsStore((state) => state.includeNotesInExport);
-  const setupCoachDismissed = useSettingsStore((state) => state.setupCoachDismissed);
-  const backupConfigured = useSettingsStore((state) => state.backupConfigured);
-  const setBackupConfigured = useSettingsStore((state) => state.setBackupConfigured);
+  
   const setThemePreference = useSettingsStore((state) => state.setThemePreference);
   const setOledTrueBlackEnabled = useSettingsStore((state) => state.setOledTrueBlackEnabled);
   const setHighContrastEnabled = useSettingsStore((state) => state.setHighContrastEnabled);
@@ -99,27 +89,20 @@ export default function SettingsScreen() {
   const setCurrencyCode = useSettingsStore((state) => state.setCurrencyCode);
   const setLanguage = useSettingsStore((state) => state.setLanguage);
   const setRegion = useSettingsStore((state) => state.setRegion);
+  const setAiProvider = useSettingsStore((state) => state.setAiProvider);
   const setGeminiApiKey = useSettingsStore((state) => state.setGeminiApiKey);
+  const setHuggingFaceToken = useSettingsStore((state) => state.setHuggingFaceToken);
   const setGemmaModel = useSettingsStore((state) => state.setGemmaModel);
+  const setLocalModelDownloaded = useSettingsStore((state) => state.setLocalModelDownloaded);
+  const setSmartCategorizationEnabled = useSettingsStore((state) => state.setSmartCategorizationEnabled);
   const setAdvancedSummariesEnabled = useSettingsStore((state) => state.setAdvancedSummariesEnabled);
   const setIncludeNotesInExport = useSettingsStore((state) => state.setIncludeNotesInExport);
   const resetSettings = useSettingsStore((state) => state.resetSettings);
   const locale = language || 'en-US';
-  const goalsEnabled = useGoalsStore((state) => state.goalsEnabled);
-  const goals = useGoalsStore((state) => state.goals);
-  const recurringEnabled = useRecurringStore((state) => state.recurringEnabled);
-  const recurringEvents = useRecurringStore((state) => state.events);
-  const hydrateRecurring = useRecurringStore((state) => state.hydrateFromBackup);
 
   const categories = useTransactionStore((state) => state.categories);
   const transactions = useTransactionStore((state) => state.transactions);
-  const walletMeta = useTransactionStore((state) => state.walletMeta);
-  const addCustomCategory = useTransactionStore((state) => state.addCustomCategory);
-  const deleteCategory = useTransactionStore((state) => state.deleteCategory);
   const clearAllData = useTransactionStore((state) => state.clearAllData);
-  const hydrateTransactions = useTransactionStore((state) => state.hydrateFromBackup);
-  const hydrateSettings = useSettingsStore((state) => state.hydrateFromBackup);
-  const hydrateGoals = useGoalsStore((state) => state.hydrateFromBackup);
 
   const exportRows = useMemo(() => {
     const byId = new Map(categories.map((item) => [item.id, item]));
@@ -174,82 +157,48 @@ export default function SettingsScreen() {
     setPasscodeConfirm('');
   };
 
-  type BackupSnapshot = {
-    version: 1;
-    settings: Partial<SettingsState>;
-    transactions: Transaction[];
-    categories: Category[];
-    walletMeta: WalletMeta;
-    goalsEnabled: boolean;
-    goals: Goal[];
-    recurringEnabled: boolean;
-    recurringEvents: RecurringCashEvent[];
-  };
-
-  const createBackupPayload = (): Omit<BackupSnapshot, 'version'> => ({
-    settings: {
-      themePreference,
-      oledTrueBlackEnabled,
-      highContrastEnabled,
-      secureAccessEnabled,
-      passcodeEnabled,
-      passcodePin,
-      currencyCode,
-      language,
-      region,
-      geminiApiKey,
-      gemmaModel,
-      advancedSummariesEnabled,
-      includeNotesInExport,
-      setupCoachDismissed,
-      backupConfigured,
-    },
-    transactions,
-    categories,
-    walletMeta,
-    goalsEnabled,
-    goals,
-    recurringEnabled,
-    recurringEvents,
-  });
-
-  const handleCreateBackup = () => {
-    setBackupMessage('');
-    if (!backupPassphrase || backupPassphrase !== backupConfirm) {
-      setBackupMessage('Passphrase must match and not be empty.');
-      return;
+  const handleSimulateDownload = () => {
+    if (downloadIntervalRef.current) {
+      clearInterval(downloadIntervalRef.current);
+      downloadIntervalRef.current = null;
     }
-    const payload = { version: 1 as const, ...createBackupPayload() };
-    const encrypted = encryptBackup(payload, backupPassphrase);
-    setBackupOutput(encrypted);
-    setBackupPassphrase('');
-    setBackupConfirm('');
-    setBackupMessage('Backup created. Save it securely.');
-    setBackupConfigured(true);
+
+    setIsDownloading(true);
+    setDownloadProgress(0);
+    downloadIntervalRef.current = setInterval(() => {
+      setDownloadProgress((prev) => {
+        if (prev >= 1) {
+          if (downloadIntervalRef.current) {
+            clearInterval(downloadIntervalRef.current);
+            downloadIntervalRef.current = null;
+          }
+          setIsDownloading(false);
+          setLocalModelDownloaded(true);
+          return 1;
+        }
+        return prev + 0.1;
+      });
+    }, 500);
   };
 
-  const handleRestoreBackup = () => {
-    setBackupMessage('');
-    try {
-      if (!backupInput || !backupPassphrase) {
-        setBackupMessage('Provide encrypted text and passphrase.');
-        return;
+  const handleDeleteLocalModel = () => {
+    if (downloadIntervalRef.current) {
+      clearInterval(downloadIntervalRef.current);
+      downloadIntervalRef.current = null;
+    }
+
+    setIsDownloading(false);
+    setLocalModelDownloaded(false);
+    setDownloadProgress(0);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (downloadIntervalRef.current) {
+        clearInterval(downloadIntervalRef.current);
       }
-      const payload = decryptBackup<BackupSnapshot>(backupInput.trim(), backupPassphrase);
-      if (payload.version !== 1) throw new Error('Unsupported backup version');
-      hydrateSettings(payload.settings);
-      hydrateTransactions({ transactions: payload.transactions, categories: payload.categories, walletMeta: payload.walletMeta });
-      hydrateGoals({ goals: payload.goals, goalsEnabled: payload.goalsEnabled });
-      hydrateRecurring({ events: payload.recurringEvents, recurringEnabled: payload.recurringEnabled });
-      setBackupMessage('Restore successful. Restart app if needed.');
-      setBackupInput('');
-      setBackupPassphrase('');
-      setBackupConfirm('');
-      setBackupConfigured(true);
-    } catch (error) {
-      setBackupMessage(error instanceof Error ? error.message : 'Restore failed');
-    }
-  };
+    };
+  }, []);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
@@ -305,87 +254,148 @@ export default function SettingsScreen() {
           </Card.Content>
         </Card>
 
+        {/* AI Configuration Card */}
         <Card
           mode="elevated"
           style={{ backgroundColor: theme.colors.surfaceContainer }}
           contentStyle={{ paddingVertical: 12, gap: 12 }}
         >
           <Card.Title
-            title="Backup & restore"
-            subtitle="Encrypt data with a passphrase for export/import"
+            title="AI Intelligence"
+            subtitle="Configure Gemma analysis and providers"
             titleVariant="titleLarge"
             subtitleVariant="bodyMedium"
             titleStyle={{ color: theme.colors.onSurface }}
             subtitleStyle={{ color: theme.colors.onSurfaceVariant }}
           />
-          <Card.Content style={{ gap: 12 }}>
-            <Text variant="titleSmall" style={{ color: theme.colors.onSurface }}>
-              Create encrypted backup
-            </Text>
-            <TextInput
-              mode="outlined"
-              label="Passphrase"
-              value={backupPassphrase}
-              onChangeText={setBackupPassphrase}
-              secureTextEntry
+          <Card.Content style={{ gap: 16 }}>
+            <SegmentedButtons
+              value={aiProvider}
+              onValueChange={(value) => setAiProvider(value as AiProvider)}
+              buttons={[
+                { label: 'Google API', value: 'google' },
+                { label: 'HF API', value: 'huggingface' },
+                { label: 'Local Device', value: 'local' },
+              ]}
             />
-            <TextInput
-              mode="outlined"
-              label="Confirm passphrase"
-              value={backupConfirm}
-              onChangeText={setBackupConfirm}
-              secureTextEntry
-            />
-            <Button
-              mode="contained"
-              onPress={handleCreateBackup}
-              disabled={!backupPassphrase || backupPassphrase !== backupConfirm}
-              contentStyle={{ paddingVertical: 10 }}
-              style={{ paddingBottom: 6 }}
-            >
-              Generate encrypted backup
-            </Button>
-            {backupOutput ? (
-              <View
-                style={{
-                  backgroundColor: theme.colors.surfaceVariant,
-                  borderRadius: 12,
-                  padding: 12,
-                  borderColor: theme.colors.outlineVariant,
-                  borderWidth: 1,
-                }}
-              >
-                <Text variant="bodySmall" selectable style={{ color: theme.colors.onSurface }}>
-                  {backupOutput}
-                </Text>
+            
+            {aiProvider === 'google' && (
+              <View style={{ gap: 12 }}>
+                <TextInput
+                  mode="outlined"
+                  label="Gemini API key"
+                  placeholder="AIza..."
+                  value={geminiApiKey}
+                  secureTextEntry={!showApiKey}
+                  onChangeText={setGeminiApiKey}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  right={
+                    <TextInput.Icon
+                      icon={showApiKey ? 'eye-off-outline' : 'eye-outline'}
+                      onPress={() => setShowApiKey((prev) => !prev)}
+                    />
+                  }
+                />
+                <HelperText type="info" visible>
+                  Uses the @google/generative-ai SDK. Your key is stored locally.
+                </HelperText>
               </View>
-            ) : null}
+            )}
+
+            {aiProvider === 'huggingface' && (
+              <View style={{ gap: 12 }}>
+                <TextInput
+                  mode="outlined"
+                  label="HuggingFace Token"
+                  placeholder="hf_..."
+                  value={huggingFaceToken}
+                  secureTextEntry={!showHfToken}
+                  onChangeText={setHuggingFaceToken}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  right={
+                    <TextInput.Icon
+                      icon={showHfToken ? 'eye-off-outline' : 'eye-outline'}
+                      onPress={() => setShowHfToken((prev) => !prev)}
+                    />
+                  }
+                />
+                <TextInput
+                  mode="outlined"
+                  label="Model ID"
+                  placeholder="google/gemma-2-2b-it"
+                  value={gemmaModel}
+                  onChangeText={setGemmaModel}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                <HelperText type="info" visible>
+                  Uses the HuggingFace Inference API. Requires a valid token.
+                </HelperText>
+              </View>
+            )}
+
+            {aiProvider === 'local' && (
+              <View style={{ gap: 12 }}>
+                {!localModelDownloaded ? (
+                  <>
+                    <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>
+                      Download Qwen 1.5 0.5B (Quantized)
+                    </Text>
+                    <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                      Size: ~450MB. This model runs entirely on-device for maximum privacy.
+                    </Text>
+                    {isDownloading ? (
+                      <View style={{ gap: 8 }}>
+                        <ProgressBar progress={downloadProgress} color={theme.colors.primary} />
+                        <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant, textAlign: 'right' }}>
+                          {Math.round(downloadProgress * 100)}%
+                        </Text>
+                      </View>
+                    ) : (
+                      <Button mode="contained" onPress={handleSimulateDownload} icon="download">
+                        Download Model
+                      </Button>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <Text variant="titleMedium" style={{ color: theme.colors.primary }}>
+                      Local model is active.
+                    </Text>
+                    <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                      All analysis will be performed on-device without network requests.
+                    </Text>
+                    <Button mode="outlined" onPress={handleDeleteLocalModel} textColor={theme.colors.error}>
+                      Delete downloaded model
+                    </Button>
+                  </>
+                )}
+              </View>
+            )}
+
             <Divider />
-            <Text variant="titleSmall" style={{ color: theme.colors.onSurface }}>
-              Restore from encrypted text
-            </Text>
-            <TextInput
-              mode="outlined"
-              label="Encrypted backup"
-              value={backupInput}
-              onChangeText={setBackupInput}
-              multiline
+
+            <List.Item
+              title="Smart Categorization"
+              description="Use AI to automatically suggest categories for manual entries."
+              titleStyle={{ color: theme.colors.onSurface }}
+              descriptionStyle={{ color: theme.colors.onSurfaceVariant }}
+              right={() => <Switch value={smartCategorizationEnabled} onValueChange={setSmartCategorizationEnabled} />}
+              style={{ paddingHorizontal: 0 }}
             />
-            <TextInput
-              mode="outlined"
-              label="Passphrase"
-              value={backupPassphrase}
-              onChangeText={setBackupPassphrase}
-              secureTextEntry
+
+            <List.Item
+              title="Advanced summaries"
+              description="Get deeper recommendations, trends, and next steps."
+              titleStyle={{ color: theme.colors.onSurface }}
+              descriptionStyle={{ color: theme.colors.onSurfaceVariant }}
+              right={() => (
+                <Switch value={advancedSummariesEnabled} onValueChange={setAdvancedSummariesEnabled} />
+              )}
+              style={{ paddingHorizontal: 0 }}
             />
-            <Button mode="contained-tonal" onPress={handleRestoreBackup} disabled={!backupInput || !backupPassphrase}>
-              Restore backup
-            </Button>
-            {backupMessage ? (
-              <Text variant="bodySmall" style={{ color: backupMessage.toLowerCase().includes('fail') ? theme.colors.error : theme.colors.onSurface }}>
-                {backupMessage}
-              </Text>
-            ) : null}
           </Card.Content>
         </Card>
 
@@ -395,52 +405,14 @@ export default function SettingsScreen() {
           contentStyle={{ paddingVertical: 12, gap: 12 }}
         >
           <Card.Title
-            title="Gemma & Locale"
-            subtitle="Connect Gemini API access and region defaults"
+            title="Locale & Export"
+            subtitle="Currency, language, and data management"
             titleVariant="titleLarge"
             subtitleVariant="bodyMedium"
             titleStyle={{ color: theme.colors.onSurface }}
             subtitleStyle={{ color: theme.colors.onSurfaceVariant }}
           />
           <Card.Content style={{ gap: 16 }}>
-            <TextInput
-              mode="outlined"
-              label="Gemini API key"
-              placeholder="AIza..."
-              value={geminiApiKey}
-              secureTextEntry={!showApiKey}
-              onChangeText={setGeminiApiKey}
-              autoCapitalize="none"
-              autoCorrect={false}
-              right={
-                <TextInput.Icon
-                  icon={showApiKey ? 'eye-off-outline' : 'eye-outline'}
-                  onPress={() => setShowApiKey((prev) => !prev)}
-                />
-              }
-            />
-            <HelperText type="info" visible>
-              Stored locally and used only to call the Gemma model for insights.
-            </HelperText>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {modelOptions.map((option) => (
-                <Chip
-                  key={option.value}
-                  mode="outlined"
-                  selected={gemmaModel === option.value}
-                  onPress={() => setGemmaModel(option.value)}
-                  selectedColor={theme.colors.onSecondaryContainer}
-                  style={{
-                    backgroundColor:
-                      gemmaModel === option.value ? theme.colors.secondaryContainer : theme.colors.surface,
-                    paddingVertical: 4,
-                  }}
-                  textStyle={{ textAlign: 'center', lineHeight: 16 }}
-                >
-                  {option.label}
-                </Chip>
-              ))}
-            </View>
             <Text variant="titleSmall" style={{ color: theme.colors.onSurface }}>
               Language
             </Text>
@@ -501,6 +473,39 @@ export default function SettingsScreen() {
                 </Chip>
               ))}
             </View>
+            <Divider />
+            <List.Item
+              title="Include notes in CSV"
+              description="Keep memo fields when exporting transactions."
+              titleStyle={{ color: theme.colors.onSurface }}
+              descriptionStyle={{ color: theme.colors.onSurfaceVariant }}
+              right={() => <Switch value={includeNotesInExport} onValueChange={setIncludeNotesInExport} />}
+              style={{ paddingHorizontal: 0 }}
+            />
+            <Button
+              mode="outlined"
+              onPress={async () => {
+                setExportPreview(exportRows);
+                await Haptics.selectionAsync();
+              }}
+            >
+              Generate local CSV preview
+            </Button>
+            {exportPreview ? (
+              <View
+                style={{
+                  backgroundColor: theme.colors.surfaceVariant,
+                  borderRadius: 12,
+                  padding: 12,
+                  borderColor: theme.colors.outlineVariant,
+                  borderWidth: 1,
+                }}
+              >
+                <Text variant="bodySmall" selectable style={{ color: theme.colors.onSurface }}>
+                  {exportPreview}
+                </Text>
+              </View>
+            ) : null}
           </Card.Content>
         </Card>
 
@@ -510,7 +515,7 @@ export default function SettingsScreen() {
           contentStyle={{ paddingVertical: 12, gap: 12 }}
         >
           <Card.Title
-            title="Security & advanced"
+            title="Backup & Security"
             titleVariant="titleLarge"
             titleStyle={{ color: theme.colors.onSurface }}
           />
@@ -575,155 +580,22 @@ export default function SettingsScreen() {
               Save passcode
             </Button>
             <Divider />
-            <List.Item
-              title="Advanced Gemma summaries"
-              description="Get deeper recommendations, trends, and next steps."
-              titleStyle={{ color: theme.colors.onSurface }}
-              descriptionStyle={{ color: theme.colors.onSurfaceVariant }}
-              right={() => (
-                <Switch value={advancedSummariesEnabled} onValueChange={setAdvancedSummariesEnabled} />
-              )}
-              style={{ paddingHorizontal: 0 }}
-            />
-            <List.Item
-              title="Include notes in CSV"
-              description="Keep memo fields when exporting transactions."
-              titleStyle={{ color: theme.colors.onSurface }}
-              descriptionStyle={{ color: theme.colors.onSurfaceVariant }}
-              right={() => <Switch value={includeNotesInExport} onValueChange={setIncludeNotesInExport} />}
-              style={{ paddingHorizontal: 0 }}
-            />
-          </Card.Content>
-        </Card>
-
-        <Card
-          mode="elevated"
-          style={{ backgroundColor: theme.colors.surfaceContainer }}
-          contentStyle={{ paddingVertical: 12, gap: 12 }}
-        >
-          <Card.Title
-            title="Category management"
-            titleVariant="titleLarge"
-            titleStyle={{ color: theme.colors.onSurface }}
-          />
-          <Card.Content style={{ gap: 14 }}>
-            <TextInput
-              mode="outlined"
-              label="Category name (max 14)"
-              value={categoryName}
-              onChangeText={setCategoryName}
-              maxLength={14}
-              placeholder="Snacks, Gym, Pets..."
-            />
-            <TextInput
-              mode="outlined"
-              label="Emoji"
-              value={categoryEmoji}
-              onChangeText={setCategoryEmoji}
-              maxLength={2}
-              placeholder="🧩"
-            />
+            
             <Button
               mode="contained"
+              buttonColor={theme.colors.errorContainer}
+              textColor={theme.colors.onErrorContainer}
               onPress={async () => {
-                addCustomCategory({ name: categoryName, emoji: categoryEmoji });
-                setCategoryName('');
-                setCategoryEmoji('🧩');
-                await Haptics.selectionAsync();
+                clearAllData();
+                resetSettings();
+                setExportPreview('');
+                await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
               }}
             >
-              Create category
+              Reset all local wallet data
             </Button>
-            <Divider />
-            <Text variant="titleSmall" style={{ color: theme.colors.onSurfaceVariant }}>
-              Expense categories
-            </Text>
-            {categories
-              .filter((item) => item.kind === 'expense')
-              .map((item) => (
-                <View
-                  key={item.id}
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    paddingVertical: 4,
-                  }}
-                >
-                  <Text variant="bodyLarge" style={{ color: theme.colors.onSurface }}>
-                    {item.emoji} {item.name}
-                  </Text>
-                  {!item.isLocked ? (
-                    <IconButton icon="delete-outline" onPress={() => deleteCategory(item.id)} />
-                  ) : (
-                    <Text variant="labelMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-                      locked
-                    </Text>
-                  )}
-                </View>
-              ))}
           </Card.Content>
         </Card>
-
-        <Card
-          mode="elevated"
-          style={{ backgroundColor: theme.colors.surfaceContainer }}
-          contentStyle={{ paddingVertical: 12, gap: 12 }}
-        >
-          <Card.Title
-            title="Data export"
-            subtitle="Generate a CSV preview without leaving the device"
-            titleVariant="titleLarge"
-            subtitleVariant="bodyMedium"
-            subtitleNumberOfLines={3}
-            titleStyle={{ color: theme.colors.onSurface }}
-            subtitleStyle={{ color: theme.colors.onSurfaceVariant }}
-          />
-          <Card.Content style={{ gap: 14 }}>
-            <Button
-              mode="outlined"
-              onPress={async () => {
-                setExportPreview(exportRows);
-                await Haptics.selectionAsync();
-              }}
-            >
-              Generate local CSV preview
-            </Button>
-            {exportPreview ? (
-              <View
-                style={{
-                  backgroundColor: theme.colors.surfaceVariant,
-                  borderRadius: 12,
-                  padding: 12,
-                  borderColor: theme.colors.outlineVariant,
-                  borderWidth: 1,
-                }}
-              >
-                <Text variant="bodySmall" selectable style={{ color: theme.colors.onSurface }}>
-                  {exportPreview}
-                </Text>
-              </View>
-            ) : (
-              <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                Preview stays on-device. Use export after choosing your locale, currency, and region.
-              </Text>
-            )}
-          </Card.Content>
-        </Card>
-
-        <Button
-          mode="contained"
-          buttonColor={theme.colors.errorContainer}
-          textColor={theme.colors.onErrorContainer}
-          onPress={async () => {
-            clearAllData();
-            resetSettings();
-            setExportPreview('');
-            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-          }}
-        >
-          Reset all local wallet data
-        </Button>
       </ScrollView>
     </SafeAreaView>
   );

@@ -1,0 +1,18 @@
+GemWallet Temporary Fix Tracker
+Date: 2026-04-19
+
+Backlog items targeted in this pass:
+[x] Remove analytics unused imports
+[x] Remove home unused imports/state
+[x] Remove planning unused imports
+[x] Remove settings unused imports/state/hooks
+[x] Delete accidental .code-workspace artifact
+[x] Re-run lint and tests
+
+Progress log:
+- Created tracker file.
+- Cleaned unused imports in analytics/planning.
+- Cleaned unused imports/state/hooks in home/settings.
+- Deleted src/features/home/screens/gemwallet.code-workspace.
+- Validation: npm test passed (16/16).
+- Validation: npm run lint now passes with 0 warnings.

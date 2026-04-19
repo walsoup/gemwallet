@@ -3,6 +3,13 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 import type { CurrencyCode, LanguageCode, RegionCode, ThemePreference } from '../types/finance';
+import {
+  defaultSettingsState,
+  migrateSettingsState,
+  type AiProvider,
+} from './settingsMigration';
+
+export type { AiProvider } from './settingsMigration';
 
 export type SettingsState = {
   themePreference: ThemePreference;
@@ -14,8 +21,12 @@ export type SettingsState = {
   currencyCode: CurrencyCode;
   language: LanguageCode;
   region: RegionCode;
+  aiProvider: AiProvider;
   geminiApiKey: string;
-  gemmaModel: string;
+  huggingFaceToken: string;
+  gemmaModel: string; // Used for cloud
+  localModelDownloaded: boolean; // Indicates if local model is downloaded
+  smartCategorizationEnabled: boolean;
   advancedSummariesEnabled: boolean;
   includeNotesInExport: boolean;
   setupCoachDismissed: boolean;
@@ -29,8 +40,12 @@ export type SettingsState = {
   setCurrencyCode: (code: CurrencyCode) => void;
   setLanguage: (language: LanguageCode) => void;
   setRegion: (region: RegionCode) => void;
+  setAiProvider: (provider: AiProvider) => void;
   setGeminiApiKey: (key: string) => void;
+  setHuggingFaceToken: (token: string) => void;
   setGemmaModel: (model: string) => void;
+  setLocalModelDownloaded: (downloaded: boolean) => void;
+  setSmartCategorizationEnabled: (enabled: boolean) => void;
   setAdvancedSummariesEnabled: (enabled: boolean) => void;
   setIncludeNotesInExport: (enabled: boolean) => void;
   setSetupCoachDismissed: (dismissed: boolean) => void;
@@ -39,23 +54,7 @@ export type SettingsState = {
   resetSettings: () => void;
 };
 
-const defaultState = {
-  themePreference: 'system' as ThemePreference,
-  oledTrueBlackEnabled: false,
-  highContrastEnabled: false,
-  secureAccessEnabled: false,
-  passcodeEnabled: false,
-  passcodePin: '',
-  currencyCode: 'USD' as CurrencyCode,
-  language: 'en-US' as LanguageCode,
-  region: 'US' as RegionCode,
-  geminiApiKey: '',
-  gemmaModel: 'gemma-4-31b-it',
-  advancedSummariesEnabled: false,
-  includeNotesInExport: true,
-  setupCoachDismissed: false,
-  backupConfigured: false,
-};
+const defaultState = defaultSettingsState;
 
 export const useSettingsStore = create<SettingsState>()(
   persist(
@@ -70,8 +69,12 @@ export const useSettingsStore = create<SettingsState>()(
       setCurrencyCode: (currencyCode) => set({ currencyCode }),
       setLanguage: (language) => set({ language }),
       setRegion: (region) => set({ region }),
+      setAiProvider: (aiProvider) => set({ aiProvider }),
       setGeminiApiKey: (geminiApiKey) => set({ geminiApiKey: geminiApiKey.trim() }),
+      setHuggingFaceToken: (huggingFaceToken) => set({ huggingFaceToken: huggingFaceToken.trim() }),
       setGemmaModel: (gemmaModel) => set({ gemmaModel }),
+      setLocalModelDownloaded: (localModelDownloaded) => set({ localModelDownloaded }),
+      setSmartCategorizationEnabled: (smartCategorizationEnabled) => set({ smartCategorizationEnabled }),
       setAdvancedSummariesEnabled: (advancedSummariesEnabled) => set({ advancedSummariesEnabled }),
       setIncludeNotesInExport: (includeNotesInExport) => set({ includeNotesInExport }),
       setSetupCoachDismissed: (setupCoachDismissed) => set({ setupCoachDismissed }),
@@ -84,28 +87,10 @@ export const useSettingsStore = create<SettingsState>()(
       resetSettings: () => set(defaultState),
     }),
     {
-      name: 'gemwallet-settings-v3',
+      name: 'gemwallet-settings-v5',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 3,
-      migrate: (persistedState: SettingsState | undefined) => {
-        if (!persistedState) return defaultState;
-
-        return {
-          ...defaultState,
-          ...persistedState,
-          geminiApiKey: persistedState.geminiApiKey ?? '',
-          gemmaModel: persistedState.gemmaModel ?? defaultState.gemmaModel,
-          currencyCode: persistedState.currencyCode ?? defaultState.currencyCode,
-          language: persistedState.language ?? defaultState.language,
-          region: persistedState.region ?? defaultState.region,
-          passcodeEnabled: persistedState.passcodeEnabled ?? defaultState.passcodeEnabled,
-          passcodePin: persistedState.passcodePin ?? defaultState.passcodePin,
-          advancedSummariesEnabled: persistedState.advancedSummariesEnabled ?? defaultState.advancedSummariesEnabled,
-          includeNotesInExport: persistedState.includeNotesInExport ?? defaultState.includeNotesInExport,
-          setupCoachDismissed: persistedState.setupCoachDismissed ?? defaultState.setupCoachDismissed,
-          backupConfigured: persistedState.backupConfigured ?? defaultState.backupConfigured,
-        };
-      },
+      version: 5,
+      migrate: (persistedState: unknown, _version: number) => migrateSettingsState(persistedState),
     }
   )
 );
