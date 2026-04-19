@@ -43,11 +43,6 @@ async function loadLiteRtModule(): Promise<LiteRtModule | null> {
   }
 }
 
-async function resolveModelUrl() {
-  const mod = await loadLiteRtModule();
-  return mod?.GEMMA_4_E2B_IT ?? DEFAULT_MODEL_URL;
-}
-
 function fileNameFromUrl(url: string) {
   return url.split('/').pop() || 'local-gemma.litertlm';
 }

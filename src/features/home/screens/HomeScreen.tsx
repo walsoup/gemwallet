@@ -266,7 +266,7 @@ export default function HomeScreen() {
     return () => {
       cancelled = true;
     };
-  }, [aiProvider, currencyCode, geminiApiKey, huggingFaceToken, localModelDownloaded, gemmaModel, locale, region, transactions]);
+  }, [aiProvider, currencyCode, geminiApiKey, huggingFaceToken, localModelDownloaded, gemmaModel, localModelId, locale, region, transactions]);
 
   const expenseCategories = useMemo(
     () => categories.filter((item) => item.kind === 'expense'),
