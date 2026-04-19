@@ -27,6 +27,16 @@ type AnalysisOptions = {
 
 type AnalysisCallbacks = {
   onCommand?: (command: { amountCents: number; categoryHint: string; note?: string }) => void;
+  onIncome?: (command: { amountCents: number; categoryHint: string; note?: string }) => void;
+  onRecurring?: (command: {
+    name: string;
+    amountCents: number;
+    type: 'income' | 'expense';
+    interval: 'weekly' | 'monthly';
+    categoryHint?: string;
+    startDate?: number;
+  }) => void;
+  onGoal?: (command: { name: string; targetCents: number; dueDate?: number }) => void;
 };
 
 function chunkText(text: string) {
@@ -70,6 +80,12 @@ function buildPrompt(transactions: Transaction[], options: AnalysisOptions, user
     'Summarize this cash ledger for a personal finance assistant.',
     `Locale ${options.locale}, Region ${options.region}, Currency ${options.currencyCode}.`,
     userQuestion ? `User question: ${userQuestion}` : '',
+    'If the user asks to log purchases, emit "ADD_EXPENSE: <amount> <category> <note>" lines.',
+    'If the user asks to log income, emit "ADD_INCOME: <amount> <category> <note>".',
+    'If the user asks to create recurring items, emit "ADD_RECURRING: <name> <amount> <income|expense> <weekly|monthly> <categoryHint?> <startDate?>".',
+    'If the user asks to save a goal, emit "ADD_GOAL: <name> <targetAmount> <dueDate?>".',
+    'Keep commands on their own lines; otherwise respond with helpful Markdown.',
+    'Keep commands on their own lines; otherwise respond with helpful Markdown.',
     'Use Markdown formatting heavily. Use **bold** for important numbers.',
     'Present the balance trend and biggest categories in a clean Markdown table.',
     'Provide one clear next action bullet point at the end.',
@@ -119,6 +135,54 @@ export function parseAddExpenseCommand(text: string) {
   const categoryHint = match[2];
   const note = match[3]?.trim();
   return { amountCents: Math.round(amount * 100), categoryHint, note };
+}
+
+export function parseAddIncomeCommand(text: string) {
+  const match = text.match(/ADD_INCOME:\s*([0-9]+(?:\.[0-9]{1,2})?)\s+([^\s]+)\s*(.*)/i);
+  if (!match) return null;
+  const amount = Number(match[1]);
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+  const categoryHint = match[2];
+  const note = match[3]?.trim();
+  return { amountCents: Math.round(amount * 100), categoryHint, note };
+}
+
+export function parseAddRecurringCommand(text: string) {
+  const match = text.match(
+    /ADD_RECURRING:\s*([^\s]+)\s+([0-9]+(?:\.[0-9]{1,2})?)\s+(income|expense)\s+(weekly|monthly)\s*([^\s]+)?\s*(.*)?/i
+  );
+  if (!match) return null;
+  const name = match[1]?.trim();
+  const amount = Number(match[2]);
+  if (!name || !Number.isFinite(amount) || amount <= 0) return null;
+  const type = match[3] === 'income' ? 'income' : 'expense';
+  const interval = match[4] === 'weekly' ? 'weekly' : 'monthly';
+  const categoryHint = match[5]?.trim();
+  const startDateRaw = match[6]?.trim();
+  const startDate = startDateRaw ? Date.parse(startDateRaw) : undefined;
+  return {
+    name,
+    amountCents: Math.round(amount * 100),
+    type,
+    interval,
+    categoryHint,
+    startDate: Number.isNaN(startDate) ? undefined : startDate,
+  };
+}
+
+export function parseAddGoalCommand(text: string) {
+  const match = text.match(/ADD_GOAL:\s*([^\s].*?)\s+([0-9]+(?:\.[0-9]{1,2})?)\s*(.*)?/i);
+  if (!match) return null;
+  const name = match[1]?.trim();
+  const amount = Number(match[2]);
+  if (!name || !Number.isFinite(amount) || amount <= 0) return null;
+  const dueDateRaw = match[3]?.trim();
+  const dueDate = dueDateRaw ? Date.parse(dueDateRaw) : undefined;
+  return {
+    name,
+    targetCents: Math.round(amount * 100),
+    dueDate: Number.isNaN(dueDate) ? undefined : dueDate,
+  };
 }
 
 async function callHuggingFace(
@@ -271,8 +335,14 @@ export async function* streamFinancialAnalysis(
       }
 
       const raw = localResult.text?.trim() || fallback;
-      const command = parseAddExpenseCommand(raw);
-      if (command && callbacks?.onCommand) callbacks.onCommand(command);
+      const expenseCommand = parseAddExpenseCommand(raw);
+      const incomeCommand = parseAddIncomeCommand(raw);
+      const recurringCommand = parseAddRecurringCommand(raw);
+      const goalCommand = parseAddGoalCommand(raw);
+      if (expenseCommand && callbacks?.onCommand) callbacks.onCommand(expenseCommand);
+      if (incomeCommand && callbacks?.onIncome) callbacks.onIncome(incomeCommand);
+      if (recurringCommand && callbacks?.onRecurring) callbacks.onRecurring(recurringCommand);
+      if (goalCommand && callbacks?.onGoal) callbacks.onGoal(goalCommand);
 
       const cleaned = sanitizeModelOutput(raw) || fallback;
       for (const chunk of chunkText(cleaned)) {
@@ -298,8 +368,14 @@ export async function* streamFinancialAnalysis(
       );
 
       const raw = text?.trim() || fallback;
-      const command = parseAddExpenseCommand(raw);
-      if (command && callbacks?.onCommand) callbacks.onCommand(command);
+      const expenseCommand = parseAddExpenseCommand(raw);
+      const incomeCommand = parseAddIncomeCommand(raw);
+      const recurringCommand = parseAddRecurringCommand(raw);
+      const goalCommand = parseAddGoalCommand(raw);
+      if (expenseCommand && callbacks?.onCommand) callbacks.onCommand(expenseCommand);
+      if (incomeCommand && callbacks?.onIncome) callbacks.onIncome(incomeCommand);
+      if (recurringCommand && callbacks?.onRecurring) callbacks.onRecurring(recurringCommand);
+      if (goalCommand && callbacks?.onGoal) callbacks.onGoal(goalCommand);
       const cleaned = sanitizeModelOutput(raw) || fallback;
       for (const chunk of chunkText(cleaned)) {
         await new Promise((resolve) => setTimeout(resolve, MIN_CHUNK_DELAY_MS));

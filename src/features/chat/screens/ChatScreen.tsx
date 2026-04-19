@@ -10,6 +10,8 @@ import { useSettingsStore } from '../../../../store/useSettingsStore';
 import { streamFinancialAnalysis } from '../../nlp/services/gemmaAnalysis';
 import { useBouncyPress } from '../../../../hooks/useBouncyPress';
 import { formatCurrency } from '../../../../utils/formatCurrency';
+import { useRecurringStore } from '../../../../store/useRecurringStore';
+import { useGoalsStore } from '../../../../store/useGoalsStore';
 
 type ChatMessage = {
   id: string;
@@ -27,6 +29,11 @@ export default function ChatScreen() {
 
   const transactions = useTransactionStore((state) => state.transactions);
   const categories = useTransactionStore((state) => state.categories);
+  const addExpense = useTransactionStore((state) => state.addExpense);
+  const addIncome = useTransactionStore((state) => state.addIncome);
+  const addEvent = useRecurringStore((state) => state.addEvent);
+  const setRecurringEnabled = useRecurringStore((state) => state.setRecurringEnabled);
+  const addGoal = useGoalsStore((state) => state.addGoal);
   const currencyCode = useSettingsStore((state) => state.currencyCode);
   const language = useSettingsStore((state) => state.language);
   const region = useSettingsStore((state) => state.region);
@@ -59,6 +66,11 @@ export default function ChatScreen() {
     scrollToBottom();
   }, [messages.length]);
 
+  const appendSystemMessage = useCallback((text: string) => {
+    setMessages((prev) => [...prev, { id: generateId(), role: 'assistant', text }]);
+    scrollToBottom();
+  }, []);
+
   const handleSend = useCallback(async () => {
     if (!input.trim() || isStreaming) return;
     const userText = input.trim();
@@ -84,7 +96,61 @@ export default function ChatScreen() {
           localModelId,
           advanced: advancedSummariesEnabled,
         },
-        undefined,
+        {
+          onCommand: (command) => {
+            const category = categories.find((c) =>
+              c.name.toLowerCase().includes(command.categoryHint.toLowerCase())
+            );
+            addExpense({
+              amountCents: command.amountCents,
+              categoryId: category?.id ?? categories.find((c) => c.kind === 'expense')?.id ?? 'expense-misc',
+              note: command.note || 'AI-added expense',
+            });
+            appendSystemMessage(
+              `Logged ${formatCurrency(command.amountCents, { currencyCode, locale })} in ${category?.name ?? 'Expense'}`
+            );
+          },
+          onRecurring: (command) => {
+            const category = categories.find((c) =>
+              c.name.toLowerCase().includes((command.categoryHint ?? '').toLowerCase())
+            );
+            addEvent({
+              name: command.name,
+              amountCents: command.amountCents,
+              type: command.type,
+              interval: command.interval,
+              categoryId: category?.id ?? categories.find((c) => c.kind === command.type)?.id ?? '',
+              startDate: command.startDate,
+            });
+            setRecurringEnabled(true);
+            appendSystemMessage(
+              `Created ${command.interval} ${command.type} "${command.name}" for ${formatCurrency(command.amountCents, { currencyCode, locale })}`
+            );
+          },
+          onGoal: (command) => {
+            addGoal({
+              name: command.name,
+              targetCents: command.targetCents,
+              dueDate: command.dueDate,
+            });
+            appendSystemMessage(
+              `Added goal "${command.name}" for ${formatCurrency(command.targetCents, { currencyCode, locale })}`
+            );
+          },
+          onIncome: (command) => {
+            const category = categories.find((c) =>
+              c.name.toLowerCase().includes(command.categoryHint.toLowerCase())
+            );
+            addIncome({
+              amountCents: command.amountCents,
+              categoryId: category?.id ?? categories.find((c) => c.kind === 'income')?.id ?? 'income-misc',
+              note: command.note || 'AI-added income',
+            });
+            appendSystemMessage(
+              `Logged income ${formatCurrency(command.amountCents, { currencyCode, locale })} in ${category?.name ?? 'Income'}`
+            );
+          },
+        },
         userText
       );
 
@@ -121,6 +187,13 @@ export default function ChatScreen() {
     gemmaModel,
     localModelId,
     advancedSummariesEnabled,
+    categories,
+    addExpense,
+    addIncome,
+    addEvent,
+    setRecurringEnabled,
+    addGoal,
+    appendSystemMessage,
   ]);
 
   const totalSpend = transactions
