@@ -40,15 +40,13 @@ jobs:
           grep -q 'android\.enableJetifier' android/gradle.properties \
             && sed -i 's/android\.enableJetifier=.*/android.enableJetifier=false/' android/gradle.properties \
             || echo "android.enableJetifier=false" >> android/gradle.properties
-          # Suppress deprecation-warning summary from third-party plugins (RNGP, AGP internals)
-          echo "org.gradle.warning.mode=none" >> android/gradle.properties
 
       - name: Build Standalone APK (Release)
         run: |
           cd android
           chmod +x gradlew
           export NODE_BINARY=$(which node)
-          ./gradlew assembleRelease --stacktrace
+          ./gradlew :app:assembleRelease --stacktrace --info
 
       - name: Upload APK artifact (release)
         uses: actions/upload-artifact@v4
