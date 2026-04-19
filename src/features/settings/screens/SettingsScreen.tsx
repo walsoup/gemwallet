@@ -1,5 +1,5 @@
 import * as Haptics from 'expo-haptics';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, StyleProp, ViewStyle } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -21,6 +21,7 @@ import { useAppTheme } from '../../../../providers/AppThemeProvider';
 import { useTransactionStore } from '../../../../store/useTransactionStore';
 import { formatCurrency } from '../../../../utils/formatCurrency';
 import { useBouncyPress } from '../../../../hooks/useBouncyPress';
+import { deleteLiteRtModel, downloadLiteRtModel, getLiteRtModelInfo } from '../../nlp/services/litertRuntime';
 
 const currencyOptions = [
   { code: 'USD', label: 'USD ($)' },
@@ -171,9 +172,14 @@ function BouncyButton({
   );
 }
 
+function formatBytes(bytes: number | null | undefined) {
+  if (!bytes) return null;
+  const mb = bytes / 1024 / 1024;
+  return `${mb.toFixed(1)} MB`;
+}
+
 export default function SettingsScreen() {
   const theme = useAppTheme();
-  const downloadIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [exportPreview, setExportPreview] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
   const [showHfToken, setShowHfToken] = useState(false);
@@ -181,6 +187,8 @@ export default function SettingsScreen() {
   const [passcodeConfirm, setPasscodeConfirm] = useState('');
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState('');
+  const [modelSizeBytes, setModelSizeBytes] = useState<number | null>(null);
   const themeSegmentBounce = useBouncyPress(0.94);
   const aiSegmentBounce = useBouncyPress(0.94);
 
@@ -280,48 +288,55 @@ export default function SettingsScreen() {
     setPasscodeConfirm('');
   };
 
-  const handleSimulateDownload = () => {
-    if (downloadIntervalRef.current) {
-      clearInterval(downloadIntervalRef.current);
-      downloadIntervalRef.current = null;
+  const syncLocalModelState = useCallback(async () => {
+    try {
+      const info = await getLiteRtModelInfo();
+      if (info.exists) {
+        setLocalModelDownloaded(true);
+        setDownloadProgress(1);
+        setModelSizeBytes(typeof info.size === 'number' ? info.size : null);
+      } else if (localModelDownloaded) {
+        setLocalModelDownloaded(false);
+        setDownloadProgress(0);
+      }
+    } catch {
+      // ignore sync failures; state will refresh on next attempt
     }
-
-    setIsDownloading(true);
-    setDownloadProgress(0);
-    downloadIntervalRef.current = setInterval(() => {
-      setDownloadProgress((prev) => {
-        if (prev >= 1) {
-          if (downloadIntervalRef.current) {
-            clearInterval(downloadIntervalRef.current);
-            downloadIntervalRef.current = null;
-          }
-          setIsDownloading(false);
-          setLocalModelDownloaded(true);
-          return 1;
-        }
-        return prev + 0.1;
-      });
-    }, 500);
-  };
-
-  const handleDeleteLocalModel = () => {
-    if (downloadIntervalRef.current) {
-      clearInterval(downloadIntervalRef.current);
-      downloadIntervalRef.current = null;
-    }
-
-    setIsDownloading(false);
-    setLocalModelDownloaded(false);
-    setDownloadProgress(0);
-  };
+  }, [localModelDownloaded, setLocalModelDownloaded]);
 
   useEffect(() => {
-    return () => {
-      if (downloadIntervalRef.current) {
-        clearInterval(downloadIntervalRef.current);
-      }
-    };
-  }, []);
+    void syncLocalModelState();
+  }, [syncLocalModelState]);
+
+  const handleDownloadLocalModel = async () => {
+    setDownloadError('');
+    setIsDownloading(true);
+    setDownloadProgress(0);
+    try {
+      await downloadLiteRtModel((progress) => setDownloadProgress(progress));
+      await syncLocalModelState();
+    } catch (error) {
+      console.warn('LiteRT download failed', error);
+      setDownloadError('LiteRT download failed. Check your connection and try again.');
+      setLocalModelDownloaded(false);
+      setDownloadProgress(0);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const handleDeleteLocalModel = async () => {
+    try {
+      await deleteLiteRtModel();
+    } catch {
+      // Swallow delete issues and reset local flags to let the user retry.
+    } finally {
+      setIsDownloading(false);
+      setLocalModelDownloaded(false);
+      setDownloadProgress(0);
+      setModelSizeBytes(null);
+    }
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.surfaceContainerLowest }}>
@@ -522,11 +537,16 @@ export default function SettingsScreen() {
                 {!localModelDownloaded ? (
                   <>
                     <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>
-                      Download Qwen 1.5 0.5B (Quantized)
+                      Download Gemma 3n Int4 for LiteRT
                     </Text>
                     <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                      Size: ~450MB. This model runs entirely on-device for maximum privacy.
+                      Runs fully on-device via LiteRT with no network calls. Size: {formatBytes(modelSizeBytes) ?? '~1.3 GB'}.
                     </Text>
+                    {downloadError ? (
+                      <HelperText type="error" visible>
+                        {downloadError}
+                      </HelperText>
+                    ) : null}
                     {isDownloading ? (
                       <View style={{ gap: 8 }}>
                         <ProgressBar progress={downloadProgress} color={theme.colors.primary} />
@@ -535,18 +555,18 @@ export default function SettingsScreen() {
                         </Text>
                       </View>
                     ) : (
-                      <BouncyButton mode="contained" onPress={handleSimulateDownload} icon="download" haptic="heavy">
-                        Download Model
+                      <BouncyButton mode="contained" onPress={handleDownloadLocalModel} icon="download" haptic="heavy">
+                        Download with LiteRT
                       </BouncyButton>
                     )}
                   </>
                 ) : (
                   <>
                     <Text variant="titleMedium" style={{ color: theme.colors.primary }}>
-                      Local model is active.
+                      LiteRT model is active.
                     </Text>
                     <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                      All analysis will be performed on-device without network requests.
+                      All analysis will be performed on-device without network requests.{modelSizeBytes ? ` (${formatBytes(modelSizeBytes)} cached)` : ''}
                     </Text>
                     <BouncyButton mode="outlined" onPress={handleDeleteLocalModel} textColor={theme.colors.error} haptic="heavy">
                       Delete downloaded model

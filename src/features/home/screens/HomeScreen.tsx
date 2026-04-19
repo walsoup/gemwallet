@@ -407,7 +407,6 @@ export default function HomeScreen() {
 
   const settingsBounce = useBouncyPress(0.9);
   const addFundsBounce = useBouncyPress(0.9);
-  const sendBounce = useBouncyPress(0.9);
   const aiFabBounce = useBouncyPress(0.88);
   const unlockBounce = useBouncyPress(0.94);
   const resetBounce = useBouncyPress(0.94);
@@ -636,28 +635,11 @@ export default function HomeScreen() {
                   }}
                   onPressIn={addFundsBounce.onPressIn}
                   onPressOut={addFundsBounce.onPressOut}
-                  style={[styles.heroButton, { backgroundColor: theme.colors.primaryContainer }]}
+                  style={[styles.heroButton, { backgroundColor: theme.colors.primaryContainer, flex: 1 }]}
                   labelStyle={{ color: theme.colors.onPrimaryContainer, letterSpacing: 0 }}
                   contentStyle={{ height: 52 }}
                 >
                   Add Funds
-                </Button>
-              </Animated.View>
-              <Animated.View style={sendBounce.animatedStyle}>
-                <Button
-                  mode="contained"
-                  icon="send"
-                  onPress={() => {
-                    triggerHaptic('medium');
-                    void openManualFlow();
-                  }}
-                  onPressIn={sendBounce.onPressIn}
-                  onPressOut={sendBounce.onPressOut}
-                  style={[styles.heroButton, { backgroundColor: theme.colors.secondaryContainer }]}
-                  labelStyle={{ color: theme.colors.onSecondaryContainer, letterSpacing: 0 }}
-                  contentStyle={{ height: 52 }}
-                >
-                  Send
                 </Button>
               </Animated.View>
             </View>
@@ -793,7 +775,8 @@ export default function HomeScreen() {
 
       <Animated.View style={[styles.aiFabWrapper, aiFabBounce.animatedStyle]} entering={FadeInUp.delay(180).springify().damping(10).stiffness(320)}>
         <FAB
-          icon="sparkles"
+          icon="robot-outline"
+          label="AI analysis"
           style={[styles.aiFab, { backgroundColor: theme.colors.primaryContainer }]}
           color={theme.colors.onPrimaryContainer}
           onPress={() => {

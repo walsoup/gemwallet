@@ -2,6 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { Transaction } from '../../../../types/finance';
 import { formatCurrency } from '../../../../utils/formatCurrency';
 import type { AiProvider } from '../../../../store/useSettingsStore';
+import { runLiteRtCompletion } from './litertRuntime';
 
 const DEFAULT_MODEL = 'gemma-4-31b-it';
 const FALLBACK_MODEL = 'gemini-3.1-flash-lite-preview';
@@ -187,8 +188,14 @@ export async function generatePersonalGreeting(
 
     if (options.aiProvider === 'local') {
        if (!options.localModelDownloaded) return null;
-       // Simulate local LLM response for now since actual Expo local inference needs a custom dev client
-       return "Welcome back! Your on-device local model is running.";
+       const result = await runLiteRtCompletion(prompt, {
+         systemPrompt: 'You are GemWallet, a concise finance assistant. Reply with a single warm greeting sentence.',
+         maxTokens: 48,
+         temperature: 0.2,
+       });
+       if (!result.ok) return null;
+       const cleaned = sanitizeModelOutput(result.text) || result.text;
+       return cleaned?.trim() || null;
     }
 
     if (options.aiProvider === 'huggingface') {
@@ -236,17 +243,36 @@ export async function* streamFinancialAnalysis(
   try {
     if (options.aiProvider === 'local') {
       if (!options.localModelDownloaded) {
-         yield 'Local model not downloaded yet. Please download it in Settings.';
-         for (const chunk of chunkText(fallback)) yield chunk;
-         return;
+        yield 'Local LiteRT model not downloaded yet. Please download it in Settings.';
+        for (const chunk of chunkText(fallback)) yield chunk;
+        return;
       }
-      
-      // Simulating a local LLM generation
-      yield 'Running Qwen/Gemma inference locally on-device...\n\n';
-      await new Promise(resolve => setTimeout(resolve, 500));
-      for (const chunk of chunkText(fallback)) {
-         await new Promise((resolve) => setTimeout(resolve, MIN_CHUNK_DELAY_MS * 10));
-         yield chunk;
+
+      const localResult = await runLiteRtCompletion(prompt, {
+        systemPrompt:
+          'You are a personal finance analyst for GemWallet. Provide concise Markdown with trends, tables, and one clear next action.',
+        maxTokens: options.advanced ? 360 : MAX_TOKENS_BASE,
+        temperature: options.advanced ? 0.5 : 0.28,
+      });
+
+      if (!localResult.ok) {
+        const reason =
+          localResult.reason === 'model-missing'
+            ? 'Local LiteRT model is missing. Re-download it in Settings.'
+            : 'LiteRT runtime was unavailable; showing a cached summary instead.';
+        yield `${reason}\n\n`;
+        for (const chunk of chunkText(fallback)) yield chunk;
+        return;
+      }
+
+      const raw = localResult.text?.trim() || fallback;
+      const command = parseAddExpenseCommand(raw);
+      if (command && callbacks?.onCommand) callbacks.onCommand(command);
+
+      const cleaned = sanitizeModelOutput(raw) || fallback;
+      for (const chunk of chunkText(cleaned)) {
+        await new Promise((resolve) => setTimeout(resolve, MIN_CHUNK_DELAY_MS));
+        yield chunk;
       }
       return;
     }
