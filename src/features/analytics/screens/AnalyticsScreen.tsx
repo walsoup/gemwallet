@@ -1,13 +1,16 @@
-import { useMemo } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import React, { useMemo } from 'react';
+import { Pressable, ScrollView, StyleSheet, View, StyleProp, ViewStyle } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Card, Text, Chip } from 'react-native-paper';
+import { Card, Surface, Text, Chip } from 'react-native-paper';
 import { Defs, LinearGradient, Path, Stop, Svg } from 'react-native-svg';
 
 import { useTransactionStore } from '../../../../store/useTransactionStore';
 import { useSettingsStore } from '../../../../store/useSettingsStore';
 import { useAppTheme } from '../../../../providers/AppThemeProvider';
 import { formatCurrency } from '../../../../utils/formatCurrency';
+import { useBouncyPress } from '../../../../hooks/useBouncyPress';
 
 function buildDailyExpenses(transactions: any[], days: number) {
   const now = new Date();
@@ -90,6 +93,43 @@ function Sparkline({ points, color }: { points: { value: number }[]; color: stri
   );
 }
 
+function triggerHaptic(weight: 'light' | 'medium' | 'heavy' = 'medium') {
+  const style =
+    weight === 'heavy'
+      ? Haptics.ImpactFeedbackStyle.Heavy
+      : weight === 'light'
+        ? Haptics.ImpactFeedbackStyle.Light
+        : Haptics.ImpactFeedbackStyle.Medium;
+  Haptics.impactAsync(style).catch(() => {});
+}
+
+function BouncyPressable({
+  children,
+  onPress,
+  scaleDown = 0.92,
+  style,
+}: {
+  children: React.ReactNode;
+  onPress?: () => void;
+  scaleDown?: number;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const { animatedStyle, onPressIn, onPressOut } = useBouncyPress(scaleDown);
+  return (
+    <Pressable
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+      onPress={() => {
+        triggerHaptic('medium');
+        onPress?.();
+      }}
+      style={{ flex: 1 }}
+    >
+      <Animated.View style={[animatedStyle, style]}>{children}</Animated.View>
+    </Pressable>
+  );
+}
+
 export default function AnalyticsScreen() {
   const theme = useAppTheme();
   const transactions = useTransactionStore((state) => state.transactions);
@@ -121,77 +161,92 @@ export default function AnalyticsScreen() {
   }, [transactions, categories]);
 
   return (
-    <SafeAreaView style={[styles.screen, { backgroundColor: theme.colors.background }]}>
+    <SafeAreaView style={[styles.screen, { backgroundColor: theme.colors.surfaceContainerLowest }]}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <Text variant="headlineLarge" style={{ color: theme.colors.onSurface, fontWeight: 'bold' }}>
+          <Text variant="headlineLarge" style={{ color: theme.colors.onSurface, fontWeight: 'bold', letterSpacing: -0.2 }}>
             Analytics
+          </Text>
+          <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, marginTop: 6 }}>
+            Fluid M3Ex charts with tactile motion.
           </Text>
         </View>
 
-        <Card style={[styles.chartCard, { backgroundColor: theme.colors.surfaceContainer }]}>
-          <Card.Content>
-            <Text variant="titleMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-              30-Day Cashflow
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginVertical: 8 }}>
-              <Text variant="displayMedium" style={{ color: theme.colors.onSurface, fontWeight: 'bold' }}>
-                {formatCurrency(thisMonthSpend, { currencyCode, locale })}
+        <BouncyPressable style={{ marginBottom: 18 }} onPress={() => {}}>
+          <Surface style={[styles.chartCard, { backgroundColor: theme.colors.surfaceContainerHigh }]} elevation={4}>
+            <View style={{ gap: 12 }}>
+              <Text variant="titleMedium" style={{ color: theme.colors.onSurfaceVariant, letterSpacing: 0.15 }}>
+                30-Day Cashflow
               </Text>
-              <Chip
-                style={{ backgroundColor: spendChange > 0 ? theme.colors.errorContainer : theme.colors.tertiaryContainer, marginBottom: 8 }}
-                textStyle={{ color: spendChange > 0 ? theme.colors.onErrorContainer : theme.colors.onTertiaryContainer, fontWeight: 'bold' }}
-              >
-                {spendChange > 0 ? '+' : ''}{spendChange.toFixed(1)}%
-              </Chip>
+              <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 10 }}>
+                <Text variant="displaySmall" style={{ color: theme.colors.onSurface, fontWeight: '800', letterSpacing: -0.2 }}>
+                  {formatCurrency(thisMonthSpend, { currencyCode, locale })}
+                </Text>
+                <Chip
+                  style={{
+                    backgroundColor: spendChange > 0 ? theme.colors.errorContainer : theme.colors.tertiaryContainer,
+                    marginBottom: 4,
+                  }}
+                  textStyle={{
+                    color: spendChange > 0 ? theme.colors.onErrorContainer : theme.colors.onTertiaryContainer,
+                    fontWeight: '800',
+                    letterSpacing: 0.2,
+                  }}
+                  onPress={() => triggerHaptic('light')}
+                >
+                  {spendChange > 0 ? '+' : ''}{spendChange.toFixed(1)}%
+                </Chip>
+              </View>
+              <View style={[styles.chartContainer, { backgroundColor: theme.colors.surfaceContainerLowest, borderColor: theme.colors.outlineVariant }]}>
+                <Sparkline points={dailyExpenses} color={theme.colors.primary} />
+              </View>
             </View>
-            <View style={styles.chartContainer}>
-              <Sparkline points={dailyExpenses} color={theme.colors.primary} />
-            </View>
-          </Card.Content>
-        </Card>
+          </Surface>
+        </BouncyPressable>
 
         <View style={styles.bentoGrid}>
-          <Card style={[styles.bentoCard, { backgroundColor: theme.colors.errorContainer }]}>
-            <Card.Content>
-              <Text variant="labelLarge" style={{ color: theme.colors.onErrorContainer }}>High Outflow</Text>
-              <Text variant="headlineSmall" style={{ color: theme.colors.onErrorContainer, marginTop: 4, fontWeight: 'bold' }}>Dining Out</Text>
-              <Text variant="bodySmall" style={{ color: theme.colors.onErrorContainer, opacity: 0.8, marginTop: 4 }}>+24% vs last week</Text>
-            </Card.Content>
-          </Card>
-          <Card style={[styles.bentoCard, { backgroundColor: theme.colors.tertiaryContainer }]}>
-            <Card.Content>
-              <Text variant="labelLarge" style={{ color: theme.colors.onTertiaryContainer }}>Savings Rate</Text>
-              <Text variant="headlineSmall" style={{ color: theme.colors.onTertiaryContainer, marginTop: 4, fontWeight: 'bold' }}>18.5%</Text>
-              <Text variant="bodySmall" style={{ color: theme.colors.onTertiaryContainer, opacity: 0.8, marginTop: 4 }}>On track for goal</Text>
-            </Card.Content>
-          </Card>
+          <BouncyPressable onPress={() => {}} style={{ flex: 1 }}>
+            <Surface style={[styles.bentoCard, { backgroundColor: theme.colors.errorContainer }]} elevation={3}>
+              <Text variant="labelLarge" style={{ color: theme.colors.onErrorContainer, letterSpacing: 0.2 }}>High Outflow</Text>
+              <Text variant="headlineSmall" style={{ color: theme.colors.onErrorContainer, marginTop: 4, fontWeight: '800' }}>Dining Out</Text>
+              <Text variant="bodySmall" style={{ color: theme.colors.onErrorContainer, opacity: 0.85, marginTop: 6 }}>+24% vs last week</Text>
+            </Surface>
+          </BouncyPressable>
+          <BouncyPressable onPress={() => {}} style={{ flex: 1 }}>
+            <Surface style={[styles.bentoCard, { backgroundColor: theme.colors.tertiaryContainer }]} elevation={3}>
+              <Text variant="labelLarge" style={{ color: theme.colors.onTertiaryContainer, letterSpacing: 0.2 }}>Savings Rate</Text>
+              <Text variant="headlineSmall" style={{ color: theme.colors.onTertiaryContainer, marginTop: 4, fontWeight: '800' }}>18.5%</Text>
+              <Text variant="bodySmall" style={{ color: theme.colors.onTertiaryContainer, opacity: 0.85, marginTop: 6 }}>On track for goal</Text>
+            </Surface>
+          </BouncyPressable>
         </View>
 
-        <Text variant="titleLarge" style={{ color: theme.colors.onSurface, fontWeight: 'bold', marginTop: 24, marginBottom: 16 }}>
+        <Text variant="titleLarge" style={{ color: theme.colors.onSurface, fontWeight: 'bold', marginTop: 26, marginBottom: 12 }}>
           Top Movers
         </Text>
 
-        <Card style={{ backgroundColor: theme.colors.surfaceContainer, borderRadius: 24 }}>
-          <Card.Content style={{ gap: 16 }}>
+        <Surface style={{ backgroundColor: theme.colors.surfaceContainerHigh, borderRadius: 28 }} elevation={3}>
+          <View style={{ padding: 18, gap: 14 }}>
             {topCategories.map((item, index) => (
-              <View key={item.category?.id || index} style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <View style={[styles.iconBox, { backgroundColor: theme.colors.secondaryContainer }]}>
-                  <Text style={{ fontSize: 20 }}>{item.category?.emoji || '💰'}</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text variant="titleMedium" style={{ color: theme.colors.onSurface }}>{item.category?.name || 'Unknown'}</Text>
-                  <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                    {index === 0 ? 'Highest' : index === 1 ? '2nd highest' : index === 2 ? '3rd highest' : `${index + 1}th highest`} spend
+              <BouncyPressable key={item.category?.id || index} onPress={() => {}} style={{ width: '100%' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8 }}>
+                  <View style={[styles.iconBox, { backgroundColor: theme.colors.secondaryContainer }]}>
+                    <Text style={{ fontSize: 20 }}>{item.category?.emoji || '💰'}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text variant="titleMedium" style={{ color: theme.colors.onSurface, fontWeight: '700' }}>{item.category?.name || 'Unknown'}</Text>
+                    <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                      {index === 0 ? 'Highest' : index === 1 ? '2nd highest' : index === 2 ? '3rd highest' : `${index + 1}th highest`} spend
+                    </Text>
+                  </View>
+                  <Text variant="titleMedium" style={{ color: theme.colors.onSurface, fontWeight: '800' }}>
+                    {formatCurrency(item.amount, { currencyCode, locale })}
                   </Text>
                 </View>
-                <Text variant="titleMedium" style={{ color: theme.colors.onSurface, fontWeight: 'bold' }}>
-                  {formatCurrency(item.amount, { currencyCode, locale })}
-                </Text>
-              </View>
+              </BouncyPressable>
             ))}
-          </Card.Content>
-        </Card>
+          </View>
+        </Surface>
 
       </ScrollView>
     </SafeAreaView>
@@ -203,27 +258,35 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
+    padding: 18,
+    paddingBottom: 56,
+    gap: 14,
   },
   header: {
-    marginBottom: 24,
+    marginBottom: 12,
+    gap: 4,
   },
   chartCard: {
-    borderRadius: 28,
-    marginBottom: 16,
+    borderRadius: 30,
+    padding: 18,
   },
   chartContainer: {
     height: 120,
-    marginTop: 16,
+    marginTop: 8,
+    borderRadius: 18,
+    borderWidth: 1,
+    overflow: 'hidden',
   },
   bentoGrid: {
     flexDirection: 'row',
     gap: 16,
+    marginBottom: 12,
   },
   bentoCard: {
     flex: 1,
-    borderRadius: 24,
+    borderRadius: 28,
+    padding: 16,
+    gap: 4,
   },
   iconBox: {
     width: 48,
