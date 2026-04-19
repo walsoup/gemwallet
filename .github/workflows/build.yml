@@ -34,6 +34,15 @@ jobs:
       - name: Generate Native Android Code
         run: npx expo prebuild --platform android --clean
 
+      - name: Fix Gradle deprecation warnings
+        run: |
+          # Disable Jetifier (deprecated in AGP 8.0+; all modern RN packages use AndroidX natively)
+          grep -q 'android\.enableJetifier' android/gradle.properties \
+            && sed -i 's/android\.enableJetifier=.*/android.enableJetifier=false/' android/gradle.properties \
+            || echo "android.enableJetifier=false" >> android/gradle.properties
+          # Suppress deprecation-warning summary from third-party plugins (RNGP, AGP internals)
+          echo "org.gradle.warning.mode=none" >> android/gradle.properties
+
       - name: Build Standalone APK (Release)
         run: |
           cd android
