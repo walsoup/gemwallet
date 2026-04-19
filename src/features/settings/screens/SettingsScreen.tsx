@@ -416,6 +416,7 @@ export default function SettingsScreen() {
                 <TextInput.Icon
                   icon={showApiKey ? 'eye-off-outline' : 'eye-outline'}
                   onPress={() => setShowApiKey((prev) => !prev)}
+                  accessibilityLabel={showApiKey ? 'Hide API key' : 'Show API key'}
                 />
               }
             />
@@ -654,7 +655,7 @@ export default function SettingsScreen() {
                     {item.emoji} {item.name}
                   </Text>
                   {!item.isLocked ? (
-                    <IconButton icon="delete-outline" onPress={() => deleteCategory(item.id)} />
+                    <IconButton icon="delete-outline" onPress={() => deleteCategory(item.id)} accessibilityLabel="Delete category" />
                   ) : (
                     <Text variant="labelMedium" style={{ color: theme.colors.onSurfaceVariant }}>
                       locked

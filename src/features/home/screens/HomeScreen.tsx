@@ -1372,7 +1372,7 @@ export default function HomeScreen() {
             value={search}
             onChangeText={setSearch}
             label="Search transactions"
-          right={<TextInput.Icon icon="close" onPress={() => setSearch('')} />}
+          right={<TextInput.Icon icon="close" onPress={() => setSearch('')} accessibilityLabel="Clear search" />}
           style={{ borderRadius: 24, marginVertical: 8 }}
         />
 
