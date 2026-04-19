@@ -117,7 +117,7 @@ export async function getLiteRtModelInfo(modelId?: string) {
   return {
     url: model.url,
     path,
-    exists: info.exists && !info.isDirectory,
+    exists: info.exists && info.isDirectory === false,
     size: info.exists ? info.size : undefined,
     model,
   };
