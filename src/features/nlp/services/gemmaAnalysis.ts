@@ -155,8 +155,8 @@ export function parseAddRecurringCommand(text: string) {
   const name = match[1]?.trim();
   const amount = Number(match[2]);
   if (!name || !Number.isFinite(amount) || amount <= 0) return null;
-  const type = match[3] === 'income' ? 'income' : 'expense';
-  const interval = match[4] === 'weekly' ? 'weekly' : 'monthly';
+  const type: 'income' | 'expense' = match[3] === 'income' ? 'income' : 'expense';
+  const interval: 'weekly' | 'monthly' = match[4] === 'weekly' ? 'weekly' : 'monthly';
   const categoryHint = match[5]?.trim();
   const startDateRaw = match[6]?.trim();
   const startDate = startDateRaw ? Date.parse(startDateRaw) : undefined;
