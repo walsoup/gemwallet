@@ -2,6 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { Transaction } from '../../../../types/finance';
 import { formatCurrency } from '../../../../utils/formatCurrency';
 import type { AiProvider } from '../../../../store/useSettingsStore';
+import { runLiteRtCompletion } from './litertRuntime';
 
 const DEFAULT_MODEL = 'gemma-4-31b-it';
 const FALLBACK_MODEL = 'gemini-3.1-flash-lite-preview';
@@ -19,12 +20,23 @@ type AnalysisOptions = {
   locale: string;
   region: string;
   model?: string;
+  localModelId?: string;
   advanced?: boolean;
   addExpense?: (params: { amountCents: number; categoryId: string; note?: string }) => Transaction;
 };
 
 type AnalysisCallbacks = {
   onCommand?: (command: { amountCents: number; categoryHint: string; note?: string }) => void;
+  onIncome?: (command: { amountCents: number; categoryHint: string; note?: string }) => void;
+  onRecurring?: (command: {
+    name: string;
+    amountCents: number;
+    type: 'income' | 'expense';
+    interval: 'weekly' | 'monthly';
+    categoryHint?: string;
+    startDate?: number;
+  }) => void;
+  onGoal?: (command: { name: string; targetCents: number; dueDate?: number }) => void;
 };
 
 function chunkText(text: string) {
@@ -54,7 +66,7 @@ function summarize(transactions: Transaction[], options: Pick<AnalysisOptions, '
   ].join('\n');
 }
 
-function buildPrompt(transactions: Transaction[], options: AnalysisOptions) {
+function buildPrompt(transactions: Transaction[], options: AnalysisOptions, userQuestion?: string) {
   const recent = transactions.slice(0, 30);
   const rows = recent
     .map((tx) => {
@@ -67,6 +79,13 @@ function buildPrompt(transactions: Transaction[], options: AnalysisOptions) {
   return [
     'Summarize this cash ledger for a personal finance assistant.',
     `Locale ${options.locale}, Region ${options.region}, Currency ${options.currencyCode}.`,
+    userQuestion ? `User question: ${userQuestion}` : '',
+    'If the user asks to log purchases, emit "ADD_EXPENSE: <amount> <category> <note>" lines.',
+    'If the user asks to log income, emit "ADD_INCOME: <amount> <category> <note>".',
+    'If the user asks to create recurring items, emit "ADD_RECURRING: <name> <amount> <income|expense> <weekly|monthly> <categoryHint?> <startDate?>".',
+    'If the user asks to save a goal, emit "ADD_GOAL: <name> <targetAmount> <dueDate?>".',
+    'Keep commands on their own lines; otherwise respond with helpful Markdown.',
+    'Keep commands on their own lines; otherwise respond with helpful Markdown.',
     'Use Markdown formatting heavily. Use **bold** for important numbers.',
     'Present the balance trend and biggest categories in a clean Markdown table.',
     'Provide one clear next action bullet point at the end.',
@@ -116,6 +135,54 @@ export function parseAddExpenseCommand(text: string) {
   const categoryHint = match[2];
   const note = match[3]?.trim();
   return { amountCents: Math.round(amount * 100), categoryHint, note };
+}
+
+export function parseAddIncomeCommand(text: string) {
+  const match = text.match(/ADD_INCOME:\s*([0-9]+(?:\.[0-9]{1,2})?)\s+([^\s]+)\s*(.*)/i);
+  if (!match) return null;
+  const amount = Number(match[1]);
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+  const categoryHint = match[2];
+  const note = match[3]?.trim();
+  return { amountCents: Math.round(amount * 100), categoryHint, note };
+}
+
+export function parseAddRecurringCommand(text: string) {
+  const match = text.match(
+    /ADD_RECURRING:\s*([^\s]+)\s+([0-9]+(?:\.[0-9]{1,2})?)\s+(income|expense)\s+(weekly|monthly)\s*([^\s]+)?\s*(.*)?/i
+  );
+  if (!match) return null;
+  const name = match[1]?.trim();
+  const amount = Number(match[2]);
+  if (!name || !Number.isFinite(amount) || amount <= 0) return null;
+  const type = match[3] === 'income' ? 'income' : 'expense';
+  const interval = match[4] === 'weekly' ? 'weekly' : 'monthly';
+  const categoryHint = match[5]?.trim();
+  const startDateRaw = match[6]?.trim();
+  const startDate = startDateRaw ? Date.parse(startDateRaw) : undefined;
+  return {
+    name,
+    amountCents: Math.round(amount * 100),
+    type,
+    interval,
+    categoryHint,
+    startDate: Number.isNaN(startDate) ? undefined : startDate,
+  };
+}
+
+export function parseAddGoalCommand(text: string) {
+  const match = text.match(/ADD_GOAL:\s*([^\s].*?)\s+([0-9]+(?:\.[0-9]{1,2})?)\s*(.*)?/i);
+  if (!match) return null;
+  const name = match[1]?.trim();
+  const amount = Number(match[2]);
+  if (!name || !Number.isFinite(amount) || amount <= 0) return null;
+  const dueDateRaw = match[3]?.trim();
+  const dueDate = dueDateRaw ? Date.parse(dueDateRaw) : undefined;
+  return {
+    name,
+    targetCents: Math.round(amount * 100),
+    dueDate: Number.isNaN(dueDate) ? undefined : dueDate,
+  };
 }
 
 async function callHuggingFace(
@@ -187,8 +254,15 @@ export async function generatePersonalGreeting(
 
     if (options.aiProvider === 'local') {
        if (!options.localModelDownloaded) return null;
-       // Simulate local LLM response for now since actual Expo local inference needs a custom dev client
-       return "Welcome back! Your on-device local model is running.";
+       const result = await runLiteRtCompletion(prompt, {
+         systemPrompt: 'You are GemWallet, a concise finance assistant. Reply with a single warm greeting sentence.',
+         maxTokens: 48,
+         temperature: 0.2,
+         modelId: options.localModelId,
+       });
+       if (!result.ok) return null;
+       const cleaned = sanitizeModelOutput(result.text) || result.text;
+       return cleaned?.trim() || null;
     }
 
     if (options.aiProvider === 'huggingface') {
@@ -223,30 +297,57 @@ export async function generatePersonalGreeting(
 export async function* streamFinancialAnalysis(
   transactions: Transaction[],
   options: AnalysisOptions,
-  callbacks?: AnalysisCallbacks
+  callbacks?: AnalysisCallbacks,
+  userQuestion?: string
 ) {
   const fallback = summarize(transactions, {
     currencyCode: options.currencyCode,
     locale: options.locale,
   });
 
-  const prompt = buildPrompt(transactions, options);
+  const prompt = buildPrompt(transactions, options, userQuestion);
   const preferredModel = options.model || DEFAULT_MODEL;
 
   try {
     if (options.aiProvider === 'local') {
       if (!options.localModelDownloaded) {
-         yield 'Local model not downloaded yet. Please download it in Settings.';
-         for (const chunk of chunkText(fallback)) yield chunk;
-         return;
+        yield 'Local LiteRT model not downloaded yet. Please download it in Settings.';
+        for (const chunk of chunkText(fallback)) yield chunk;
+        return;
       }
-      
-      // Simulating a local LLM generation
-      yield 'Running Qwen/Gemma inference locally on-device...\n\n';
-      await new Promise(resolve => setTimeout(resolve, 500));
-      for (const chunk of chunkText(fallback)) {
-         await new Promise((resolve) => setTimeout(resolve, MIN_CHUNK_DELAY_MS * 10));
-         yield chunk;
+
+      const localResult = await runLiteRtCompletion(prompt, {
+        systemPrompt:
+          'You are a personal finance analyst for GemWallet. Provide concise Markdown with trends, tables, and one clear next action.',
+        maxTokens: options.advanced ? 360 : MAX_TOKENS_BASE,
+        temperature: options.advanced ? 0.5 : 0.28,
+        modelId: options.localModelId,
+      });
+
+      if (!localResult.ok) {
+        const reason =
+          localResult.reason === 'model-missing'
+            ? 'Local LiteRT model is missing. Re-download it in Settings.'
+            : 'LiteRT runtime was unavailable; showing a cached summary instead.';
+        yield `${reason}\n\n`;
+        for (const chunk of chunkText(fallback)) yield chunk;
+        return;
+      }
+
+      const raw = localResult.text?.trim() || fallback;
+      const expenseCommand = parseAddExpenseCommand(raw);
+      const incomeCommand = parseAddIncomeCommand(raw);
+      const recurringCommand = parseAddRecurringCommand(raw);
+      const goalCommand = parseAddGoalCommand(raw);
+      if (expenseCommand && callbacks?.onCommand) callbacks.onCommand(expenseCommand);
+      if (incomeCommand && callbacks?.onIncome) callbacks.onIncome(incomeCommand);
+      if (recurringCommand && callbacks?.onRecurring) callbacks.onRecurring(recurringCommand);
+      if (goalCommand && callbacks?.onGoal) callbacks.onGoal(goalCommand);
+
+      const cleaned = sanitizeModelOutput(raw) || fallback;
+      for (const chunk of chunkText(cleaned)) {
+        await new Promise((resolve) => setTimeout(resolve, MIN_CHUNK_DELAY_MS));
+        yield chunk;
       }
       return;
     }
@@ -267,8 +368,14 @@ export async function* streamFinancialAnalysis(
       );
 
       const raw = text?.trim() || fallback;
-      const command = parseAddExpenseCommand(raw);
-      if (command && callbacks?.onCommand) callbacks.onCommand(command);
+      const expenseCommand = parseAddExpenseCommand(raw);
+      const incomeCommand = parseAddIncomeCommand(raw);
+      const recurringCommand = parseAddRecurringCommand(raw);
+      const goalCommand = parseAddGoalCommand(raw);
+      if (expenseCommand && callbacks?.onCommand) callbacks.onCommand(expenseCommand);
+      if (incomeCommand && callbacks?.onIncome) callbacks.onIncome(incomeCommand);
+      if (recurringCommand && callbacks?.onRecurring) callbacks.onRecurring(recurringCommand);
+      if (goalCommand && callbacks?.onGoal) callbacks.onGoal(goalCommand);
       const cleaned = sanitizeModelOutput(raw) || fallback;
       for (const chunk of chunkText(cleaned)) {
         await new Promise((resolve) => setTimeout(resolve, MIN_CHUNK_DELAY_MS));

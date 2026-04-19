@@ -6,6 +6,8 @@ export type SettingsPersistedShape = {
   themePreference: ThemePreference;
   oledTrueBlackEnabled: boolean;
   highContrastEnabled: boolean;
+  themePrimary: string;
+  themeSecondary: string;
   secureAccessEnabled: boolean;
   passcodeEnabled: boolean;
   passcodePin: string;
@@ -16,6 +18,7 @@ export type SettingsPersistedShape = {
   geminiApiKey: string;
   huggingFaceToken: string;
   gemmaModel: string;
+  localModelId: string;
   localModelDownloaded: boolean;
   smartCategorizationEnabled: boolean;
   advancedSummariesEnabled: boolean;
@@ -35,9 +38,12 @@ export const defaultSettingsState: SettingsPersistedShape = {
   language: 'en-US',
   region: 'US',
   aiProvider: 'google',
+  themePrimary: '#ff6b6b',
+  themeSecondary: '#52dea2',
   geminiApiKey: '',
   huggingFaceToken: '',
   gemmaModel: 'gemma-4-31b-it',
+  localModelId: 'gemma-4-e2b-it',
   localModelDownloaded: false,
   smartCategorizationEnabled: true,
   advancedSummariesEnabled: false,
@@ -55,9 +61,12 @@ export function migrateSettingsState(persistedState: unknown): SettingsPersisted
     ...defaultSettingsState,
     ...legacy,
     aiProvider: legacy.aiProvider ?? defaultSettingsState.aiProvider,
+    themePrimary: legacy.themePrimary ?? defaultSettingsState.themePrimary,
+    themeSecondary: legacy.themeSecondary ?? defaultSettingsState.themeSecondary,
     geminiApiKey: legacy.geminiApiKey ?? '',
     huggingFaceToken: legacy.huggingFaceToken ?? '',
     gemmaModel: legacy.gemmaModel ?? defaultSettingsState.gemmaModel,
+    localModelId: legacy.localModelId ?? defaultSettingsState.localModelId,
     localModelDownloaded: legacy.localModelDownloaded ?? defaultSettingsState.localModelDownloaded,
     smartCategorizationEnabled:
       legacy.smartCategorizationEnabled ?? defaultSettingsState.smartCategorizationEnabled,

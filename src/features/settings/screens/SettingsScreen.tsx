@@ -1,5 +1,5 @@
 import * as Haptics from 'expo-haptics';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, StyleProp, ViewStyle } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,7 +20,13 @@ import type { AiProvider } from '../../../../store/useSettingsStore';
 import { useAppTheme } from '../../../../providers/AppThemeProvider';
 import { useTransactionStore } from '../../../../store/useTransactionStore';
 import { formatCurrency } from '../../../../utils/formatCurrency';
-import { useBouncyPress } from '../../../../hooks/useBouncyPress';
+import { useBouncyPress } from '../../../hooks/useBouncyPress';
+import {
+  availableLiteRtModels,
+  deleteLiteRtModel,
+  downloadLiteRtModel,
+  getLiteRtModelInfo,
+} from '../../nlp/services/litertRuntime';
 
 const currencyOptions = [
   { code: 'USD', label: 'USD ($)' },
@@ -171,9 +177,14 @@ function BouncyButton({
   );
 }
 
+function formatBytes(bytes: number | null | undefined) {
+  if (!bytes) return null;
+  const mb = bytes / 1024 / 1024;
+  return `${mb.toFixed(1)} MB`;
+}
+
 export default function SettingsScreen() {
   const theme = useAppTheme();
-  const downloadIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [exportPreview, setExportPreview] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
   const [showHfToken, setShowHfToken] = useState(false);
@@ -181,6 +192,9 @@ export default function SettingsScreen() {
   const [passcodeConfirm, setPasscodeConfirm] = useState('');
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState('');
+  const [modelSizeBytes, setModelSizeBytes] = useState<number | null>(null);
+  const [liteRtModels, setLiteRtModels] = useState<{ id: string; label: string; sizeHint: string; notes?: string }[]>([]);
   const themeSegmentBounce = useBouncyPress(0.94);
   const aiSegmentBounce = useBouncyPress(0.94);
 
@@ -189,6 +203,8 @@ export default function SettingsScreen() {
   const highContrastEnabled = useSettingsStore((state) => state.highContrastEnabled);
   const secureAccessEnabled = useSettingsStore((state) => state.secureAccessEnabled);
   const passcodeEnabled = useSettingsStore((state) => state.passcodeEnabled);
+  const themePrimary = useSettingsStore((state) => state.themePrimary);
+  const themeSecondary = useSettingsStore((state) => state.themeSecondary);
   const currencyCode = useSettingsStore((state) => state.currencyCode);
   const language = useSettingsStore((state) => state.language);
   const region = useSettingsStore((state) => state.region);
@@ -197,18 +213,21 @@ export default function SettingsScreen() {
   const geminiApiKey = useSettingsStore((state) => state.geminiApiKey);
   const huggingFaceToken = useSettingsStore((state) => state.huggingFaceToken);
   const gemmaModel = useSettingsStore((state) => state.gemmaModel);
+  const localModelId = useSettingsStore((state) => state.localModelId);
   const localModelDownloaded = useSettingsStore((state) => state.localModelDownloaded);
 
   const smartCategorizationEnabled = useSettingsStore((state) => state.smartCategorizationEnabled);
   const advancedSummariesEnabled = useSettingsStore((state) => state.advancedSummariesEnabled);
   const includeNotesInExport = useSettingsStore((state) => state.includeNotesInExport);
-  
+
   const setThemePreference = useSettingsStore((state) => state.setThemePreference);
   const setOledTrueBlackEnabled = useSettingsStore((state) => state.setOledTrueBlackEnabled);
   const setHighContrastEnabled = useSettingsStore((state) => state.setHighContrastEnabled);
   const setSecureAccessEnabled = useSettingsStore((state) => state.setSecureAccessEnabled);
   const setPasscodeEnabled = useSettingsStore((state) => state.setPasscodeEnabled);
   const setPasscodePin = useSettingsStore((state) => state.setPasscodePin);
+  const setThemePrimary = useSettingsStore((state) => state.setThemePrimary);
+  const setThemeSecondary = useSettingsStore((state) => state.setThemeSecondary);
   const setCurrencyCode = useSettingsStore((state) => state.setCurrencyCode);
   const setLanguage = useSettingsStore((state) => state.setLanguage);
   const setRegion = useSettingsStore((state) => state.setRegion);
@@ -216,6 +235,7 @@ export default function SettingsScreen() {
   const setGeminiApiKey = useSettingsStore((state) => state.setGeminiApiKey);
   const setHuggingFaceToken = useSettingsStore((state) => state.setHuggingFaceToken);
   const setGemmaModel = useSettingsStore((state) => state.setGemmaModel);
+  const setLocalModelId = useSettingsStore((state) => state.setLocalModelId);
   const setLocalModelDownloaded = useSettingsStore((state) => state.setLocalModelDownloaded);
   const setSmartCategorizationEnabled = useSettingsStore((state) => state.setSmartCategorizationEnabled);
   const setAdvancedSummariesEnabled = useSettingsStore((state) => state.setAdvancedSummariesEnabled);
@@ -226,6 +246,16 @@ export default function SettingsScreen() {
   const categories = useTransactionStore((state) => state.categories);
   const transactions = useTransactionStore((state) => state.transactions);
   const clearAllData = useTransactionStore((state) => state.clearAllData);
+  const selectedLiteRtModel = useMemo(
+    () => liteRtModels.find((m) => m.id === localModelId),
+    [liteRtModels, localModelId]
+  );
+
+  useEffect(() => {
+    availableLiteRtModels()
+      .then((models) => setLiteRtModels(models))
+      .catch(() => {});
+  }, []);
 
   const exportRows = useMemo(() => {
     const byId = new Map(categories.map((item) => [item.id, item]));
@@ -280,48 +310,55 @@ export default function SettingsScreen() {
     setPasscodeConfirm('');
   };
 
-  const handleSimulateDownload = () => {
-    if (downloadIntervalRef.current) {
-      clearInterval(downloadIntervalRef.current);
-      downloadIntervalRef.current = null;
+  const syncLocalModelState = useCallback(async () => {
+    try {
+      const info = await getLiteRtModelInfo(localModelId);
+      if (info.exists) {
+        setLocalModelDownloaded(true);
+        setDownloadProgress(1);
+        setModelSizeBytes(typeof info.size === 'number' ? info.size : null);
+      } else if (localModelDownloaded) {
+        setLocalModelDownloaded(false);
+        setDownloadProgress(0);
+      }
+    } catch {
+      // ignore sync failures; state will refresh on next attempt
     }
-
-    setIsDownloading(true);
-    setDownloadProgress(0);
-    downloadIntervalRef.current = setInterval(() => {
-      setDownloadProgress((prev) => {
-        if (prev >= 1) {
-          if (downloadIntervalRef.current) {
-            clearInterval(downloadIntervalRef.current);
-            downloadIntervalRef.current = null;
-          }
-          setIsDownloading(false);
-          setLocalModelDownloaded(true);
-          return 1;
-        }
-        return prev + 0.1;
-      });
-    }, 500);
-  };
-
-  const handleDeleteLocalModel = () => {
-    if (downloadIntervalRef.current) {
-      clearInterval(downloadIntervalRef.current);
-      downloadIntervalRef.current = null;
-    }
-
-    setIsDownloading(false);
-    setLocalModelDownloaded(false);
-    setDownloadProgress(0);
-  };
+  }, [localModelDownloaded, localModelId, setLocalModelDownloaded]);
 
   useEffect(() => {
-    return () => {
-      if (downloadIntervalRef.current) {
-        clearInterval(downloadIntervalRef.current);
-      }
-    };
-  }, []);
+    void syncLocalModelState();
+  }, [syncLocalModelState]);
+
+  const handleDownloadLocalModel = async () => {
+    setDownloadError('');
+    setIsDownloading(true);
+    setDownloadProgress(0);
+    try {
+      await downloadLiteRtModel((progress) => setDownloadProgress(progress), localModelId);
+      await syncLocalModelState();
+    } catch (error) {
+      console.warn('LiteRT download failed', error);
+      setDownloadError('LiteRT download failed. Check your connection and try again.');
+      setLocalModelDownloaded(false);
+      setDownloadProgress(0);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const handleDeleteLocalModel = async () => {
+    try {
+      await deleteLiteRtModel();
+    } catch {
+      // Swallow delete issues and reset local flags to let the user retry.
+    } finally {
+      setIsDownloading(false);
+      setLocalModelDownloaded(false);
+      setDownloadProgress(0);
+      setModelSizeBytes(null);
+    }
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.surfaceContainerLowest }}>
@@ -394,6 +431,37 @@ export default function SettingsScreen() {
             titleStyle={{ color: theme.colors.onSurface }}
           />
           <Card.Content style={{ gap: 16 }}>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <View style={{ flex: 1, gap: 6 }}>
+                <Text variant="titleSmall" style={{ color: theme.colors.onSurface }}>
+                  Primary color
+                </Text>
+                <TextInput
+                  mode="outlined"
+                  value={themePrimary}
+                  onChangeText={(val) => setThemePrimary(val)}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  placeholder="#ff6b6b"
+                  left={<TextInput.Icon icon="palette" />}
+                />
+              </View>
+              <View style={{ flex: 1, gap: 6 }}>
+                <Text variant="titleSmall" style={{ color: theme.colors.onSurface }}>
+                  Secondary color
+                </Text>
+                <TextInput
+                  mode="outlined"
+                  value={themeSecondary}
+                  onChangeText={(val) => setThemeSecondary(val)}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  placeholder="#52dea2"
+                  left={<TextInput.Icon icon="palette-swatch" />}
+                />
+              </View>
+            </View>
+
             <Animated.View style={themeSegmentBounce.animatedStyle}>
               <SegmentedButtons
                 value={themePreference}
@@ -522,11 +590,41 @@ export default function SettingsScreen() {
                 {!localModelDownloaded ? (
                   <>
                     <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>
-                      Download Qwen 1.5 0.5B (Quantized)
+                      Choose a LiteRT model to download
                     </Text>
                     <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                      Size: ~450MB. This model runs entirely on-device for maximum privacy.
+                      Runs fully on-device via LiteRT with no network calls. {selectedLiteRtModel ? `${selectedLiteRtModel.label} • ${selectedLiteRtModel.sizeHint}` : ''}
                     </Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 4 }}>
+                      {liteRtModels.map((model) => {
+                        const selected = model.id === localModelId;
+                        return (
+                          <BouncyPressable
+                            key={model.id}
+                            onPress={() => setLocalModelId(model.id)}
+                            scaleDown={0.92}
+                            style={{ flexGrow: 0 }}
+                          >
+                            <Chip
+                              mode="outlined"
+                              selected={selected}
+                              style={{
+                                backgroundColor: selected ? theme.colors.secondaryContainer : theme.colors.surface,
+                                borderColor: selected ? theme.colors.primary : theme.colors.outlineVariant,
+                              }}
+                              selectedColor={theme.colors.onSecondaryContainer}
+                            >
+                              {model.label} • {model.sizeHint}
+                            </Chip>
+                          </BouncyPressable>
+                        );
+                      })}
+                    </ScrollView>
+                    {downloadError ? (
+                      <HelperText type="error" visible>
+                        {downloadError}
+                      </HelperText>
+                    ) : null}
                     {isDownloading ? (
                       <View style={{ gap: 8 }}>
                         <ProgressBar progress={downloadProgress} color={theme.colors.primary} />
@@ -535,18 +633,19 @@ export default function SettingsScreen() {
                         </Text>
                       </View>
                     ) : (
-                      <BouncyButton mode="contained" onPress={handleSimulateDownload} icon="download" haptic="heavy">
-                        Download Model
+                      <BouncyButton mode="contained" onPress={handleDownloadLocalModel} icon="download" haptic="heavy">
+                        Download with LiteRT
                       </BouncyButton>
                     )}
                   </>
                 ) : (
                   <>
                     <Text variant="titleMedium" style={{ color: theme.colors.primary }}>
-                      Local model is active.
+                      LiteRT model is active.
                     </Text>
                     <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                      All analysis will be performed on-device without network requests.
+                      {selectedLiteRtModel ? `${selectedLiteRtModel.label} • ${selectedLiteRtModel.sizeHint}. ` : ''}
+                      All analysis will be performed on-device without network requests.{modelSizeBytes ? ` (${formatBytes(modelSizeBytes)} cached)` : ''}
                     </Text>
                     <BouncyButton mode="outlined" onPress={handleDeleteLocalModel} textColor={theme.colors.error} haptic="heavy">
                       Delete downloaded model

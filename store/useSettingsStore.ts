@@ -15,6 +15,8 @@ export type SettingsState = {
   themePreference: ThemePreference;
   oledTrueBlackEnabled: boolean;
   highContrastEnabled: boolean;
+  themePrimary: string;
+  themeSecondary: string;
   secureAccessEnabled: boolean;
   passcodeEnabled: boolean;
   passcodePin: string;
@@ -25,6 +27,7 @@ export type SettingsState = {
   geminiApiKey: string;
   huggingFaceToken: string;
   gemmaModel: string; // Used for cloud
+  localModelId: string; // LiteRT model selection
   localModelDownloaded: boolean; // Indicates if local model is downloaded
   smartCategorizationEnabled: boolean;
   advancedSummariesEnabled: boolean;
@@ -34,6 +37,8 @@ export type SettingsState = {
   setThemePreference: (preference: ThemePreference) => void;
   setOledTrueBlackEnabled: (enabled: boolean) => void;
   setHighContrastEnabled: (enabled: boolean) => void;
+  setThemePrimary: (color: string) => void;
+  setThemeSecondary: (color: string) => void;
   setSecureAccessEnabled: (enabled: boolean) => void;
   setPasscodeEnabled: (enabled: boolean) => void;
   setPasscodePin: (pin: string) => void;
@@ -44,6 +49,7 @@ export type SettingsState = {
   setGeminiApiKey: (key: string) => void;
   setHuggingFaceToken: (token: string) => void;
   setGemmaModel: (model: string) => void;
+  setLocalModelId: (modelId: string) => void;
   setLocalModelDownloaded: (downloaded: boolean) => void;
   setSmartCategorizationEnabled: (enabled: boolean) => void;
   setAdvancedSummariesEnabled: (enabled: boolean) => void;
@@ -63,6 +69,8 @@ export const useSettingsStore = create<SettingsState>()(
       setThemePreference: (themePreference) => set({ themePreference }),
       setOledTrueBlackEnabled: (oledTrueBlackEnabled) => set({ oledTrueBlackEnabled }),
       setHighContrastEnabled: (highContrastEnabled) => set({ highContrastEnabled }),
+      setThemePrimary: (themePrimary) => set({ themePrimary: themePrimary.trim() }),
+      setThemeSecondary: (themeSecondary) => set({ themeSecondary: themeSecondary.trim() }),
       setSecureAccessEnabled: (secureAccessEnabled) => set({ secureAccessEnabled }),
       setPasscodeEnabled: (passcodeEnabled) => set({ passcodeEnabled }),
       setPasscodePin: (passcodePin) => set({ passcodePin }),
@@ -73,6 +81,7 @@ export const useSettingsStore = create<SettingsState>()(
       setGeminiApiKey: (geminiApiKey) => set({ geminiApiKey: geminiApiKey.trim() }),
       setHuggingFaceToken: (huggingFaceToken) => set({ huggingFaceToken: huggingFaceToken.trim() }),
       setGemmaModel: (gemmaModel) => set({ gemmaModel }),
+      setLocalModelId: (localModelId) => set({ localModelId }),
       setLocalModelDownloaded: (localModelDownloaded) => set({ localModelDownloaded }),
       setSmartCategorizationEnabled: (smartCategorizationEnabled) => set({ smartCategorizationEnabled }),
       setAdvancedSummariesEnabled: (advancedSummariesEnabled) => set({ advancedSummariesEnabled }),

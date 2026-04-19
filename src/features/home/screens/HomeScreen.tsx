@@ -1,5 +1,4 @@
 import * as Haptics from 'expo-haptics';
-import { useRouter } from 'expo-router';
 import { useCallback, useMemo, useState, useRef, useEffect } from 'react';
 import {
   Modal,
@@ -26,7 +25,6 @@ import {
   Button,
   Chip,
   FAB,
-  IconButton,
   Snackbar,
   Text,
   TextInput,
@@ -144,7 +142,6 @@ function BouncyPressable({
 
 export default function HomeScreen() {
   const theme = useAppTheme();
-  const router = useRouter();
   const insets = useSafeAreaInsets();
 
   const currencyCode = useSettingsStore((state) => state.currencyCode);
@@ -154,6 +151,7 @@ export default function HomeScreen() {
   const geminiApiKey = useSettingsStore((state) => state.geminiApiKey);
   const huggingFaceToken = useSettingsStore((state) => state.huggingFaceToken);
   const gemmaModel = useSettingsStore((state) => state.gemmaModel);
+  const localModelId = useSettingsStore((state) => state.localModelId);
   const localModelDownloaded = useSettingsStore((state) => state.localModelDownloaded);
   const advancedSummariesEnabled = useSettingsStore((state) => state.advancedSummariesEnabled);
   const passcodeEnabled = useSettingsStore((state) => state.passcodeEnabled);
@@ -247,7 +245,8 @@ export default function HomeScreen() {
           currencyCode,
           locale,
           region,
-          model: gemmaModel,
+          model: aiProvider === 'local' ? localModelId : gemmaModel,
+          localModelId,
         });
         if (cancelled) {
           return;
@@ -267,7 +266,7 @@ export default function HomeScreen() {
     return () => {
       cancelled = true;
     };
-  }, [aiProvider, currencyCode, geminiApiKey, huggingFaceToken, localModelDownloaded, gemmaModel, locale, region, transactions]);
+  }, [aiProvider, currencyCode, geminiApiKey, huggingFaceToken, localModelDownloaded, gemmaModel, localModelId, locale, region, transactions]);
 
   const expenseCategories = useMemo(
     () => categories.filter((item) => item.kind === 'expense'),
@@ -377,7 +376,8 @@ export default function HomeScreen() {
           currencyCode,
           locale,
           region,
-          model: gemmaModel,
+          model: aiProvider === 'local' ? localModelId : gemmaModel,
+          localModelId,
           advanced: advancedSummariesEnabled,
         },
         {
@@ -405,9 +405,7 @@ export default function HomeScreen() {
     }
   };
 
-  const settingsBounce = useBouncyPress(0.9);
   const addFundsBounce = useBouncyPress(0.9);
-  const sendBounce = useBouncyPress(0.9);
   const aiFabBounce = useBouncyPress(0.88);
   const unlockBounce = useBouncyPress(0.94);
   const resetBounce = useBouncyPress(0.94);
@@ -603,19 +601,6 @@ export default function HomeScreen() {
                 {isGreetingLoading ? <ActivityIndicator size="small" color={theme.colors.primary} /> : null}
               </View>
             </Animated.View>
-            <Animated.View style={settingsBounce.animatedStyle}>
-              <IconButton
-                icon="cog"
-                size={26}
-                iconColor={theme.colors.onSurfaceVariant}
-                onPress={() => {
-                  triggerHaptic('medium');
-                  router.push('/settings');
-                }}
-                onPressIn={settingsBounce.onPressIn}
-                onPressOut={settingsBounce.onPressOut}
-              />
-            </Animated.View>
           </View>
 
           <Animated.View entering={FadeInDown.delay(70).springify().damping(10).stiffness(320)} style={styles.heroSection}>
@@ -636,28 +621,11 @@ export default function HomeScreen() {
                   }}
                   onPressIn={addFundsBounce.onPressIn}
                   onPressOut={addFundsBounce.onPressOut}
-                  style={[styles.heroButton, { backgroundColor: theme.colors.primaryContainer }]}
+                  style={[styles.heroButton, { backgroundColor: theme.colors.primaryContainer, flex: 1 }]}
                   labelStyle={{ color: theme.colors.onPrimaryContainer, letterSpacing: 0 }}
                   contentStyle={{ height: 52 }}
                 >
                   Add Funds
-                </Button>
-              </Animated.View>
-              <Animated.View style={sendBounce.animatedStyle}>
-                <Button
-                  mode="contained"
-                  icon="send"
-                  onPress={() => {
-                    triggerHaptic('medium');
-                    void openManualFlow();
-                  }}
-                  onPressIn={sendBounce.onPressIn}
-                  onPressOut={sendBounce.onPressOut}
-                  style={[styles.heroButton, { backgroundColor: theme.colors.secondaryContainer }]}
-                  labelStyle={{ color: theme.colors.onSecondaryContainer, letterSpacing: 0 }}
-                  contentStyle={{ height: 52 }}
-                >
-                  Send
                 </Button>
               </Animated.View>
             </View>
@@ -793,7 +761,8 @@ export default function HomeScreen() {
 
       <Animated.View style={[styles.aiFabWrapper, aiFabBounce.animatedStyle]} entering={FadeInUp.delay(180).springify().damping(10).stiffness(320)}>
         <FAB
-          icon="sparkles"
+          icon="robot-outline"
+          label="AI analysis"
           style={[styles.aiFab, { backgroundColor: theme.colors.primaryContainer }]}
           color={theme.colors.onPrimaryContainer}
           onPress={() => {

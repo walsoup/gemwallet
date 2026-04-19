@@ -22,10 +22,12 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
+      "minSdkVersion": 26,
       "package": "com.walsoup.gemwallet"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "react-native-litert-lm"
     ],
     "experiments": {
       "typedRoutes": true

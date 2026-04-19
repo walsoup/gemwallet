@@ -3,14 +3,14 @@ import React, { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, StyleProp, ViewStyle } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Card, Surface, Text, Chip } from 'react-native-paper';
+import { Surface, Text, Chip } from 'react-native-paper';
 import { Defs, LinearGradient, Path, Stop, Svg } from 'react-native-svg';
 
 import { useTransactionStore } from '../../../../store/useTransactionStore';
 import { useSettingsStore } from '../../../../store/useSettingsStore';
 import { useAppTheme } from '../../../../providers/AppThemeProvider';
 import { formatCurrency } from '../../../../utils/formatCurrency';
-import { useBouncyPress } from '../../../../hooks/useBouncyPress';
+import { useBouncyPress } from '../../../hooks/useBouncyPress';
 
 function buildDailyExpenses(transactions: any[], days: number) {
   const now = new Date();

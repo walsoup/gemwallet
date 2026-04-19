@@ -15,6 +15,7 @@ describe('UI fidelity and integrity contracts', () => {
 
     assert.match(layout, /<Tabs\.Screen\s+name="index"/);
     assert.match(layout, /<Tabs\.Screen\s+name="analytics"/);
+    assert.match(layout, /<Tabs\.Screen\s+name="chat"/);
     assert.match(layout, /<Tabs\.Screen\s+name="planning"/);
     assert.match(layout, /<Tabs\.Screen\s+name="settings"/);
   });
@@ -24,7 +25,8 @@ describe('UI fidelity and integrity contracts', () => {
 
     assert.match(home, /Available Cash/);
     assert.match(home, /placeholder="Search transactions"/);
-    assert.match(home, /icon="sparkles"/);
+    assert.match(home, /icon="robot-outline"/);
+    assert.match(home, /AI analysis/);
     assert.match(home, /Pick a category to save instantly/);
     assert.match(home, /AI Assistant/);
   });
