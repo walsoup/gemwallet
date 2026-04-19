@@ -1,6 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Button,
@@ -203,17 +203,56 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <ScrollView
-        contentContainerStyle={{
-          padding: 16,
-          gap: 16,
-          backgroundColor: theme.colors.background,
-        }}
+        contentContainerStyle={[
+          styles.scroll,
+          {
+            backgroundColor: theme.colors.background,
+          },
+        ]}
       >
-        <View style={{ gap: 6, paddingHorizontal: 4 }}>
-          <Text variant="displaySmall" style={{ color: theme.colors.onSurface }}>
+        <View style={styles.header}>
+          <Text variant="headlineSmall" style={{ color: theme.colors.onSurface, fontWeight: '700' }}>
             Settings
           </Text>
+          <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+            Tune your wallet visuals, privacy, and intelligence.
+          </Text>
         </View>
+
+        <Card
+          mode="contained"
+          style={[styles.heroCard, { backgroundColor: theme.colors.surfaceContainerHigh }]}
+          contentStyle={{ gap: 10, paddingVertical: 14 }}
+        >
+          <Card.Content>
+            <Text variant="titleMedium" style={{ color: theme.colors.onSurface, fontWeight: '700' }}>
+              Control center
+            </Text>
+            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginTop: 2 }}>
+              Offline-first, local-only. Quick glance at your current preferences.
+            </Text>
+          </Card.Content>
+          <Card.Content style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            <Chip mode="flat" style={{ backgroundColor: theme.colors.surface }} textStyle={{ color: theme.colors.onSurface }}>
+              {currencyCode} • {region}
+            </Chip>
+            <Chip
+              mode="flat"
+              style={{ backgroundColor: theme.colors.surface }}
+              textStyle={{ color: theme.colors.onSurface }}
+            >
+              Theme: {themePreference}
+            </Chip>
+            <Chip
+              mode="flat"
+              style={{ backgroundColor: theme.colors.surface }}
+              textStyle={{ color: theme.colors.onSurface }}
+              icon={secureAccessEnabled ? 'shield-check' : 'shield-off'}
+            >
+              {secureAccessEnabled ? 'Secure access' : 'Unlocked'}
+            </Chip>
+          </Card.Content>
+        </Card>
 
         <Card
           mode="elevated"
@@ -600,3 +639,18 @@ export default function SettingsScreen() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  scroll: {
+    padding: 16,
+    paddingBottom: 36,
+    gap: 16,
+  },
+  header: {
+    gap: 4,
+    paddingHorizontal: 4,
+  },
+  heroCard: {
+    borderRadius: 20,
+  },
+});
