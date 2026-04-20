@@ -2,7 +2,6 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { Transaction } from '../../../../types/finance';
 import { formatCurrency } from '../../../../utils/formatCurrency';
 import type { AiProvider } from '../../../../store/useSettingsStore';
-import { runLiteRtCompletion } from './litertRuntime';
 
 const DEFAULT_MODEL = 'gemma-4-31b-it';
 const FALLBACK_MODEL = 'gemini-3.1-flash-lite-preview';
@@ -252,19 +251,6 @@ export async function generatePersonalGreeting(
   try {
     const modelName = options.model || DEFAULT_MODEL;
 
-    if (options.aiProvider === 'local') {
-       if (!options.localModelDownloaded) return null;
-       const result = await runLiteRtCompletion(prompt, {
-         systemPrompt: 'You are GemWallet, a concise finance assistant. Reply with a single warm greeting sentence.',
-         maxTokens: 48,
-         temperature: 0.2,
-         modelId: options.localModelId,
-       });
-       if (!result.ok) return null;
-       const cleaned = sanitizeModelOutput(result.text) || result.text;
-       return cleaned?.trim() || null;
-    }
-
     if (options.aiProvider === 'huggingface') {
       if (!options.huggingFaceToken?.trim()) return null;
       const text = await callHuggingFace(options.huggingFaceToken.trim(), modelName, prompt, 48, 0.25);
@@ -309,49 +295,6 @@ export async function* streamFinancialAnalysis(
   const preferredModel = options.model || DEFAULT_MODEL;
 
   try {
-    if (options.aiProvider === 'local') {
-      if (!options.localModelDownloaded) {
-        yield 'Local LiteRT model not downloaded yet. Please download it in Settings.';
-        for (const chunk of chunkText(fallback)) yield chunk;
-        return;
-      }
-
-      const localResult = await runLiteRtCompletion(prompt, {
-        systemPrompt:
-          'You are a personal finance analyst for GemWallet. Provide concise Markdown with trends, tables, and one clear next action.',
-        maxTokens: options.advanced ? 360 : MAX_TOKENS_BASE,
-        temperature: options.advanced ? 0.5 : 0.28,
-        modelId: options.localModelId,
-      });
-
-      if (!localResult.ok) {
-        const reason =
-          localResult.reason === 'model-missing'
-            ? 'Local LiteRT model is missing. Re-download it in Settings.'
-            : 'LiteRT runtime was unavailable; showing a cached summary instead.';
-        yield `${reason}\n\n`;
-        for (const chunk of chunkText(fallback)) yield chunk;
-        return;
-      }
-
-      const raw = localResult.text?.trim() || fallback;
-      const expenseCommand = parseAddExpenseCommand(raw);
-      const incomeCommand = parseAddIncomeCommand(raw);
-      const recurringCommand = parseAddRecurringCommand(raw);
-      const goalCommand = parseAddGoalCommand(raw);
-      if (expenseCommand && callbacks?.onCommand) callbacks.onCommand(expenseCommand);
-      if (incomeCommand && callbacks?.onIncome) callbacks.onIncome(incomeCommand);
-      if (recurringCommand && callbacks?.onRecurring) callbacks.onRecurring(recurringCommand);
-      if (goalCommand && callbacks?.onGoal) callbacks.onGoal(goalCommand);
-
-      const cleaned = sanitizeModelOutput(raw) || fallback;
-      for (const chunk of chunkText(cleaned)) {
-        await new Promise((resolve) => setTimeout(resolve, MIN_CHUNK_DELAY_MS));
-        yield chunk;
-      }
-      return;
-    }
-
     if (options.aiProvider === 'huggingface') {
       if (!options.huggingFaceToken?.trim()) {
         yield 'Add your HuggingFace token in Settings to unlock AI insights.';

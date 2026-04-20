@@ -1,6 +1,6 @@
 import type { CurrencyCode, LanguageCode, RegionCode, ThemePreference } from '../types/finance';
 
-export type AiProvider = 'google' | 'huggingface' | 'local';
+export type AiProvider = 'google' | 'huggingface';
 
 export type SettingsPersistedShape = {
   themePreference: ThemePreference;
@@ -56,11 +56,12 @@ export function migrateSettingsState(persistedState: unknown): SettingsPersisted
   if (!persistedState || typeof persistedState !== 'object') return defaultSettingsState;
 
   const legacy = persistedState as Partial<SettingsPersistedShape>;
+  const aiProvider = legacy.aiProvider === 'huggingface' ? 'huggingface' : 'google';
 
   return {
     ...defaultSettingsState,
     ...legacy,
-    aiProvider: legacy.aiProvider ?? defaultSettingsState.aiProvider,
+    aiProvider,
     themePrimary: legacy.themePrimary ?? defaultSettingsState.themePrimary,
     themeSecondary: legacy.themeSecondary ?? defaultSettingsState.themeSecondary,
     geminiApiKey: legacy.geminiApiKey ?? '',

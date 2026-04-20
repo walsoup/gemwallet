@@ -52,4 +52,14 @@ describe('settings migration', () => {
     assert.equal(result.localModelDownloaded, true);
     assert.equal(result.smartCategorizationEnabled, false);
   });
+
+  it('maps legacy local AI provider to google', () => {
+    const legacyLocal = {
+      aiProvider: 'local',
+    };
+
+    const result = migrateSettingsState(legacyLocal);
+
+    assert.equal(result.aiProvider, 'google');
+  });
 });

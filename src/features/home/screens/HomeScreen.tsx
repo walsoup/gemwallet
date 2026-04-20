@@ -151,8 +151,6 @@ export default function HomeScreen() {
   const geminiApiKey = useSettingsStore((state) => state.geminiApiKey);
   const huggingFaceToken = useSettingsStore((state) => state.huggingFaceToken);
   const gemmaModel = useSettingsStore((state) => state.gemmaModel);
-  const localModelId = useSettingsStore((state) => state.localModelId);
-  const localModelDownloaded = useSettingsStore((state) => state.localModelDownloaded);
   const advancedSummariesEnabled = useSettingsStore((state) => state.advancedSummariesEnabled);
   const passcodeEnabled = useSettingsStore((state) => state.passcodeEnabled);
   const passcodePin = useSettingsStore((state) => state.passcodePin);
@@ -221,8 +219,7 @@ export default function HomeScreen() {
   useEffect(() => {
     const hasKey =
       (aiProvider === 'google' && geminiApiKey?.trim()) ||
-      (aiProvider === 'huggingface' && huggingFaceToken?.trim()) ||
-      (aiProvider === 'local' && localModelDownloaded);
+      (aiProvider === 'huggingface' && huggingFaceToken?.trim());
 
     if (!hasKey) {
       setPersonalGreeting(fallbackGreeting());
@@ -241,12 +238,10 @@ export default function HomeScreen() {
           aiProvider,
           geminiApiKey,
           huggingFaceToken,
-          localModelDownloaded,
           currencyCode,
           locale,
           region,
-          model: aiProvider === 'local' ? localModelId : gemmaModel,
-          localModelId,
+          model: gemmaModel,
         });
         if (cancelled) {
           return;
@@ -266,7 +261,7 @@ export default function HomeScreen() {
     return () => {
       cancelled = true;
     };
-  }, [aiProvider, currencyCode, geminiApiKey, huggingFaceToken, localModelDownloaded, gemmaModel, localModelId, locale, region, transactions]);
+  }, [aiProvider, currencyCode, geminiApiKey, huggingFaceToken, gemmaModel, locale, region, transactions]);
 
   const expenseCategories = useMemo(
     () => categories.filter((item) => item.kind === 'expense'),
@@ -372,12 +367,10 @@ export default function HomeScreen() {
           aiProvider,
           geminiApiKey,
           huggingFaceToken,
-          localModelDownloaded,
           currencyCode,
           locale,
           region,
-          model: aiProvider === 'local' ? localModelId : gemmaModel,
-          localModelId,
+          model: gemmaModel,
           advanced: advancedSummariesEnabled,
         },
         {

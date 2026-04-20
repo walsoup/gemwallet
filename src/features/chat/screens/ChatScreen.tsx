@@ -54,8 +54,6 @@ export default function ChatScreen() {
   const geminiApiKey = useSettingsStore((state) => state.geminiApiKey);
   const huggingFaceToken = useSettingsStore((state) => state.huggingFaceToken);
   const gemmaModel = useSettingsStore((state) => state.gemmaModel);
-  const localModelId = useSettingsStore((state) => state.localModelId);
-  const localModelDownloaded = useSettingsStore((state) => state.localModelDownloaded);
   const advancedSummariesEnabled = useSettingsStore((state) => state.advancedSummariesEnabled);
   const [input, setInput] = useState('');
   const [voiceAttachment, setVoiceAttachment] = useState<VoiceAttachment | null>(null);
@@ -178,12 +176,10 @@ export default function ChatScreen() {
           aiProvider,
           geminiApiKey,
           huggingFaceToken,
-          localModelDownloaded,
           currencyCode,
           locale,
           region,
-          model: aiProvider === 'local' ? localModelId : gemmaModel,
-          localModelId,
+          model: gemmaModel,
           advanced: advancedSummariesEnabled,
         },
         {
@@ -270,12 +266,10 @@ export default function ChatScreen() {
     aiProvider,
     geminiApiKey,
     huggingFaceToken,
-    localModelDownloaded,
     currencyCode,
     locale,
     region,
     gemmaModel,
-    localModelId,
     advancedSummariesEnabled,
     categories,
     addExpense,
