@@ -13,13 +13,16 @@ buildscript {
 }
 
 allprojects {
-  def asyncStorageLocalRepo = file("$rootDir/../node_modules/@react-native-async-storage/async-storage/android/local_repo")
+  def asyncStorageLocalRepoPath = findProperty("asyncStorageLocalRepoPath") ?: "$rootDir/../node_modules/@react-native-async-storage/async-storage/android/local_repo"
+  def asyncStorageLocalRepo = file(asyncStorageLocalRepoPath)
 
   repositories {
     google()
     mavenCentral()
     maven { url 'https://www.jitpack.io' }
-    maven { url(asyncStorageLocalRepo) }
+    if (asyncStorageLocalRepo.exists()) {
+      maven { url(asyncStorageLocalRepo) }
+    }
   }
 
   configurations.configureEach {
