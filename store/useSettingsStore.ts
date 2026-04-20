@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { create } from 'zustand';
-import { createJSONStorage, persist } from 'zustand/middleware';
+import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware';
 
 import type { CurrencyCode, LanguageCode, RegionCode, ThemePreference } from '../types/finance';
 import {
@@ -62,6 +63,102 @@ export type SettingsState = {
 
 const defaultState = defaultSettingsState;
 
+const SECURE_KEYS = {
+  geminiApiKey: 'gemwallet-settings-geminiApiKey',
+  huggingFaceToken: 'gemwallet-settings-huggingFaceToken',
+  passcodePin: 'gemwallet-settings-passcodePin',
+};
+
+const secureSettingsStorage: StateStorage = {
+  getItem: async (name) => {
+    const base = await AsyncStorage.getItem(name);
+    if (!base) return base;
+
+    try {
+      const parsed = JSON.parse(base) as { state?: Record<string, unknown> };
+      const persistedState = parsed.state ?? {};
+      const [secureGeminiApiKey, secureHuggingFaceToken, securePasscodePin] = await Promise.all([
+        SecureStore.getItemAsync(SECURE_KEYS.geminiApiKey),
+        SecureStore.getItemAsync(SECURE_KEYS.huggingFaceToken),
+        SecureStore.getItemAsync(SECURE_KEYS.passcodePin),
+      ]);
+
+      const fallbackGemini = persistedState.geminiApiKey ?? defaultState.geminiApiKey;
+      const fallbackHugging = persistedState.huggingFaceToken ?? defaultState.huggingFaceToken;
+      const fallbackPasscode = persistedState.passcodePin ?? defaultState.passcodePin;
+
+      const geminiApiKey = secureGeminiApiKey ?? (fallbackGemini as string);
+      const huggingFaceToken = secureHuggingFaceToken ?? (fallbackHugging as string);
+      const passcodePin = securePasscodePin ?? (fallbackPasscode as string);
+
+      const { geminiApiKey: _g, huggingFaceToken: _h, passcodePin: _p, ...restState } =
+        persistedState;
+
+      const sanitizedForStorage = JSON.stringify({
+        ...parsed,
+        state: restState,
+      });
+
+      await Promise.all([
+        AsyncStorage.setItem(name, sanitizedForStorage),
+        SecureStore.setItemAsync(SECURE_KEYS.geminiApiKey, geminiApiKey ?? ''),
+        SecureStore.setItemAsync(SECURE_KEYS.huggingFaceToken, huggingFaceToken ?? ''),
+        SecureStore.setItemAsync(SECURE_KEYS.passcodePin, passcodePin ?? ''),
+      ]);
+
+      return JSON.stringify({
+        ...parsed,
+        state: {
+          ...restState,
+          geminiApiKey,
+          huggingFaceToken,
+          passcodePin,
+        },
+      });
+    } catch {
+      return base;
+    }
+  },
+  setItem: async (name, value) => {
+    try {
+      const parsed = JSON.parse(value) as { state?: Record<string, unknown> };
+      const { state: persistedState = {}, ...rest } = parsed;
+      const {
+        geminiApiKey = defaultState.geminiApiKey,
+        huggingFaceToken = defaultState.huggingFaceToken,
+        passcodePin = defaultState.passcodePin,
+        ...restState
+      } = persistedState;
+
+      await Promise.all([
+        AsyncStorage.setItem(
+          name,
+          JSON.stringify({
+            ...rest,
+            state: restState,
+          })
+        ),
+        SecureStore.setItemAsync(SECURE_KEYS.geminiApiKey, (geminiApiKey as string) ?? ''),
+        SecureStore.setItemAsync(
+          SECURE_KEYS.huggingFaceToken,
+          (huggingFaceToken as string) ?? ''
+        ),
+        SecureStore.setItemAsync(SECURE_KEYS.passcodePin, (passcodePin as string) ?? ''),
+      ]);
+    } catch {
+      await AsyncStorage.setItem(name, value);
+    }
+  },
+  removeItem: async (name) => {
+    await Promise.all([
+      AsyncStorage.removeItem(name),
+      SecureStore.deleteItemAsync(SECURE_KEYS.geminiApiKey),
+      SecureStore.deleteItemAsync(SECURE_KEYS.huggingFaceToken),
+      SecureStore.deleteItemAsync(SECURE_KEYS.passcodePin),
+    ]);
+  },
+};
+
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
@@ -93,11 +190,18 @@ export const useSettingsStore = create<SettingsState>()(
           ...defaultState,
           ...incoming,
         })),
-      resetSettings: () => set(defaultState),
+      resetSettings: () => {
+        void Promise.all([
+          SecureStore.deleteItemAsync(SECURE_KEYS.geminiApiKey),
+          SecureStore.deleteItemAsync(SECURE_KEYS.huggingFaceToken),
+          SecureStore.deleteItemAsync(SECURE_KEYS.passcodePin),
+        ]);
+        set(defaultState);
+      },
     }),
     {
       name: 'gemwallet-settings-v5',
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: createJSONStorage(() => secureSettingsStorage),
       version: 5,
       migrate: (persistedState: unknown, _version: number) => migrateSettingsState(persistedState),
     }
