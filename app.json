@@ -21,7 +21,6 @@
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true,
       "minSdkVersion": 26,
       "package": "com.walsoup.gemwallet"
     },
