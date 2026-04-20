@@ -32,7 +32,7 @@ jobs:
         run: npm ci
 
       - name: Generate Native Android Code
-        run: npx expo prebuild --platform android --clean
+        run: npx expo prebuild --platform android
 
       - name: Build Standalone APK (Release)
         run: |
