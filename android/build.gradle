@@ -13,20 +13,25 @@ buildscript {
 }
 
 allprojects {
+  def asyncStorageLocalRepoPath = findProperty("asyncStorageLocalRepoPath") ?: "$rootDir/../node_modules/@react-native-async-storage/async-storage/android/local_repo"
+  def asyncStorageLocalRepo = file(asyncStorageLocalRepoPath)
+
   repositories {
     google()
     mavenCentral()
     maven { url 'https://www.jitpack.io' }
+    if (asyncStorageLocalRepo.exists()) {
+      maven { url(asyncStorageLocalRepo) }
+    }
   }
 
-  configurations.all {
-    resolutionStrategy.eachDependency { details ->
-      if (details.requested.group == "org.checkerframework" &&
-          details.requested.name == "checker-compat-qual") {
-        details.useVersion("2.5.8")
-        details.because("Avoid missing 2.5.5 artifact in CI repositories")
-      }
+  configurations.configureEach {
+    resolutionStrategy.dependencySubstitution {
+      substitute module("org.checkerframework:checker-compat-qual")
+        .using module("org.checkerframework:checker-compat-qual:2.5.8")
+        .because("Ensure all requests resolve to a known-available version in CI")
     }
+    resolutionStrategy.force "org.checkerframework:checker-compat-qual:2.5.8"
   }
 }
 
