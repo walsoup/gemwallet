@@ -17,16 +17,16 @@ allprojects {
     google()
     mavenCentral()
     maven { url 'https://www.jitpack.io' }
+    maven { url("$rootDir/../node_modules/@react-native-async-storage/async-storage/android/local_repo") }
   }
 
-  configurations.all {
-    resolutionStrategy.eachDependency { details ->
-      if (details.requested.group == "org.checkerframework" &&
-          details.requested.name == "checker-compat-qual") {
-        details.useVersion("2.5.8")
-        details.because("Avoid missing 2.5.5 artifact in CI repositories")
-      }
+  configurations.configureEach {
+    resolutionStrategy.dependencySubstitution {
+      substitute module("org.checkerframework:checker-compat-qual:2.5.5")
+        .using module("org.checkerframework:checker-compat-qual:2.5.8")
+        .because("2.5.5 is intermittently unavailable; force a resolvable version in CI")
     }
+    resolutionStrategy.force "org.checkerframework:checker-compat-qual:2.5.8"
   }
 }
 
