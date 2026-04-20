@@ -56,7 +56,13 @@ export function migrateSettingsState(persistedState: unknown): SettingsPersisted
   if (!persistedState || typeof persistedState !== 'object') return defaultSettingsState;
 
   const legacy = persistedState as Partial<SettingsPersistedShape>;
-  const aiProvider = legacy.aiProvider === 'huggingface' ? 'huggingface' : 'google';
+  const legacyAiProvider = (legacy as { aiProvider?: string }).aiProvider;
+  const aiProvider: AiProvider =
+    legacyAiProvider === 'huggingface'
+      ? 'huggingface'
+      : legacyAiProvider === 'google'
+        ? 'google'
+        : defaultSettingsState.aiProvider;
 
   return {
     ...defaultSettingsState,
