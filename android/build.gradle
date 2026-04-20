@@ -26,11 +26,6 @@ allprojects {
   }
 
   configurations.configureEach {
-    resolutionStrategy.dependencySubstitution {
-      substitute module("org.checkerframework:checker-compat-qual")
-        .using module("org.checkerframework:checker-compat-qual:2.5.8")
-        .because("Ensure all requests resolve to a known-available version in CI")
-    }
     resolutionStrategy.force "org.checkerframework:checker-compat-qual:2.5.8"
   }
 }
