@@ -641,8 +641,8 @@ export default function HomeScreen() {
               value={search}
               onChangeText={setSearch}
               placeholder="Search transactions"
-              left={<TextInput.Icon icon="magnify" color={theme.colors.onSurfaceVariant} />}
-              right={search ? <TextInput.Icon icon="close-circle" onPress={() => setSearch('')} /> : null}
+              left={<TextInput.Icon icon="magnify" color={theme.colors.onSurfaceVariant} accessibilityLabel="Search" />}
+              right={search ? <TextInput.Icon icon="close-circle" onPress={() => setSearch('')} accessibilityLabel="Clear search" /> : null}
               style={styles.searchBar}
               outlineStyle={{ borderRadius: 22, borderColor: theme.colors.outlineVariant }}
             />
