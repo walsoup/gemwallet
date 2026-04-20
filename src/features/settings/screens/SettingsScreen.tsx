@@ -1,5 +1,5 @@
 import * as Haptics from 'expo-haptics';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, StyleProp, ViewStyle } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -12,21 +12,13 @@ import {
   SegmentedButtons,
   Text,
   TextInput,
-  ProgressBar,
 } from 'react-native-paper';
 
 import { useSettingsStore } from '../../../../store/useSettingsStore';
-import type { AiProvider } from '../../../../store/useSettingsStore';
 import { useAppTheme } from '../../../../providers/AppThemeProvider';
 import { useTransactionStore } from '../../../../store/useTransactionStore';
 import { formatCurrency } from '../../../../utils/formatCurrency';
 import { useBouncyPress } from '../../../hooks/useBouncyPress';
-import {
-  availableLiteRtModels,
-  deleteLiteRtModel,
-  downloadLiteRtModel,
-  getLiteRtModelInfo,
-} from '../../nlp/services/litertRuntime';
 
 const currencyOptions = [
   { code: 'USD', label: 'USD ($)' },
@@ -177,12 +169,6 @@ function BouncyButton({
   );
 }
 
-function formatBytes(bytes: number | null | undefined) {
-  if (!bytes) return null;
-  const mb = bytes / 1024 / 1024;
-  return `${mb.toFixed(1)} MB`;
-}
-
 export default function SettingsScreen() {
   const theme = useAppTheme();
   const [exportPreview, setExportPreview] = useState('');
@@ -190,11 +176,6 @@ export default function SettingsScreen() {
   const [showHfToken, setShowHfToken] = useState(false);
   const [passcodeDraft, setPasscodeDraft] = useState('');
   const [passcodeConfirm, setPasscodeConfirm] = useState('');
-  const [downloadProgress, setDownloadProgress] = useState(0);
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [downloadError, setDownloadError] = useState('');
-  const [modelSizeBytes, setModelSizeBytes] = useState<number | null>(null);
-  const [liteRtModels, setLiteRtModels] = useState<{ id: string; label: string; sizeHint: string; notes?: string }[]>([]);
   const themeSegmentBounce = useBouncyPress(0.94);
   const aiSegmentBounce = useBouncyPress(0.94);
 
@@ -213,8 +194,6 @@ export default function SettingsScreen() {
   const geminiApiKey = useSettingsStore((state) => state.geminiApiKey);
   const huggingFaceToken = useSettingsStore((state) => state.huggingFaceToken);
   const gemmaModel = useSettingsStore((state) => state.gemmaModel);
-  const localModelId = useSettingsStore((state) => state.localModelId);
-  const localModelDownloaded = useSettingsStore((state) => state.localModelDownloaded);
 
   const smartCategorizationEnabled = useSettingsStore((state) => state.smartCategorizationEnabled);
   const advancedSummariesEnabled = useSettingsStore((state) => state.advancedSummariesEnabled);
@@ -235,8 +214,6 @@ export default function SettingsScreen() {
   const setGeminiApiKey = useSettingsStore((state) => state.setGeminiApiKey);
   const setHuggingFaceToken = useSettingsStore((state) => state.setHuggingFaceToken);
   const setGemmaModel = useSettingsStore((state) => state.setGemmaModel);
-  const setLocalModelId = useSettingsStore((state) => state.setLocalModelId);
-  const setLocalModelDownloaded = useSettingsStore((state) => state.setLocalModelDownloaded);
   const setSmartCategorizationEnabled = useSettingsStore((state) => state.setSmartCategorizationEnabled);
   const setAdvancedSummariesEnabled = useSettingsStore((state) => state.setAdvancedSummariesEnabled);
   const setIncludeNotesInExport = useSettingsStore((state) => state.setIncludeNotesInExport);
@@ -246,16 +223,6 @@ export default function SettingsScreen() {
   const categories = useTransactionStore((state) => state.categories);
   const transactions = useTransactionStore((state) => state.transactions);
   const clearAllData = useTransactionStore((state) => state.clearAllData);
-  const selectedLiteRtModel = useMemo(
-    () => liteRtModels.find((m) => m.id === localModelId),
-    [liteRtModels, localModelId]
-  );
-
-  useEffect(() => {
-    availableLiteRtModels()
-      .then((models) => setLiteRtModels(models))
-      .catch(() => {});
-  }, []);
 
   const exportRows = useMemo(() => {
     const byId = new Map(categories.map((item) => [item.id, item]));
@@ -308,56 +275,6 @@ export default function SettingsScreen() {
     setPasscodeEnabled(true);
     setPasscodeDraft('');
     setPasscodeConfirm('');
-  };
-
-  const syncLocalModelState = useCallback(async () => {
-    try {
-      const info = await getLiteRtModelInfo(localModelId);
-      if (info.exists) {
-        setLocalModelDownloaded(true);
-        setDownloadProgress(1);
-        setModelSizeBytes(typeof info.size === 'number' ? info.size : null);
-      } else if (localModelDownloaded) {
-        setLocalModelDownloaded(false);
-        setDownloadProgress(0);
-      }
-    } catch {
-      // ignore sync failures; state will refresh on next attempt
-    }
-  }, [localModelDownloaded, localModelId, setLocalModelDownloaded]);
-
-  useEffect(() => {
-    void syncLocalModelState();
-  }, [syncLocalModelState]);
-
-  const handleDownloadLocalModel = async () => {
-    setDownloadError('');
-    setIsDownloading(true);
-    setDownloadProgress(0);
-    try {
-      await downloadLiteRtModel((progress) => setDownloadProgress(progress), localModelId);
-      await syncLocalModelState();
-    } catch (error) {
-      console.warn('LiteRT download failed', error);
-      setDownloadError('LiteRT download failed. Check your connection and try again.');
-      setLocalModelDownloaded(false);
-      setDownloadProgress(0);
-    } finally {
-      setIsDownloading(false);
-    }
-  };
-
-  const handleDeleteLocalModel = async () => {
-    try {
-      await deleteLiteRtModel();
-    } catch {
-      // Swallow delete issues and reset local flags to let the user retry.
-    } finally {
-      setIsDownloading(false);
-      setLocalModelDownloaded(false);
-      setDownloadProgress(0);
-      setModelSizeBytes(null);
-    }
   };
 
   return (
@@ -518,12 +435,11 @@ export default function SettingsScreen() {
                 value={aiProvider}
                 onValueChange={(value) => {
                   triggerHaptic('medium');
-                  setAiProvider(value as AiProvider);
+                  setAiProvider(value as 'google' | 'huggingface');
                 }}
                 buttons={[
                   { label: 'Google API', value: 'google' },
                   { label: 'HF API', value: 'huggingface' },
-                  { label: 'Local Device', value: 'local' },
                 ]}
               />
             </Animated.View>
@@ -582,76 +498,6 @@ export default function SettingsScreen() {
                 <HelperText type="info" visible>
                   Uses the HuggingFace Inference API. Requires a valid token.
                 </HelperText>
-              </View>
-            )}
-
-            {aiProvider === 'local' && (
-              <View style={{ gap: 12 }}>
-                {!localModelDownloaded ? (
-                  <>
-                    <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>
-                      Choose a LiteRT model to download
-                    </Text>
-                    <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                      Runs fully on-device via LiteRT with no network calls. {selectedLiteRtModel ? `${selectedLiteRtModel.label} • ${selectedLiteRtModel.sizeHint}` : ''}
-                    </Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 4 }}>
-                      {liteRtModels.map((model) => {
-                        const selected = model.id === localModelId;
-                        return (
-                          <BouncyPressable
-                            key={model.id}
-                            onPress={() => setLocalModelId(model.id)}
-                            scaleDown={0.92}
-                            style={{ flexGrow: 0 }}
-                          >
-                            <Chip
-                              mode="outlined"
-                              selected={selected}
-                              style={{
-                                backgroundColor: selected ? theme.colors.secondaryContainer : theme.colors.surface,
-                                borderColor: selected ? theme.colors.primary : theme.colors.outlineVariant,
-                              }}
-                              selectedColor={theme.colors.onSecondaryContainer}
-                            >
-                              {model.label} • {model.sizeHint}
-                            </Chip>
-                          </BouncyPressable>
-                        );
-                      })}
-                    </ScrollView>
-                    {downloadError ? (
-                      <HelperText type="error" visible>
-                        {downloadError}
-                      </HelperText>
-                    ) : null}
-                    {isDownloading ? (
-                      <View style={{ gap: 8 }}>
-                        <ProgressBar progress={downloadProgress} color={theme.colors.primary} />
-                        <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant, textAlign: 'right' }}>
-                          {Math.round(downloadProgress * 100)}%
-                        </Text>
-                      </View>
-                    ) : (
-                      <BouncyButton mode="contained" onPress={handleDownloadLocalModel} icon="download" haptic="heavy">
-                        Download with LiteRT
-                      </BouncyButton>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <Text variant="titleMedium" style={{ color: theme.colors.primary }}>
-                      LiteRT model is active.
-                    </Text>
-                    <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                      {selectedLiteRtModel ? `${selectedLiteRtModel.label} • ${selectedLiteRtModel.sizeHint}. ` : ''}
-                      All analysis will be performed on-device without network requests.{modelSizeBytes ? ` (${formatBytes(modelSizeBytes)} cached)` : ''}
-                    </Text>
-                    <BouncyButton mode="outlined" onPress={handleDeleteLocalModel} textColor={theme.colors.error} haptic="heavy">
-                      Delete downloaded model
-                    </BouncyButton>
-                  </>
-                )}
               </View>
             )}
 

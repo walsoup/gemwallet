@@ -44,10 +44,9 @@ describe('gemmaAnalysis service', () => {
     assert.match(output, /No transactions yet/i);
   });
 
-  it('returns null greeting when local provider is selected but model is not downloaded', async () => {
+  it('returns null greeting when huggingface provider is selected without a token', async () => {
     const greeting = await generatePersonalGreeting([], {
-      aiProvider: 'local',
-      localModelDownloaded: false,
+      aiProvider: 'huggingface',
       currencyCode: 'USD',
       locale: 'en-US',
       region: 'US',

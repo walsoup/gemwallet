@@ -39,7 +39,7 @@ jobs:
           cd android
           chmod +x gradlew
           export NODE_BINARY=$(which node)
-          ./gradlew :app:assembleRelease --stacktrace --info
+          ./gradlew :app:assembleRelease -PnewArchEnabled=false --stacktrace --info
 
       - name: Upload APK artifact (release)
         uses: actions/upload-artifact@v4
