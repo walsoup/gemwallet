@@ -360,7 +360,7 @@ export default function SettingsScreen() {
                   autoCapitalize="none"
                   autoCorrect={false}
                   placeholder="#ff6b6b"
-                  left={<TextInput.Icon icon="palette" />}
+                  left={<TextInput.Icon icon="palette" accessibilityLabel="Primary color palette" />}
                 />
               </View>
               <View style={{ flex: 1, gap: 6 }}>
@@ -374,7 +374,7 @@ export default function SettingsScreen() {
                   autoCapitalize="none"
                   autoCorrect={false}
                   placeholder="#52dea2"
-                  left={<TextInput.Icon icon="palette-swatch" />}
+                  left={<TextInput.Icon icon="palette-swatch" accessibilityLabel="Secondary color palette" />}
                 />
               </View>
             </View>
@@ -457,7 +457,7 @@ export default function SettingsScreen() {
                   autoCorrect={false}
                   right={
                     <TextInput.Icon
-                      icon={showApiKey ? 'eye-off-outline' : 'eye-outline'}
+                      icon={showApiKey ? 'eye-off-outline' : 'eye-outline'} accessibilityLabel={showApiKey ? 'Hide Gemini API key' : 'Show Gemini API key'}
                       onPress={() => setShowApiKey((prev) => !prev)}
                     />
                   }
@@ -481,7 +481,7 @@ export default function SettingsScreen() {
                   autoCorrect={false}
                   right={
                     <TextInput.Icon
-                      icon={showHfToken ? 'eye-off-outline' : 'eye-outline'}
+                      icon={showHfToken ? 'eye-off-outline' : 'eye-outline'} accessibilityLabel={showHfToken ? 'Hide Hugging Face token' : 'Show Hugging Face token'}
                       onPress={() => setShowHfToken((prev) => !prev)}
                     />
                   }

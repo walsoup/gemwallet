@@ -395,7 +395,7 @@ export default function ChatScreen() {
           <View style={{ width: 12 }} />
           <IconButton
             mode={recording ? 'contained' : 'outlined'}
-            icon={recording ? 'stop' : 'microphone'}
+            icon={recording ? 'stop' : 'microphone'} accessibilityLabel={recording ? 'Stop recording' : 'Start recording'}
             onPress={() => {
               if (recording) {
                 void stopRecording();
@@ -406,7 +406,7 @@ export default function ChatScreen() {
           />
           <IconButton
             mode="outlined"
-            icon="image-plus"
+            icon="image-plus" accessibilityLabel="Add image"
             onPress={() => {
               void pickImage();
             }}

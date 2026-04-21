@@ -1,0 +1,3 @@
+## 2024-04-20 - [Accessibility] Dynamic Labels for Icon-Only Components
+**Learning:** In react-native-paper, when an icon-only component's state changes (e.g., eye-outline to eye-off-outline for password visibility, or microphone to stop for recording), screen readers need dynamic `accessibilityLabel` properties matching the current state to remain accessible. Otherwise, they either announce the raw icon name or just 'Button' without context.
+**Action:** Always provide an `accessibilityLabel` prop that flips conditionally based on the component's state when using `TextInput.Icon` or `IconButton` that toggle between two modes.
