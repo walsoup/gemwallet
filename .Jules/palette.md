@@ -1,0 +1,3 @@
+## 2024-05-20 - Missing ARIA Labels on Icon Buttons
+**Learning:** In this react-native-paper application, icon-only components like `IconButton`, `FAB`, and `TextInput.Icon` require an explicit `accessibilityLabel` prop to be readable by screen readers. If the component toggles state (like a record/stop button or show/hide password), the label must dynamically reflect the current state (e.g. "Stop recording" vs "Start recording").
+**Action:** Always verify that every `IconButton`, `FAB`, and `TextInput.Icon` without visible text has an `accessibilityLabel` prop, and ensure dynamic labels are used for toggling states.

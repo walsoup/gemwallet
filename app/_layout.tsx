@@ -258,6 +258,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
               <FAB
                 size="large"
                 icon="calendar-clock"
+                accessibilityLabel="Open calendar"
                 style={{ backgroundColor: theme.colors.primary, transform: [{ translateY: 2 }] }}
                 color={theme.colors.onPrimary}
               />
