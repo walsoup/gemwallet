@@ -458,6 +458,7 @@ export default function SettingsScreen() {
                   right={
                     <TextInput.Icon
                       icon={showApiKey ? 'eye-off-outline' : 'eye-outline'}
+                      accessibilityLabel={showApiKey ? 'Hide Gemini API key' : 'Show Gemini API key'}
                       onPress={() => setShowApiKey((prev) => !prev)}
                     />
                   }
@@ -482,6 +483,7 @@ export default function SettingsScreen() {
                   right={
                     <TextInput.Icon
                       icon={showHfToken ? 'eye-off-outline' : 'eye-outline'}
+                      accessibilityLabel={showHfToken ? 'Hide HuggingFace token' : 'Show HuggingFace token'}
                       onPress={() => setShowHfToken((prev) => !prev)}
                     />
                   }
