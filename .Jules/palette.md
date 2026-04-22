@@ -1,0 +1,3 @@
+## 2024-05-15 - React Native Paper Icon Accessibility Pattern
+**Learning:** Icon-only components in `react-native-paper` (like `IconButton`, `FAB`, and `TextInput.Icon`) do not automatically derive accessible names from their icon strings. When these components toggle state (e.g., show/hide password, start/stop recording), their accessible names must explicitly reflect the current state dynamically, rather than just describing the icon itself.
+**Action:** Always provide explicit, dynamic `accessibilityLabel` props to all `IconButton`, `FAB`, and `TextInput.Icon` components in `react-native-paper` that do not have visible text labels. Ensure the label clearly states the action the button will perform in its current state.
