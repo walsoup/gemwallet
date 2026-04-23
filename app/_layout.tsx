@@ -257,6 +257,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             <Animated.View style={[styles.fabWrapper, fabAnimatedStyle]}>
               <FAB
                 size="large"
+                accessibilityLabel="Open planning"
                 icon="calendar-clock"
                 style={{ backgroundColor: theme.colors.primary, transform: [{ translateY: 2 }] }}
                 color={theme.colors.onPrimary}
