@@ -1,0 +1,3 @@
+## 2026-04-24 - Missing accessibility labels on react-native-paper icon-only buttons
+**Learning:** Icon-only components in `react-native-paper`, such as `IconButton` and `FAB`, often lack implicit accessibility labels, making them difficult to use for screen reader users. This is especially true for buttons that toggle state (like a record button), where the accessibility label needs to dynamically reflect the current state.
+**Action:** When adding or reviewing icon-only buttons (`IconButton`, `FAB`, etc.) using `react-native-paper`, always explicitly provide an `accessibilityLabel` prop. For buttons that change state, ensure the label updates dynamically to represent the action that will occur when pressed.
