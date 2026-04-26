@@ -6,6 +6,7 @@ import android.content.res.Configuration
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
 import com.facebook.react.ReactNativeApplicationEntryPoint.loadReactNative
+import com.facebook.react.ReactNativeHost
 import com.facebook.react.ReactPackage
 import com.facebook.react.ReactHost
 import com.facebook.react.common.ReleaseLevel
@@ -15,6 +16,23 @@ import expo.modules.ApplicationLifecycleDispatcher
 import expo.modules.ExpoReactHostFactory
 
 class MainApplication : Application(), ReactApplication {
+
+  private val rnHost: ReactNativeHost =
+    object : ReactNativeHost(this) {
+      override fun getUseDeveloperSupport(): Boolean = BuildConfig.DEBUG
+
+      override fun getPackages(): List<ReactPackage> =
+        PackageList(this).packages.apply {
+          // Packages that cannot be autolinked yet can be added manually here, for example:
+          // add(MyReactNativePackage())
+        }
+
+      override fun getJSMainModuleName(): String = ".expo/.virtual-metro-entry"
+    }
+
+  @Suppress("DEPRECATION")
+  override val reactNativeHost: ReactNativeHost
+    get() = rnHost
 
   override val reactHost: ReactHost by lazy {
     ExpoReactHostFactory.getDefaultReactHost(

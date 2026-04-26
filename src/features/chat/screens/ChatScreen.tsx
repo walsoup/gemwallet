@@ -69,8 +69,8 @@ export default function ChatScreen() {
   const [isStreaming, setIsStreaming] = useState(false);
   const scrollRef = useRef<ScrollView | null>(null);
   const locale = language || 'en-US';
-  const [voiceNoteHint, setVoiceNoteHint] = useState('');
-  const [imageNoteHint, setImageNoteHint] = useState('');
+  const voiceNoteHint = '';
+  const imageNoteHint = '';
 
   const scrollToBottom = () => {
     setTimeout(() => {

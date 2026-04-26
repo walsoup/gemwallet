@@ -24,10 +24,6 @@ allprojects {
       maven { url(asyncStorageLocalRepo) }
     }
   }
-
-  configurations.configureEach {
-    resolutionStrategy.force "org.checkerframework:checker-compat-qual:2.5.8"
-  }
 }
 
 apply plugin: "expo-root-project"
