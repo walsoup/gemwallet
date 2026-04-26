@@ -34,12 +34,13 @@ jobs:
       - name: Generate Native Android Code
         run: npx expo prebuild --platform android
 
-      - name: Build Standalone APK (Release)
+      - name: Build Android APK (Release)
+        working-directory: android
+        env:
+          ORG_GRADLE_PROJECT_newArchEnabled: "true"
         run: |
-          cd android
           chmod +x gradlew
-          export NODE_BINARY=$(which node)
-          ./gradlew :app:assembleRelease -PnewArchEnabled=false --stacktrace --info
+          ./gradlew app:assembleRelease -PnewArchEnabled=true --stacktrace --info
 
       - name: Upload APK artifact (release)
         uses: actions/upload-artifact@v4
