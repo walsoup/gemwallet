@@ -38,9 +38,7 @@ jobs:
         working-directory: android
         env:
           ORG_GRADLE_PROJECT_newArchEnabled: "true"
-        run: |
-          chmod +x gradlew
-          ./gradlew app:assembleRelease -PnewArchEnabled=true --stacktrace --info
+        run: ./gradlew app:assembleRelease -PnewArchEnabled=true --stacktrace --info
 
       - name: Upload APK artifact (release)
         uses: actions/upload-artifact@v4
