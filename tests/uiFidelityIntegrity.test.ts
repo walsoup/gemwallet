@@ -31,6 +31,13 @@ describe('UI fidelity and integrity contracts', () => {
     assert.match(home, /AI Assistant/);
   });
 
+  it('avoids direct withTiming usage in plain tab icon styles', () => {
+    const layout = readWorkspaceFile('app/_layout.tsx');
+
+    assert.doesNotMatch(layout, /backgroundColor:\s*withTiming\(/);
+    assert.doesNotMatch(layout, /borderColor:\s*withTiming\(/);
+  });
+
   it('keeps theme provider dark palette and true-black override path', () => {
     const themeProvider = readWorkspaceFile('providers/AppThemeProvider.tsx');
 

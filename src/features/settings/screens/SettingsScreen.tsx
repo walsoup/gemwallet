@@ -1,51 +1,59 @@
 import * as Haptics from 'expo-haptics';
-import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View, StyleProp, ViewStyle } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Button,
-  Card,
   Chip,
   Divider,
   HelperText,
+  ProgressBar,
   SegmentedButtons,
+  Surface,
   Text,
   TextInput,
 } from 'react-native-paper';
 
-import { useSettingsStore } from '../../../../store/useSettingsStore';
 import { useAppTheme } from '../../../../providers/AppThemeProvider';
+import { useSettingsStore } from '../../../../store/useSettingsStore';
 import { useTransactionStore } from '../../../../store/useTransactionStore';
 import { formatCurrency } from '../../../../utils/formatCurrency';
 import { useBouncyPress } from '../../../hooks/useBouncyPress';
+import {
+  DEFAULT_LITERT_MODEL_ID,
+  LITERT_MODELS,
+  downloadLiteRtModel,
+  getLiteRtModel,
+  isLiteRtModelCached,
+} from '../../../nlp/services/liteRtModels';
 
 const currencyOptions = [
-  { code: 'USD', label: 'USD ($)' },
-  { code: 'EUR', label: 'EUR (€)' },
-  { code: 'GBP', label: 'GBP (£)' },
-  { code: 'JPY', label: 'JPY (¥)' },
-  { code: 'AUD', label: 'AUD (A$)' },
-  { code: 'CAD', label: 'CAD (C$)' },
-  { code: 'MAD', label: 'MAD (د.م.)' },
+  { code: 'USD', label: 'USD' },
+  { code: 'EUR', label: 'EUR' },
+  { code: 'GBP', label: 'GBP' },
+  { code: 'JPY', label: 'JPY' },
+  { code: 'AUD', label: 'AUD' },
+  { code: 'CAD', label: 'CAD' },
+  { code: 'MAD', label: 'MAD' },
 ] as const;
 
 const languageOptions = [
-  { code: 'en-US', label: 'English (US)' },
-  { code: 'en-GB', label: 'English (UK)' },
+  { code: 'en-US', label: 'English' },
+  { code: 'en-GB', label: 'UK English' },
   { code: 'fr-FR', label: 'Français' },
   { code: 'de-DE', label: 'Deutsch' },
   { code: 'ja-JP', label: '日本語' },
 ] as const;
 
 const regionOptions = [
-  { code: 'US', label: 'United States' },
-  { code: 'EU', label: 'Europe' },
-  { code: 'UK', label: 'United Kingdom' },
-  { code: 'JP', label: 'Japan' },
-  { code: 'AU', label: 'Australia' },
-  { code: 'CA', label: 'Canada' },
-  { code: 'MA', label: 'Morocco' },
+  { code: 'US', label: 'US' },
+  { code: 'EU', label: 'EU' },
+  { code: 'UK', label: 'UK' },
+  { code: 'JP', label: 'JP' },
+  { code: 'AU', label: 'AU' },
+  { code: 'CA', label: 'CA' },
+  { code: 'MA', label: 'MA' },
 ] as const;
 
 type HapticWeight = 'light' | 'medium' | 'heavy';
@@ -80,14 +88,572 @@ function BouncyPressable({
         triggerHaptic('medium');
         onPress?.();
       }}
-      style={{ flexGrow: 1 }}
     >
       <Animated.View style={[animatedStyle, style]}>{children}</Animated.View>
     </Pressable>
   );
 }
 
-function TonalToggle({
+function SectionCard({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
+  const theme = useAppTheme();
+  return (
+    <Surface style={[styles.sectionCard, { backgroundColor: theme.colors.surfaceContainerHigh }]} elevation={3}>
+      <View style={styles.sectionHeader}>
+        <Text variant="titleLarge" style={{ color: theme.colors.onSurface, fontWeight: '800', letterSpacing: -0.2 }}>
+          {title}
+        </Text>
+        {subtitle ? (
+          <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginTop: 4 }}>
+            {subtitle}
+          </Text>
+        ) : null}
+      </View>
+      <View style={{ gap: 14 }}>{children}</View>
+    </Surface>
+  );
+}
+
+function OptionChipRow<T extends string>({
+  value,
+  onChange,
+  options,
+}: {
+  value: T;
+  onChange: (next: T) => void;
+  options: readonly { code: T; label: string }[];
+}) {
+  const theme = useAppTheme();
+  return (
+    <View style={styles.chipRow}>
+      {options.map((option) => {
+        const selected = option.code === value;
+        return (
+          <BouncyPressable
+            key={option.code}
+            onPress={() => onChange(option.code)}
+            scaleDown={0.94}
+            style={[
+              styles.choiceChip,
+              {
+                backgroundColor: selected ? theme.colors.secondaryContainer : theme.colors.surfaceContainer,
+                borderColor: selected ? theme.colors.primary : theme.colors.outlineVariant,
+              },
+            ]}
+          >
+            <Text
+              variant="labelLarge"
+              style={{ color: selected ? theme.colors.onSecondaryContainer : theme.colors.onSurfaceVariant, fontWeight: '800' }}
+            >
+              {option.label}
+            </Text>
+          </BouncyPressable>
+        );
+      })}
+    </View>
+  );
+}
+
+function SelectableModelCard({
+  modelId,
+  selected,
+  downloaded,
+  onSelect,
+}: {
+  modelId: string;
+  selected: boolean;
+  downloaded: boolean;
+  onSelect: () => void;
+}) {
+  const theme = useAppTheme();
+  const model = getLiteRtModel(modelId);
+
+  return (
+    <BouncyPressable
+      onPress={onSelect}
+      scaleDown={0.96}
+      style={[
+        styles.modelCard,
+        {
+          backgroundColor: selected ? theme.colors.primaryContainer : theme.colors.surfaceContainer,
+          borderColor: selected ? theme.colors.primary : theme.colors.outlineVariant,
+        },
+      ]}
+    >
+      <View style={styles.modelCardTopRow}>
+        <View style={{ flex: 1, gap: 4 }}>
+          <Text variant="titleMedium" style={{ color: selected ? theme.colors.onPrimaryContainer : theme.colors.onSurface, fontWeight: '800' }}>
+            {model.label}
+          </Text>
+          <Text variant="bodySmall" style={{ color: selected ? theme.colors.onPrimaryContainer : theme.colors.onSurfaceVariant }}>
+            {model.description}
+          </Text>
+        </View>
+        <Chip compact style={{ backgroundColor: selected ? theme.colors.secondaryContainer : theme.colors.surface }} textStyle={{ color: selected ? theme.colors.onSecondaryContainer : theme.colors.onSurfaceVariant }}>
+          {model.sizeLabel}
+        </Chip>
+      </View>
+      <View style={styles.modelMetaRow}>
+        <Chip compact icon={downloaded ? 'check' : 'download'} style={{ backgroundColor: selected ? theme.colors.surface : theme.colors.surfaceContainerHigh }} textStyle={{ color: selected ? theme.colors.onSurface : theme.colors.onSurfaceVariant }}>
+          {downloaded ? 'Downloaded' : 'Not downloaded'}
+        </Chip>
+        <Chip compact style={{ backgroundColor: selected ? theme.colors.surface : theme.colors.surfaceContainerHigh }} textStyle={{ color: selected ? theme.colors.onSurface : theme.colors.onSurfaceVariant }}>
+          {model.fileName}
+        </Chip>
+      </View>
+    </BouncyPressable>
+  );
+}
+
+export default function SettingsScreen() {
+  const theme = useAppTheme();
+  const [showGeminiApiKey, setShowGeminiApiKey] = useState(false);
+  const [showHfToken, setShowHfToken] = useState(false);
+  const [exportPreview, setExportPreview] = useState('');
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [downloadStatus, setDownloadStatus] = useState<'idle' | 'downloading' | 'ready' | 'error'>('idle');
+  const [downloadError, setDownloadError] = useState('');
+
+  const themePreference = useSettingsStore((state) => state.themePreference);
+  const oledTrueBlackEnabled = useSettingsStore((state) => state.oledTrueBlackEnabled);
+  const highContrastEnabled = useSettingsStore((state) => state.highContrastEnabled);
+  const secureAccessEnabled = useSettingsStore((state) => state.secureAccessEnabled);
+  const passcodeEnabled = useSettingsStore((state) => state.passcodeEnabled);
+  const themePrimary = useSettingsStore((state) => state.themePrimary);
+  const themeSecondary = useSettingsStore((state) => state.themeSecondary);
+  const currencyCode = useSettingsStore((state) => state.currencyCode);
+  const language = useSettingsStore((state) => state.language);
+  const region = useSettingsStore((state) => state.region);
+  const aiProvider = useSettingsStore((state) => state.aiProvider);
+  const geminiApiKey = useSettingsStore((state) => state.geminiApiKey);
+  const huggingFaceToken = useSettingsStore((state) => state.huggingFaceToken);
+  const gemmaModel = useSettingsStore((state) => state.gemmaModel);
+  const localModelId = useSettingsStore((state) => state.localModelId);
+  const localModelDownloaded = useSettingsStore((state) => state.localModelDownloaded);
+  const smartCategorizationEnabled = useSettingsStore((state) => state.smartCategorizationEnabled);
+  const advancedSummariesEnabled = useSettingsStore((state) => state.advancedSummariesEnabled);
+  const includeNotesInExport = useSettingsStore((state) => state.includeNotesInExport);
+
+  const setThemePreference = useSettingsStore((state) => state.setThemePreference);
+  const setOledTrueBlackEnabled = useSettingsStore((state) => state.setOledTrueBlackEnabled);
+  const setHighContrastEnabled = useSettingsStore((state) => state.setHighContrastEnabled);
+  const setSecureAccessEnabled = useSettingsStore((state) => state.setSecureAccessEnabled);
+  const setPasscodeEnabled = useSettingsStore((state) => state.setPasscodeEnabled);
+  const setPasscodePin = useSettingsStore((state) => state.setPasscodePin);
+  const setThemePrimary = useSettingsStore((state) => state.setThemePrimary);
+  const setThemeSecondary = useSettingsStore((state) => state.setThemeSecondary);
+  const setCurrencyCode = useSettingsStore((state) => state.setCurrencyCode);
+  const setLanguage = useSettingsStore((state) => state.setLanguage);
+  const setRegion = useSettingsStore((state) => state.setRegion);
+  const setAiProvider = useSettingsStore((state) => state.setAiProvider);
+  const setGeminiApiKey = useSettingsStore((state) => state.setGeminiApiKey);
+  const setHuggingFaceToken = useSettingsStore((state) => state.setHuggingFaceToken);
+  const setGemmaModel = useSettingsStore((state) => state.setGemmaModel);
+  const setLocalModelId = useSettingsStore((state) => state.setLocalModelId);
+  const setLocalModelDownloaded = useSettingsStore((state) => state.setLocalModelDownloaded);
+  const setSmartCategorizationEnabled = useSettingsStore((state) => state.setSmartCategorizationEnabled);
+  const setAdvancedSummariesEnabled = useSettingsStore((state) => state.setAdvancedSummariesEnabled);
+  const setIncludeNotesInExport = useSettingsStore((state) => state.setIncludeNotesInExport);
+  const resetSettings = useSettingsStore((state) => state.resetSettings);
+
+  const categories = useTransactionStore((state) => state.categories);
+  const transactions = useTransactionStore((state) => state.transactions);
+  const clearAllData = useTransactionStore((state) => state.clearAllData);
+
+  const locale = language || 'en-US';
+  const localeSummary = useMemo(() => `${currencyCode} • ${language || 'system'} • ${region}`, [currencyCode, language, region]);
+  const formattedBalanceSample = useMemo(() => formatCurrency(125000, { currencyCode, locale }), [currencyCode, locale]);
+
+  const exportRows = useMemo(() => {
+    const byId = new Map(categories.map((item) => [item.id, item]));
+    const dateFormatter = new Intl.DateTimeFormat(locale, { year: 'numeric', month: '2-digit', day: '2-digit' });
+    const timeFormatter = new Intl.DateTimeFormat(locale, {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    });
+
+    const header = includeNotesInExport
+      ? ['Transaction ID', 'Date', 'Time', 'Type', 'Category', 'Note', 'Amount', 'Currency', 'Region']
+      : ['Transaction ID', 'Date', 'Time', 'Type', 'Category', 'Amount', 'Currency', 'Region'];
+
+    const lines = transactions.map((item) => {
+      const date = new Date(item.timestamp);
+      const category = byId.get(item.categoryId);
+      const label = category ? `${category.emoji} ${category.name}` : 'Uncategorized';
+      const note = (item.note ?? '').replaceAll('"', '""');
+      const amount = formatCurrency(item.amountCents, { currencyCode, locale });
+
+      const columns = [item.id, dateFormatter.format(date), timeFormatter.format(date), item.type.toUpperCase(), `"${label}"`];
+
+      if (includeNotesInExport) {
+        columns.push(`"${note}"`);
+      }
+
+      columns.push(`"${amount}"`, currencyCode, region);
+      return columns.join(',');
+    });
+
+    return [header.join(','), ...lines].join('\n');
+  }, [categories, currencyCode, includeNotesInExport, locale, region, transactions]);
+
+  useEffect(() => {
+    setExportPreview(exportRows.slice(0, 1200));
+  }, [exportRows]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const cached = await isLiteRtModelCached(localModelId || DEFAULT_LITERT_MODEL_ID);
+        if (cancelled) return;
+        if (cached) {
+          setLocalModelDownloaded(true);
+          setDownloadStatus('ready');
+        }
+      } catch {
+        if (!cancelled) {
+          setDownloadStatus('error');
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [localModelId, setLocalModelDownloaded]);
+
+  const startLiteRtDownload = async () => {
+    setDownloadStatus('downloading');
+    setDownloadProgress(0);
+    setDownloadError('');
+
+    try {
+      await downloadLiteRtModel(localModelId || DEFAULT_LITERT_MODEL_ID, setDownloadProgress);
+      setLocalModelDownloaded(true);
+      setDownloadStatus('ready');
+    } catch (error) {
+      setDownloadStatus('error');
+      setDownloadError(error instanceof Error ? error.message : 'LiteRT download failed.');
+    }
+  };
+
+  const confirmReset = () => {
+    Alert.alert('Reset everything?', 'This clears all wallet data and restores the default settings.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Reset',
+        style: 'destructive',
+        onPress: () => {
+          triggerHaptic('heavy');
+          clearAllData();
+          resetSettings();
+        },
+      },
+    ]);
+  };
+
+  return (
+    <SafeAreaView style={[styles.screen, { backgroundColor: theme.colors.surfaceContainerLowest }]}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <Surface style={[styles.heroShell, { backgroundColor: theme.colors.surfaceContainerHigh }]} elevation={4}>
+          <View style={styles.heroTopRow}>
+            <View style={{ flex: 1, gap: 8 }}>
+              <Text variant="headlineMedium" style={{ color: theme.colors.onSurface, fontWeight: '900', letterSpacing: -0.4 }}>
+                Control center
+              </Text>
+              <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                One place for appearance, AI, offline Gemma, locale, and security.
+              </Text>
+            </View>
+            <View style={[styles.heroBadge, { backgroundColor: theme.colors.primaryContainer }]}>
+              <Text style={{ color: theme.colors.onPrimaryContainer, fontWeight: '800' }}>{formattedBalanceSample}</Text>
+              <Text variant="labelSmall" style={{ color: theme.colors.onPrimaryContainer, opacity: 0.8 }}>
+                Sample format
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.heroChips}>
+            <Chip compact style={{ backgroundColor: theme.colors.secondaryContainer }} textStyle={{ color: theme.colors.onSecondaryContainer }}>
+              {localeSummary}
+            </Chip>
+            <Chip compact style={{ backgroundColor: theme.colors.surface }} textStyle={{ color: theme.colors.onSurface }}>
+              {smartCategorizationEnabled ? 'Smart rules on' : 'Smart rules off'}
+            </Chip>
+            <Chip compact style={{ backgroundColor: theme.colors.surface }} textStyle={{ color: theme.colors.onSurface }}>
+              {advancedSummariesEnabled ? 'Advanced AI on' : 'Advanced AI off'}
+            </Chip>
+          </View>
+        </Surface>
+
+        <SectionCard title="Appearance" subtitle="Keep the app warm, high-contrast, or true black.">
+          <SegmentedButtons
+            value={themePreference}
+            onValueChange={(next) => {
+              triggerHaptic('light');
+              setThemePreference(next as 'system' | 'light' | 'dark');
+            }}
+            buttons={[
+              { value: 'system', label: 'System' },
+              { value: 'light', label: 'Light' },
+              { value: 'dark', label: 'Dark' },
+            ]}
+          />
+
+          <View style={styles.toggleRows}>
+            <ToggleRow
+              label="OLED true black"
+              description="Push dark surfaces all the way down to black."
+              value={oledTrueBlackEnabled}
+              onChange={setOledTrueBlackEnabled}
+            />
+            <ToggleRow
+              label="High contrast"
+              description="Boost separators and text contrast for readability."
+              value={highContrastEnabled}
+              onChange={setHighContrastEnabled}
+            />
+            <View style={styles.colorRow}>
+              <Text variant="titleMedium" style={{ color: theme.colors.onSurface, fontWeight: '700' }}>
+                Accent colors
+              </Text>
+              <TextInput
+                mode="outlined"
+                label="Primary"
+                value={themePrimary}
+                onChangeText={setThemePrimary}
+                style={styles.colorInput}
+              />
+              <TextInput
+                mode="outlined"
+                label="Secondary"
+                value={themeSecondary}
+                onChangeText={setThemeSecondary}
+                style={styles.colorInput}
+              />
+            </View>
+          </View>
+        </SectionCard>
+
+        <SectionCard title="AI Provider" subtitle="Choose the cloud backend that powers assistant features.">
+          <SegmentedButtons
+            value={aiProvider}
+            onValueChange={(next) => {
+              triggerHaptic('light');
+              setAiProvider(next as 'google' | 'huggingface');
+            }}
+            buttons={[
+              { value: 'google', label: 'Google' },
+              { value: 'huggingface', label: 'Hugging Face' },
+            ]}
+          />
+
+          {aiProvider === 'google' ? (
+            <View style={{ gap: 10 }}>
+              <TextInput
+                mode="outlined"
+                label="Gemini API key"
+                value={geminiApiKey}
+                secureTextEntry={!showGeminiApiKey}
+                autoCapitalize="none"
+                onChangeText={setGeminiApiKey}
+                right={
+                  <TextInput.Icon
+                    icon={showGeminiApiKey ? 'eye-off' : 'eye'}
+                    onPress={() => setShowGeminiApiKey((current) => !current)}
+                  />
+                }
+              />
+              <HelperText type="info" visible>
+                The key stays on device. It is only used when Google AI is selected.
+              </HelperText>
+            </View>
+          ) : (
+            <View style={{ gap: 10 }}>
+              <TextInput
+                mode="outlined"
+                label="Hugging Face token"
+                value={huggingFaceToken}
+                secureTextEntry={!showHfToken}
+                autoCapitalize="none"
+                onChangeText={setHuggingFaceToken}
+                right={
+                  <TextInput.Icon
+                    icon={showHfToken ? 'eye-off' : 'eye'}
+                    onPress={() => setShowHfToken((current) => !current)}
+                  />
+                }
+              />
+              <TextInput
+                mode="outlined"
+                label="Cloud Gemma model"
+                value={gemmaModel}
+                onChangeText={setGemmaModel}
+                autoCapitalize="none"
+              />
+              <HelperText type="info" visible>
+                Hugging Face unlocks Gemma-hosted prompts and model variants.
+              </HelperText>
+            </View>
+          )}
+        </SectionCard>
+
+        <SectionCard title="LiteRT Gemma" subtitle="Download the on-device model and keep it ready offline.">
+          <View style={{ gap: 12 }}>
+            {LITERT_MODELS.map((model) => (
+              <SelectableModelCard
+                key={model.id}
+                modelId={model.id}
+                selected={localModelId === model.id}
+                downloaded={localModelDownloaded && localModelId === model.id}
+                onSelect={() => {
+                  triggerHaptic('light');
+                  setLocalModelId(model.id);
+                }}
+              />
+            ))}
+          </View>
+
+          <View style={styles.downloadPanel}>
+            <View style={{ flex: 1, gap: 6 }}>
+              <Text variant="titleMedium" style={{ color: theme.colors.onSurface, fontWeight: '800' }}>
+                {getLiteRtModel(localModelId || DEFAULT_LITERT_MODEL_ID).label}
+              </Text>
+              <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                Downloads into the app sandbox so the runtime can load it without asking the user again.
+              </Text>
+            </View>
+            <Chip compact icon={localModelDownloaded ? 'check' : 'download'} style={{ backgroundColor: theme.colors.surface }} textStyle={{ color: theme.colors.onSurface }}>
+              {localModelDownloaded ? 'Ready' : 'Offline not ready'}
+            </Chip>
+          </View>
+
+          {downloadStatus === 'downloading' ? (
+            <View style={{ gap: 8 }}>
+              <ProgressBar progress={downloadProgress} color={theme.colors.primary} />
+              <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                Downloading {Math.round(downloadProgress * 100)}%
+              </Text>
+            </View>
+          ) : null}
+
+          {downloadStatus === 'error' && downloadError ? (
+            <HelperText type="error" visible>
+              {downloadError}
+            </HelperText>
+          ) : null}
+
+          <BouncyPressable
+            onPress={() => {
+              triggerHaptic('medium');
+              void startLiteRtDownload();
+            }}
+            scaleDown={0.94}
+            style={[styles.primaryAction, { backgroundColor: theme.colors.primaryContainer }]}
+          >
+            <Text style={{ color: theme.colors.onPrimaryContainer, fontWeight: '900' }}>
+              {localModelDownloaded ? 'Refresh LiteRT download' : 'Download LiteRT Gemma'}
+            </Text>
+          </BouncyPressable>
+        </SectionCard>
+
+        <SectionCard title="Locale" subtitle="Match formats to the region you work in.">
+          <View style={{ gap: 12 }}>
+            <Text variant="labelLarge" style={{ color: theme.colors.onSurfaceVariant }}>
+              Currency
+            </Text>
+            <OptionChipRow value={currencyCode} onChange={setCurrencyCode} options={currencyOptions} />
+
+            <Text variant="labelLarge" style={{ color: theme.colors.onSurfaceVariant }}>
+              Language
+            </Text>
+            <OptionChipRow value={language || 'en-US'} onChange={setLanguage} options={languageOptions} />
+
+            <Text variant="labelLarge" style={{ color: theme.colors.onSurfaceVariant }}>
+              Region
+            </Text>
+            <OptionChipRow value={region} onChange={setRegion} options={regionOptions} />
+          </View>
+        </SectionCard>
+
+        <SectionCard title="Data and security" subtitle="Protect access and control how exports behave.">
+          <ToggleRow
+            label="Secure access"
+            description="Require the app to re-authenticate before revealing sensitive screens."
+            value={secureAccessEnabled}
+            onChange={setSecureAccessEnabled}
+          />
+          <ToggleRow
+            label="Passcode lock"
+            description="Require a passcode before the home wallet can open."
+            value={passcodeEnabled}
+            onChange={(next) => {
+              setPasscodeEnabled(next);
+              if (!next) {
+                setPasscodePin('');
+              }
+            }}
+          />
+          <ToggleRow
+            label="Smart categorization"
+            description="Let the app classify transactions automatically when possible."
+            value={smartCategorizationEnabled}
+            onChange={setSmartCategorizationEnabled}
+          />
+          <ToggleRow
+            label="Advanced summaries"
+            description="Allow richer AI explanations and recommendations."
+            value={advancedSummariesEnabled}
+            onChange={setAdvancedSummariesEnabled}
+          />
+          <ToggleRow
+            label="Include notes in export"
+            description="Add memo fields to CSV exports."
+            value={includeNotesInExport}
+            onChange={setIncludeNotesInExport}
+          />
+
+          <Divider />
+
+          <Text variant="titleMedium" style={{ color: theme.colors.onSurface, fontWeight: '800' }}>
+            Export preview
+          </Text>
+          <TextInput
+            mode="outlined"
+            multiline
+            numberOfLines={8}
+            value={exportPreview}
+            editable={false}
+            style={styles.previewBox}
+          />
+
+          <View style={styles.actionRow}>
+            <Button mode="outlined" onPress={confirmReset}>
+              Reset all data
+            </Button>
+          </View>
+        </SectionCard>
+
+        <View style={styles.footerNote}>
+          <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center' }}>
+            The UI now emphasizes the controls you actually use instead of a long settings wall.
+          </Text>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+function ToggleRow({
   label,
   description,
   value,
@@ -111,671 +677,135 @@ function TonalToggle({
           </Text>
         ) : null}
       </View>
-      <View style={{ width: 160 }}>
-        <View style={[styles.toggleShell, { borderColor: theme.colors.outlineVariant }]}>
-          {(['off', 'on'] as const).map((key) => {
-            const active = (value && key === 'on') || (!value && key === 'off');
-            return (
-              <BouncyPressable
-                key={key}
-                onPress={() => onChange(key === 'on')}
-                scaleDown={0.9}
-                style={[
-                  styles.togglePill,
-                  {
-                    backgroundColor: active ? theme.colors.secondaryContainer : theme.colors.surface,
-                    borderColor: active ? theme.colors.primary : 'transparent',
-                  },
-                ]}
-              >
-                <Text
-                  variant="labelLarge"
-                  style={{
-                    color: active ? theme.colors.onSecondaryContainer : theme.colors.onSurfaceVariant,
-                    fontWeight: '800',
-                  }}
-                >
-                  {key === 'on' ? 'On' : 'Off'}
-                </Text>
-              </BouncyPressable>
-            );
-          })}
-        </View>
-      </View>
+      <BouncyPressable
+        onPress={() => onChange(!value)}
+        scaleDown={0.96}
+        style={[
+          styles.togglePill,
+          {
+            backgroundColor: value ? theme.colors.secondaryContainer : theme.colors.surfaceContainer,
+            borderColor: value ? theme.colors.primary : theme.colors.outlineVariant,
+          },
+        ]}
+      >
+        <Text variant="labelLarge" style={{ color: value ? theme.colors.onSecondaryContainer : theme.colors.onSurfaceVariant, fontWeight: '900' }}>
+          {value ? 'On' : 'Off'}
+        </Text>
+      </BouncyPressable>
     </View>
   );
 }
 
-function BouncyButton({
-  haptic = 'medium',
-  children,
-  ...props
-}: React.ComponentProps<typeof Button> & { haptic?: HapticWeight }) {
-  const { animatedStyle, onPressIn, onPressOut } = useBouncyPress(0.94);
-  return (
-    <Animated.View style={animatedStyle}>
-      <Button
-        {...props}
-        onPressIn={onPressIn}
-        onPressOut={onPressOut}
-        onPress={(...args) => {
-          triggerHaptic(haptic);
-          props.onPress?.(...args);
-        }}
-      >
-        {children}
-      </Button>
-    </Animated.View>
-  );
-}
-
-export default function SettingsScreen() {
-  const theme = useAppTheme();
-  const [exportPreview, setExportPreview] = useState('');
-  const [showApiKey, setShowApiKey] = useState(false);
-  const [showHfToken, setShowHfToken] = useState(false);
-  const [passcodeDraft, setPasscodeDraft] = useState('');
-  const [passcodeConfirm, setPasscodeConfirm] = useState('');
-  const themeSegmentBounce = useBouncyPress(0.94);
-  const aiSegmentBounce = useBouncyPress(0.94);
-
-  const themePreference = useSettingsStore((state) => state.themePreference);
-  const oledTrueBlackEnabled = useSettingsStore((state) => state.oledTrueBlackEnabled);
-  const highContrastEnabled = useSettingsStore((state) => state.highContrastEnabled);
-  const secureAccessEnabled = useSettingsStore((state) => state.secureAccessEnabled);
-  const passcodeEnabled = useSettingsStore((state) => state.passcodeEnabled);
-  const themePrimary = useSettingsStore((state) => state.themePrimary);
-  const themeSecondary = useSettingsStore((state) => state.themeSecondary);
-  const currencyCode = useSettingsStore((state) => state.currencyCode);
-  const language = useSettingsStore((state) => state.language);
-  const region = useSettingsStore((state) => state.region);
-  
-  const aiProvider = useSettingsStore((state) => state.aiProvider);
-  const geminiApiKey = useSettingsStore((state) => state.geminiApiKey);
-  const huggingFaceToken = useSettingsStore((state) => state.huggingFaceToken);
-  const gemmaModel = useSettingsStore((state) => state.gemmaModel);
-
-  const smartCategorizationEnabled = useSettingsStore((state) => state.smartCategorizationEnabled);
-  const advancedSummariesEnabled = useSettingsStore((state) => state.advancedSummariesEnabled);
-  const includeNotesInExport = useSettingsStore((state) => state.includeNotesInExport);
-
-  const setThemePreference = useSettingsStore((state) => state.setThemePreference);
-  const setOledTrueBlackEnabled = useSettingsStore((state) => state.setOledTrueBlackEnabled);
-  const setHighContrastEnabled = useSettingsStore((state) => state.setHighContrastEnabled);
-  const setSecureAccessEnabled = useSettingsStore((state) => state.setSecureAccessEnabled);
-  const setPasscodeEnabled = useSettingsStore((state) => state.setPasscodeEnabled);
-  const setPasscodePin = useSettingsStore((state) => state.setPasscodePin);
-  const setThemePrimary = useSettingsStore((state) => state.setThemePrimary);
-  const setThemeSecondary = useSettingsStore((state) => state.setThemeSecondary);
-  const setCurrencyCode = useSettingsStore((state) => state.setCurrencyCode);
-  const setLanguage = useSettingsStore((state) => state.setLanguage);
-  const setRegion = useSettingsStore((state) => state.setRegion);
-  const setAiProvider = useSettingsStore((state) => state.setAiProvider);
-  const setGeminiApiKey = useSettingsStore((state) => state.setGeminiApiKey);
-  const setHuggingFaceToken = useSettingsStore((state) => state.setHuggingFaceToken);
-  const setGemmaModel = useSettingsStore((state) => state.setGemmaModel);
-  const setSmartCategorizationEnabled = useSettingsStore((state) => state.setSmartCategorizationEnabled);
-  const setAdvancedSummariesEnabled = useSettingsStore((state) => state.setAdvancedSummariesEnabled);
-  const setIncludeNotesInExport = useSettingsStore((state) => state.setIncludeNotesInExport);
-  const resetSettings = useSettingsStore((state) => state.resetSettings);
-  const locale = language || 'en-US';
-
-  const categories = useTransactionStore((state) => state.categories);
-  const transactions = useTransactionStore((state) => state.transactions);
-  const clearAllData = useTransactionStore((state) => state.clearAllData);
-
-  const exportRows = useMemo(() => {
-    const byId = new Map(categories.map((item) => [item.id, item]));
-    const dateFormatter = new Intl.DateTimeFormat(locale, { year: 'numeric', month: '2-digit', day: '2-digit' });
-    const timeFormatter = new Intl.DateTimeFormat(locale, {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false,
-    });
-
-    const headerColumns = includeNotesInExport
-      ? ['Transaction ID', 'Date', 'Time', 'Type', 'Category', 'Note', 'Amount', 'Currency', 'Region']
-      : ['Transaction ID', 'Date', 'Time', 'Type', 'Category', 'Amount', 'Currency', 'Region'];
-    const header = headerColumns.join(',');
-
-    const lines = transactions.map((item) => {
-      const date = new Date(item.timestamp);
-      const category = byId.get(item.categoryId);
-      const label = category ? `${category.emoji} ${category.name}` : 'Uncategorized';
-      const note = (item.note ?? '').replaceAll('"', '""');
-      const amount = formatCurrency(item.amountCents, { currencyCode, locale });
-
-      const columns = [
-        item.id,
-        dateFormatter.format(date),
-        timeFormatter.format(date),
-        item.type.toUpperCase(),
-        `"${label}"`,
-      ];
-
-      if (includeNotesInExport) {
-        columns.push(`"${note}"`);
-      }
-
-      columns.push(`"${amount}"`, currencyCode, region);
-
-      return columns.join(',');
-    });
-
-    return [header, ...lines].join('\n');
-  }, [categories, currencyCode, includeNotesInExport, locale, region, transactions]);
-
-  const handleSavePasscode = () => {
-    if (passcodeDraft.length < 4 || passcodeDraft !== passcodeConfirm) {
-      setPasscodeEnabled(false);
-      return;
-    }
-    setPasscodePin(passcodeDraft);
-    setPasscodeEnabled(true);
-    setPasscodeDraft('');
-    setPasscodeConfirm('');
-  };
-
-  return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.surfaceContainerLowest }}>
-      <ScrollView
-        contentContainerStyle={[
-          styles.scroll,
-          {
-            backgroundColor: theme.colors.surfaceContainerLowest,
-          },
-        ]}
-      >
-        <View style={styles.header}>
-          <Text variant="headlineSmall" style={{ color: theme.colors.onSurface, fontWeight: '700' }}>
-            Settings
-          </Text>
-          <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-            Tune your wallet visuals, privacy, and intelligence.
-          </Text>
-        </View>
-
-        <Card
-          mode="contained"
-          style={[styles.heroCard, { backgroundColor: theme.colors.surfaceContainerHigh }]}
-          contentStyle={{ gap: 10, paddingVertical: 14 }}
-        >
-          <Card.Content>
-            <Text variant="titleMedium" style={{ color: theme.colors.onSurface, fontWeight: '700' }}>
-              Control center
-            </Text>
-            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginTop: 2 }}>
-              Offline-first, local-only. Quick glance at your current preferences.
-            </Text>
-          </Card.Content>
-          <Card.Content style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            <BouncyPressable onPress={() => {}} scaleDown={0.94} style={{ flexGrow: 0 }}>
-              <Chip mode="flat" style={{ backgroundColor: theme.colors.surface }} textStyle={{ color: theme.colors.onSurface }}>
-                {currencyCode} • {region}
-              </Chip>
-            </BouncyPressable>
-            <BouncyPressable onPress={() => {}} scaleDown={0.94} style={{ flexGrow: 0 }}>
-              <Chip
-                mode="flat"
-                style={{ backgroundColor: theme.colors.surface }}
-                textStyle={{ color: theme.colors.onSurface }}
-              >
-                Theme: {themePreference}
-              </Chip>
-            </BouncyPressable>
-            <BouncyPressable onPress={() => {}} scaleDown={0.94} style={{ flexGrow: 0 }}>
-              <Chip
-                mode="flat"
-                style={{ backgroundColor: theme.colors.surface }}
-                textStyle={{ color: theme.colors.onSurface }}
-                icon={secureAccessEnabled ? 'shield-check' : 'shield-off'}
-              >
-                {secureAccessEnabled ? 'Secure access' : 'Unlocked'}
-              </Chip>
-            </BouncyPressable>
-          </Card.Content>
-        </Card>
-
-        <Card
-          mode="elevated"
-          style={{ backgroundColor: theme.colors.surfaceContainerHigh, borderRadius: 30 }}
-          contentStyle={{ paddingVertical: 12, gap: 12 }}
-        >
-          <Card.Title
-            title="Appearance"
-            titleVariant="titleLarge"
-            titleStyle={{ color: theme.colors.onSurface }}
-          />
-          <Card.Content style={{ gap: 16 }}>
-            <View style={{ flexDirection: 'row', gap: 12 }}>
-              <View style={{ flex: 1, gap: 6 }}>
-                <Text variant="titleSmall" style={{ color: theme.colors.onSurface }}>
-                  Primary color
-                </Text>
-                <TextInput
-                  mode="outlined"
-                  value={themePrimary}
-                  onChangeText={(val) => setThemePrimary(val)}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  placeholder="#ff6b6b"
-                  left={<TextInput.Icon icon="palette" />}
-                />
-              </View>
-              <View style={{ flex: 1, gap: 6 }}>
-                <Text variant="titleSmall" style={{ color: theme.colors.onSurface }}>
-                  Secondary color
-                </Text>
-                <TextInput
-                  mode="outlined"
-                  value={themeSecondary}
-                  onChangeText={(val) => setThemeSecondary(val)}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  placeholder="#52dea2"
-                  left={<TextInput.Icon icon="palette-swatch" />}
-                />
-              </View>
-            </View>
-
-            <Animated.View style={themeSegmentBounce.animatedStyle}>
-              <SegmentedButtons
-                value={themePreference}
-                onValueChange={(value) => {
-                  triggerHaptic('medium');
-                  setThemePreference(value as 'system' | 'light' | 'dark');
-                }}
-                buttons={[
-                  { label: 'System', value: 'system' },
-                  { label: 'Light', value: 'light' },
-                  { label: 'Dark', value: 'dark' },
-                ]}
-                style={{ borderRadius: 18 }}
-              />
-            </Animated.View>
-            <TonalToggle
-              label="OLED true black"
-              description="Use pure black backgrounds on OLED displays."
-              value={oledTrueBlackEnabled}
-              onChange={(next) => {
-                triggerHaptic('medium');
-                setOledTrueBlackEnabled(next);
-              }}
-            />
-            <TonalToggle
-              label="High contrast mode"
-              description="Increase outline contrast for legibility."
-              value={highContrastEnabled}
-              onChange={(next) => {
-                triggerHaptic('medium');
-                setHighContrastEnabled(next);
-              }}
-            />
-          </Card.Content>
-        </Card>
-
-        {/* AI Configuration Card */}
-        <Card
-          mode="elevated"
-          style={{ backgroundColor: theme.colors.surfaceContainerHigh, borderRadius: 30 }}
-          contentStyle={{ paddingVertical: 12, gap: 12 }}
-        >
-          <Card.Title
-            title="AI Intelligence"
-            subtitle="Configure Gemma analysis and providers"
-            titleVariant="titleLarge"
-            subtitleVariant="bodyMedium"
-            titleStyle={{ color: theme.colors.onSurface }}
-            subtitleStyle={{ color: theme.colors.onSurfaceVariant }}
-          />
-          <Card.Content style={{ gap: 16 }}>
-            <Animated.View style={aiSegmentBounce.animatedStyle}>
-              <SegmentedButtons
-                value={aiProvider}
-                onValueChange={(value) => {
-                  triggerHaptic('medium');
-                  setAiProvider(value as 'google' | 'huggingface');
-                }}
-                buttons={[
-                  { label: 'Google API', value: 'google' },
-                  { label: 'HF API', value: 'huggingface' },
-                ]}
-              />
-            </Animated.View>
-            
-            {aiProvider === 'google' && (
-              <View style={{ gap: 12 }}>
-                <TextInput
-                  mode="outlined"
-                  label="Gemini API key"
-                  placeholder="AIza..."
-                  value={geminiApiKey}
-                  secureTextEntry={!showApiKey}
-                  onChangeText={setGeminiApiKey}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  right={
-                    <TextInput.Icon
-                      icon={showApiKey ? 'eye-off-outline' : 'eye-outline'}
-                      onPress={() => setShowApiKey((prev) => !prev)}
-                    />
-                  }
-                />
-                <HelperText type="info" visible>
-                  Uses the @google/generative-ai SDK. Your key is stored locally.
-                </HelperText>
-              </View>
-            )}
-
-            {aiProvider === 'huggingface' && (
-              <View style={{ gap: 12 }}>
-                <TextInput
-                  mode="outlined"
-                  label="HuggingFace Token"
-                  placeholder="hf_..."
-                  value={huggingFaceToken}
-                  secureTextEntry={!showHfToken}
-                  onChangeText={setHuggingFaceToken}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  right={
-                    <TextInput.Icon
-                      icon={showHfToken ? 'eye-off-outline' : 'eye-outline'}
-                      onPress={() => setShowHfToken((prev) => !prev)}
-                    />
-                  }
-                />
-                <TextInput
-                  mode="outlined"
-                  label="Model ID"
-                  placeholder="google/gemma-2-2b-it"
-                  value={gemmaModel}
-                  onChangeText={setGemmaModel}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-                <HelperText type="info" visible>
-                  Uses the HuggingFace Inference API. Requires a valid token.
-                </HelperText>
-              </View>
-            )}
-
-            <Divider />
-
-            <TonalToggle
-              label="Smart Categorization"
-              description="Use AI to automatically suggest categories for manual entries."
-              value={smartCategorizationEnabled}
-              onChange={(next) => {
-                triggerHaptic('medium');
-                setSmartCategorizationEnabled(next);
-              }}
-            />
-
-            <TonalToggle
-              label="Advanced summaries"
-              description="Get deeper recommendations, trends, and next steps."
-              value={advancedSummariesEnabled}
-              onChange={(next) => {
-                triggerHaptic('medium');
-                setAdvancedSummariesEnabled(next);
-              }}
-            />
-          </Card.Content>
-        </Card>
-
-        <Card
-          mode="elevated"
-          style={{ backgroundColor: theme.colors.surfaceContainerHigh, borderRadius: 30 }}
-          contentStyle={{ paddingVertical: 12, gap: 12 }}
-        >
-          <Card.Title
-            title="Locale & Export"
-            subtitle="Currency, language, and data management"
-            titleVariant="titleLarge"
-            subtitleVariant="bodyMedium"
-            titleStyle={{ color: theme.colors.onSurface }}
-            subtitleStyle={{ color: theme.colors.onSurfaceVariant }}
-          />
-          <Card.Content style={{ gap: 16 }}>
-            <Text variant="titleSmall" style={{ color: theme.colors.onSurface }}>
-              Language
-            </Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {languageOptions.map((option) => (
-                <BouncyPressable
-                  key={option.code}
-                  onPress={() => setLanguage(option.code)}
-                  scaleDown={0.9}
-                  style={{ flexGrow: 0 }}
-                >
-                  <Chip
-                    mode="outlined"
-                    selected={language === option.code}
-                    selectedColor={theme.colors.onSecondaryContainer}
-                    style={{
-                      backgroundColor:
-                        language === option.code ? theme.colors.secondaryContainer : theme.colors.surface,
-                    }}
-                  >
-                    {option.label}
-                  </Chip>
-                </BouncyPressable>
-              ))}
-            </View>
-            <Text variant="titleSmall" style={{ color: theme.colors.onSurface }}>
-              Currency
-            </Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {currencyOptions.map((option) => (
-                <BouncyPressable
-                  key={option.code}
-                  onPress={() => setCurrencyCode(option.code)}
-                  scaleDown={0.9}
-                  style={{ flexGrow: 0 }}
-                >
-                  <Chip
-                    mode="outlined"
-                    selected={currencyCode === option.code}
-                    selectedColor={theme.colors.onSecondaryContainer}
-                    style={{
-                      backgroundColor:
-                        currencyCode === option.code ? theme.colors.secondaryContainer : theme.colors.surface,
-                    }}
-                  >
-                    {option.label}
-                  </Chip>
-                </BouncyPressable>
-              ))}
-            </View>
-            <Text variant="titleSmall" style={{ color: theme.colors.onSurface }}>
-              Region
-            </Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {regionOptions.map((option) => (
-                <BouncyPressable
-                  key={option.code}
-                  onPress={() => setRegion(option.code)}
-                  scaleDown={0.9}
-                  style={{ flexGrow: 0 }}
-                >
-                  <Chip
-                    mode="outlined"
-                    selected={region === option.code}
-                    selectedColor={theme.colors.onSecondaryContainer}
-                    style={{
-                      backgroundColor:
-                        region === option.code ? theme.colors.secondaryContainer : theme.colors.surface,
-                    }}
-                  >
-                    {option.label}
-                  </Chip>
-                </BouncyPressable>
-              ))}
-            </View>
-            <Divider />
-            <TonalToggle
-              label="Include notes in CSV"
-              description="Keep memo fields when exporting transactions."
-              value={includeNotesInExport}
-              onChange={(next) => {
-                triggerHaptic('medium');
-                setIncludeNotesInExport(next);
-              }}
-            />
-            <BouncyButton
-              mode="outlined"
-              onPress={async () => {
-                setExportPreview(exportRows);
-                await Haptics.selectionAsync();
-              }}
-            >
-              Generate local CSV preview
-            </BouncyButton>
-            {exportPreview ? (
-              <View
-                style={{
-                  backgroundColor: theme.colors.surfaceVariant,
-                  borderRadius: 12,
-                  padding: 12,
-                  borderColor: theme.colors.outlineVariant,
-                  borderWidth: 1,
-                }}
-              >
-                <Text variant="bodySmall" selectable style={{ color: theme.colors.onSurface }}>
-                  {exportPreview}
-                </Text>
-              </View>
-            ) : null}
-          </Card.Content>
-        </Card>
-
-        <Card
-          mode="elevated"
-          style={{ backgroundColor: theme.colors.surfaceContainerHigh, borderRadius: 30 }}
-          contentStyle={{ paddingVertical: 12, gap: 12 }}
-        >
-          <Card.Title
-            title="Backup & Security"
-            titleVariant="titleLarge"
-            titleStyle={{ color: theme.colors.onSurface }}
-          />
-          <Card.Content style={{ gap: 12 }}>
-            <TonalToggle
-              label="Secure app access"
-              description="Require a device lock or biometric check before opening."
-              value={secureAccessEnabled}
-              onChange={(next) => {
-                triggerHaptic('medium');
-                setSecureAccessEnabled(next);
-              }}
-            />
-            <Divider />
-            <TonalToggle
-              label="Local passcode lock"
-              description="Gate the app with a PIN stored only on-device."
-              value={passcodeEnabled}
-              onChange={(enabled) => {
-                triggerHaptic('medium');
-                if (!enabled) {
-                  setPasscodeEnabled(false);
-                  setPasscodePin('');
-                  setPasscodeDraft('');
-                  setPasscodeConfirm('');
-                } else {
-                  if (passcodeDraft.length < 4 || passcodeDraft !== passcodeConfirm) {
-                    setPasscodeEnabled(false);
-                  } else {
-                    setPasscodePin(passcodeDraft);
-                    setPasscodeEnabled(true);
-                    setPasscodeDraft('');
-                    setPasscodeConfirm('');
-                  }
-                }
-              }}
-            />
-            {passcodeEnabled ? (
-              <HelperText type="info" visible style={{ marginLeft: 0 }}>
-                Passcode required on next app open.
-              </HelperText>
-            ) : null}
-            <TextInput
-              mode="outlined"
-              label="New passcode"
-              value={passcodeDraft}
-              onChangeText={setPasscodeDraft}
-              keyboardType="number-pad"
-              secureTextEntry
-              maxLength={8}
-            />
-            <TextInput
-              mode="outlined"
-              label="Confirm passcode"
-              value={passcodeConfirm}
-              onChangeText={setPasscodeConfirm}
-              keyboardType="number-pad"
-              secureTextEntry
-              maxLength={8}
-            />
-            <BouncyButton mode="contained" onPress={handleSavePasscode} disabled={passcodeDraft.length < 4 || passcodeDraft !== passcodeConfirm}>
-              Save passcode
-            </BouncyButton>
-            <Divider />
-            
-            <BouncyButton
-              mode="contained"
-              buttonColor={theme.colors.errorContainer}
-              textColor={theme.colors.onErrorContainer}
-              haptic="heavy"
-              onPress={async () => {
-                clearAllData();
-                resetSettings();
-                setExportPreview('');
-                await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-              }}
-            >
-              Reset all local wallet data
-            </BouncyButton>
-          </Card.Content>
-        </Card>
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
-
 const styles = StyleSheet.create({
-  scroll: {
-    padding: 16,
-    paddingBottom: 36,
+  screen: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 40,
     gap: 16,
   },
-  header: {
-    gap: 4,
-    paddingHorizontal: 4,
+  heroShell: {
+    borderRadius: 28,
+    padding: 18,
+    gap: 14,
   },
-  heroCard: {
-    borderRadius: 32,
+  heroTopRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 16,
+  },
+  heroBadge: {
+    minWidth: 120,
+    borderRadius: 22,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+  },
+  heroChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  sectionCard: {
+    borderRadius: 24,
+    padding: 18,
+    gap: 16,
+  },
+  sectionHeader: {
+    gap: 2,
+  },
+  toggleRows: {
+    gap: 14,
   },
   toggleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-  },
-  toggleShell: {
-    flexDirection: 'row',
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderRadius: 22,
-    padding: 4,
-    gap: 6,
+    gap: 14,
   },
   togglePill: {
-    flex: 1,
-    borderRadius: 18,
-    paddingVertical: 10,
+    minWidth: 86,
+    minHeight: 42,
+    borderWidth: 1,
+    borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+  colorRow: {
+    gap: 12,
+  },
+  colorInput: {
+    backgroundColor: 'transparent',
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  choiceChip: {
     borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  modelCard: {
+    borderWidth: 1,
+    borderRadius: 22,
+    padding: 16,
+    gap: 12,
+  },
+  modelCardTopRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  modelMetaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  downloadPanel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  primaryAction: {
+    borderRadius: 18,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  previewBox: {
+    backgroundColor: 'transparent',
+  },
+  actionRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  footerNote: {
+    paddingVertical: 8,
   },
 });
