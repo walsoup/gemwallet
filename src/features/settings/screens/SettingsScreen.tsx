@@ -26,7 +26,7 @@ import {
   downloadLiteRtModel,
   getLiteRtModel,
   isLiteRtModelCached,
-} from '../../../nlp/services/liteRtModels';
+} from '../../nlp/services/liteRtModels';
 
 const currencyOptions = [
   { code: 'USD', label: 'USD' },
