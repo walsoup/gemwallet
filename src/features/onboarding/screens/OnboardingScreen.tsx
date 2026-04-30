@@ -39,7 +39,7 @@ export default function OnboardingScreen() {
             </Text>
           </View>
           <Switch value={aiEnabled} onValueChange={(val) => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
             setAiEnabled(val);
           }} />
         </View>
