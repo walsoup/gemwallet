@@ -16,6 +16,7 @@ export type SettingsPersistedShape = {
   region: RegionCode;
   aiProvider: AiProvider;
   geminiApiKey: string;
+  aiFeaturesEnabled: boolean;
   huggingFaceToken: string;
   gemmaModel: string;
   localModelId: string;
@@ -41,6 +42,7 @@ export const defaultSettingsState: SettingsPersistedShape = {
   themePrimary: '#ff6b6b',
   themeSecondary: '#52dea2',
   geminiApiKey: '',
+  aiFeaturesEnabled: false,
   huggingFaceToken: '',
   gemmaModel: 'gemma-4-31b-it',
   localModelId: 'gemma-4-e2b-it',

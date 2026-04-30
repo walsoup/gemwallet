@@ -1,198 +1,95 @@
 import * as Haptics from 'expo-haptics';
-import { Tabs } from 'expo-router';
-import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import React from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
-import Animated, { FadeInUp, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import { Tabs, useRouter, useSegments } from 'expo-router';
+import React, { useEffect } from 'react';
+
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Surface, Text } from 'react-native-paper';
-
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { BottomNavigation, Provider as PaperProvider } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppThemeProvider, useAppTheme } from '../providers/AppThemeProvider';
+import { useTransactionStore } from '../store/useTransactionStore';
+import { useSettingsStore } from '../store/useSettingsStore';
 
-type NavItemProps = {
-  label: string;
-  focused: boolean;
-  onPress: () => void;
-  onLongPress: () => void;
-  icon: React.ReactNode;
-};
 
-function NavItem({ label, focused, onPress, onLongPress, icon }: NavItemProps) {
+function TabLayout() {
   const theme = useAppTheme();
-  const scale = useSharedValue(1);
-  const style = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
+  const router = useRouter();
+  const segments = useSegments();
+  const hasCompletedOnboarding = useTransactionStore((state) => state.walletMeta.hasCompletedOnboarding);
+  const aiFeaturesEnabled = useSettingsStore((state) => state.aiFeaturesEnabled);
+
+
+
+  useEffect(() => {
+    if (!hasCompletedOnboarding && segments[0] !== 'onboarding') {
+      router.replace('/onboarding');
+    }
+  }, [hasCompletedOnboarding, segments, router]);
+
+  if (!hasCompletedOnboarding) {
+    return <Tabs screenOptions={{ headerShown: false, tabBarStyle: { display: 'none' } }} />;
+  }
+
+  const routes = [
+    { key: 'index', title: 'Home', focusedIcon: 'home', unfocusedIcon: 'home-outline' },
+    { key: 'analytics', title: 'Insights', focusedIcon: 'chart-box', unfocusedIcon: 'chart-box-outline' },
+    ...(aiFeaturesEnabled ? [{ key: 'chat', title: 'Chat', focusedIcon: 'message-text', unfocusedIcon: 'message-text-outline' }] : []),
+    { key: 'planning', title: 'Plan', focusedIcon: 'target', unfocusedIcon: 'target' },
+    { key: 'settings', title: 'Settings', focusedIcon: 'cog', unfocusedIcon: 'cog-outline' },
+  ];
 
   return (
-    <Pressable
-      style={styles.navItemPressable}
-      onPressIn={() => {
-        scale.value = withSpring(0.92, { damping: 12, stiffness: 520, mass: 0.6 });
-      }}
-      onPressOut={() => {
-        scale.value = withSpring(1, { damping: 12, stiffness: 360, mass: 0.75 });
-      }}
-      onPress={onPress}
-      onLongPress={onLongPress}
-    >
-      <Animated.View
-        style={[
-          styles.navItem,
-          style,
-          {
-            backgroundColor: focused ? theme.colors.primaryContainer : 'transparent',
-            borderColor: focused ? theme.colors.primary : theme.colors.outlineVariant,
-          },
-        ]}
-      >
-        {icon}
-        <Text
-          variant="labelMedium"
-          style={{
-            color: focused ? theme.colors.primary : theme.colors.onSurfaceVariant,
-            marginTop: 4,
-            fontWeight: focused ? '800' : '600',
-            letterSpacing: 0.3,
-          }}
-          numberOfLines={1}
-        >
-          {label}
-        </Text>
-      </Animated.View>
-    </Pressable>
-  );
-}
-
-function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
-  const insets = useSafeAreaInsets();
-  const theme = useAppTheme();
-
-  return (
-    <Animated.View
-      entering={FadeInUp.springify().mass(0.8).stiffness(260).damping(16)}
-      style={{
-        paddingHorizontal: 12,
-        paddingTop: 6,
-        paddingBottom: Math.max(insets.bottom, 10),
-      }}
-    >
-      <Surface
-        style={[
-          styles.navShell,
-          {
-            backgroundColor: theme.colors.surfaceContainerLow,
-            borderColor: theme.colors.outlineVariant,
-          },
-        ]}
-        elevation={2}
-      >
-        <View style={styles.navRow}>
-          {state.routes.map((route, index) => {
-            const { options } = descriptors[route.key];
-            const focused = state.index === index;
-            const label =
-              typeof options.tabBarLabel === 'string'
-                ? options.tabBarLabel
-                : typeof options.title === 'string'
-                  ? options.title
-                  : route.name;
-
-            const onPress = () => {
+    <Tabs
+      screenOptions={{ headerShown: false }}
+      tabBar={({ navigation, state, descriptors }) => {
+        const insets = { bottom: 0 };
+        return (
+          <BottomNavigation.Bar
+            navigationState={state}
+            safeAreaInsets={insets}
+            style={{ backgroundColor: theme.colors.surfaceContainer }}
+            onTabPress={({ route, preventDefault }) => {
               const event = navigation.emit({
                 type: 'tabPress',
                 target: route.key,
                 canPreventDefault: true,
               });
 
-              if (!focused && !event.defaultPrevented) {
+              if (!event.defaultPrevented) {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 navigation.navigate(route.name, route.params);
               }
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-            };
-
-            const onLongPress = () => {
-              navigation.emit({ type: 'tabLongPress', target: route.key });
-            };
-
-            const color = focused ? theme.colors.primary : theme.colors.onSurfaceVariant;
-            const icon =
-              options.tabBarIcon?.({ focused, color, size: 22 }) ?? (
-                <MaterialCommunityIcons name="circle-outline" color={color} size={22} />
-              );
-
-            return (
-              <NavItem
-                key={route.key}
-                label={label}
-                focused={focused}
-                onPress={onPress}
-                onLongPress={onLongPress}
-                icon={icon}
-              />
-            );
-          })}
-        </View>
-      </Surface>
-    </Animated.View>
-  );
-}
-
-function TabLayout() {
-  return (
-    <Tabs
-      tabBar={(props) => <CustomTabBar {...props} />}
-      screenOptions={{
-        headerShown: false,
+            }}
+            renderIcon={({ route, focused, color }) => {
+              const { options } = descriptors[route.key];
+              if (options.tabBarIcon) {
+                return options.tabBarIcon({ focused, color, size: 24 });
+              }
+              const iconName = focused
+                ? routes.find((r) => r.key === route.name)?.focusedIcon
+                : routes.find((r) => r.key === route.name)?.unfocusedIcon;
+              return <MaterialCommunityIcons name={iconName as any} size={24} color={color} />;
+            }}
+            getLabelText={({ route }) => {
+              const { options } = descriptors[route.key];
+              const label =
+                options.tabBarLabel !== undefined
+                  ? options.tabBarLabel
+                  : options.title !== undefined
+                  ? options.title
+                  : route.name;
+              return typeof label === 'string' ? label : route.name;
+            }}
+          />
+        );
       }}
     >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="home-variant-outline" color={color} size={size} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="analytics"
-        options={{
-          title: 'Insights',
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="chart-box-outline" color={color} size={size} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="chat"
-        options={{
-          title: 'Chat',
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="message-text-outline" color={color} size={size} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="planning"
-        options={{
-          title: 'Plan',
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="target" color={color} size={size} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="settings"
-        options={{
-          title: 'Settings',
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="cog-outline" color={color} size={size} />
-          ),
-        }}
-      />
+      <Tabs.Screen name="index" options={{ title: 'Home', tabBarIcon: ({ color, focused }) => <MaterialCommunityIcons name={focused ? 'home' : 'home-outline'} size={24} color={color} /> }} />
+      <Tabs.Screen name="analytics" options={{ title: 'Insights', tabBarIcon: ({ color, focused }) => <MaterialCommunityIcons name={focused ? 'chart-box' : 'chart-box-outline'} size={24} color={color} /> }} />
+      <Tabs.Screen name="chat" options={{ title: 'Chat', href: aiFeaturesEnabled ? '/chat' : null, tabBarIcon: ({ color, focused }) => <MaterialCommunityIcons name={focused ? 'message-text' : 'message-text-outline'} size={24} color={color} /> }} />
+      <Tabs.Screen name="planning" options={{ title: 'Plan', tabBarIcon: ({ color, focused }) => <MaterialCommunityIcons name="target" size={24} color={color} /> }} />
+      <Tabs.Screen name="settings" options={{ title: 'Settings', tabBarIcon: ({ color, focused }) => <MaterialCommunityIcons name={focused ? 'cog' : 'cog-outline'} size={24} color={color} /> }} />
+      <Tabs.Screen name="onboarding" options={{ href: null }} />
     </Tabs>
   );
 }
@@ -202,36 +99,11 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <AppThemeProvider>
-          <TabLayout />
+          <PaperProvider>
+            <TabLayout />
+          </PaperProvider>
         </AppThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }
-
-const styles = StyleSheet.create({
-  navShell: {
-    borderRadius: 24,
-    borderWidth: 1,
-    paddingHorizontal: 8,
-    paddingVertical: 8,
-  },
-  navRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 6,
-  },
-  navItemPressable: {
-    flex: 1,
-  },
-  navItem: {
-    minHeight: 62,
-    borderRadius: 16,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 6,
-    paddingTop: 4,
-  },
-});
