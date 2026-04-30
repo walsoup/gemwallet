@@ -31,7 +31,7 @@ export default function SettingsScreen() {
               <Switch
                 value={oledTrueBlackEnabled}
                 onValueChange={(val) => {
-                  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   setOledTrueBlackEnabled(val);
                 }}
               />
@@ -50,7 +50,7 @@ export default function SettingsScreen() {
               <Switch
                 value={aiFeaturesEnabled}
                 onValueChange={(val) => {
-                  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   setAiFeaturesEnabled(val);
                 }}
               />
