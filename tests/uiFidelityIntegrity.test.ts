@@ -26,9 +26,6 @@ describe('UI fidelity and integrity contracts', () => {
     assert.match(home, /Total Balance/);
     assert.match(home, /Recent Transactions/);
     assert.match(home, /No transactions yet/);
-    assert.match(home, /Total Balance/);
-    assert.match(home, /Total Balance/);
-
   });
 
   it('avoids direct withTiming usage in plain tab icon styles', () => {
