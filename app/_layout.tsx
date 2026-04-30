@@ -56,7 +56,7 @@ function TabLayout() {
               });
 
               if (!event.defaultPrevented) {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
                 navigation.navigate(route.name, route.params);
               }
             }}
