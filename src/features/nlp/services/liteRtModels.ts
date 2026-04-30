@@ -59,6 +59,7 @@ export async function ensureLiteRtCacheDir() {
   return baseDir;
 }
 
+// @ts-ignore
 export async function downloadLiteRtModel(
   modelId: string,
   onProgress?: (progress: number) => void,

@@ -25,6 +25,7 @@ export type SettingsState = {
   region: RegionCode;
   aiProvider: AiProvider;
   geminiApiKey: string;
+  aiFeaturesEnabled: boolean;
   huggingFaceToken: string;
   gemmaModel: string; // Used for cloud
   localModelId: string; // LiteRT model selection
@@ -47,6 +48,7 @@ export type SettingsState = {
   setRegion: (region: RegionCode) => void;
   setAiProvider: (provider: AiProvider) => void;
   setGeminiApiKey: (key: string) => void;
+  setAiFeaturesEnabled: (enabled: boolean) => void;
   setHuggingFaceToken: (token: string) => void;
   setGemmaModel: (model: string) => void;
   setLocalModelId: (modelId: string) => void;
@@ -79,6 +81,7 @@ export const useSettingsStore = create<SettingsState>()(
       setRegion: (region) => set({ region }),
       setAiProvider: (aiProvider) => set({ aiProvider }),
       setGeminiApiKey: (geminiApiKey) => set({ geminiApiKey: geminiApiKey.trim() }),
+      setAiFeaturesEnabled: (aiFeaturesEnabled) => set({ aiFeaturesEnabled }),
       setHuggingFaceToken: (huggingFaceToken) => set({ huggingFaceToken: huggingFaceToken.trim() }),
       setGemmaModel: (gemmaModel) => set({ gemmaModel }),
       setLocalModelId: (localModelId) => set({ localModelId }),
