@@ -33,7 +33,7 @@ function TabLayout() {
   const routes = [
     { key: 'index', title: 'Home', focusedIcon: 'home', unfocusedIcon: 'home-outline' },
     { key: 'analytics', title: 'Insights', focusedIcon: 'chart-box', unfocusedIcon: 'chart-box-outline' },
-    ...(aiFeaturesEnabled ? [{ key: 'chat', title: 'Chat', focusedIcon: 'message-text', unfocusedIcon: 'message-text-outline' }] : []),
+    { key: 'chat', title: 'Chat', focusedIcon: 'message-text', unfocusedIcon: 'message-text-outline' },
     { key: 'planning', title: 'Plan', focusedIcon: 'target', unfocusedIcon: 'target' },
     { key: 'settings', title: 'Settings', focusedIcon: 'cog', unfocusedIcon: 'cog-outline' },
   ];
