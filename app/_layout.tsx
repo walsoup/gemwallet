@@ -3,7 +3,7 @@ import { Tabs, useRouter, useSegments } from 'expo-router';
 import React, { useEffect } from 'react';
 
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomNavigation, Provider as PaperProvider } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppThemeProvider, useAppTheme } from '../providers/AppThemeProvider';
@@ -15,6 +15,7 @@ function TabLayout() {
   const theme = useAppTheme();
   const router = useRouter();
   const segments = useSegments();
+  const insets = useSafeAreaInsets();
   const hasCompletedOnboarding = useTransactionStore((state) => state.walletMeta.hasCompletedOnboarding);
   const aiFeaturesEnabled = useSettingsStore((state) => state.aiFeaturesEnabled);
 
@@ -42,11 +43,10 @@ function TabLayout() {
     <Tabs
       screenOptions={{ headerShown: false }}
       tabBar={({ navigation, state, descriptors }) => {
-        const insets = { bottom: 0 };
         return (
           <BottomNavigation.Bar
             navigationState={state}
-            safeAreaInsets={insets}
+            safeAreaInsets={{ bottom: insets.bottom }}
             style={{ backgroundColor: theme.colors.surfaceContainer }}
             onTabPress={({ route, preventDefault }) => {
               const event = navigation.emit({

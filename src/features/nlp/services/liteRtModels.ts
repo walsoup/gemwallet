@@ -1,4 +1,3 @@
-/* eslint-disable import/namespace */
 import * as FileSystem from 'expo-file-system';
 
 export type LiteRtModel = {
@@ -42,7 +41,7 @@ export function getLiteRtDownloadUrl(modelId: string) {
 
 export function getLiteRtCacheUri(modelId: string) {
   const model = getLiteRtModel(modelId);
-  return `${(FileSystem as any).documentDirectory ?? ''}litert/${model.fileName}`;
+  return `${FileSystem.documentDirectory ?? ''}litert/${model.fileName}`;
 }
 
 export async function isLiteRtModelCached(modelId: string) {
@@ -52,7 +51,7 @@ export async function isLiteRtModelCached(modelId: string) {
 }
 
 export async function ensureLiteRtCacheDir() {
-  const baseDir = `${(FileSystem as any).documentDirectory ?? ''}litert`;
+  const baseDir = `${FileSystem.documentDirectory ?? ''}litert`;
   const info = await FileSystem.getInfoAsync(baseDir);
   if (!info.exists) {
     await FileSystem.makeDirectoryAsync(baseDir, { intermediates: true });
