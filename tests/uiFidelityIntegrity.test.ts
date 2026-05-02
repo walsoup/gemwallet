@@ -23,9 +23,9 @@ describe('UI fidelity and integrity contracts', () => {
   it('keeps critical home screen UI affordances', () => {
     const home = readWorkspaceFile('src/features/home/screens/HomeScreen.tsx');
 
-    assert.match(home, /Total Balance/);
-    assert.match(home, /Recent Transactions/);
-    assert.match(home, /No transactions yet/);
+    assert.match(home, /Available Cash/);
+    assert.match(home, /Search transactions/);
+    assert.match(home, /No transactions found/);
   });
 
   it('avoids direct withTiming usage in plain tab icon styles', () => {

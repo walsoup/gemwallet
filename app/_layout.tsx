@@ -4,11 +4,20 @@ import React, { useEffect } from 'react';
 
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BottomNavigation, Provider as PaperProvider } from 'react-native-paper';
+import { Provider as PaperProvider } from 'react-native-paper';
+import { CustomBottomNav } from '../src/components/Navigation/CustomBottomNav';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppThemeProvider, useAppTheme } from '../providers/AppThemeProvider';
 import { useTransactionStore } from '../store/useTransactionStore';
 import { useSettingsStore } from '../store/useSettingsStore';
+
+import { useFonts } from 'expo-font';
+import { SpaceGrotesk_300Light, SpaceGrotesk_400Regular, SpaceGrotesk_500Medium, SpaceGrotesk_600SemiBold, SpaceGrotesk_700Bold } from '@expo-google-fonts/space-grotesk';
+import { BeVietnamPro_300Light, BeVietnamPro_400Regular, BeVietnamPro_500Medium, BeVietnamPro_600SemiBold, BeVietnamPro_700Bold, BeVietnamPro_800ExtraBold, BeVietnamPro_900Black } from '@expo-google-fonts/be-vietnam-pro';
+import { SplashScreen } from 'expo-router';
+
+SplashScreen.preventAutoHideAsync();
+
 
 
 function TabLayout() {
@@ -19,6 +28,18 @@ function TabLayout() {
   const hasCompletedOnboarding = useTransactionStore((state) => state.walletMeta.hasCompletedOnboarding);
   const aiFeaturesEnabled = useSettingsStore((state) => state.aiFeaturesEnabled);
 
+  const [fontsLoaded] = useFonts({
+    SpaceGrotesk_300Light, SpaceGrotesk_400Regular, SpaceGrotesk_500Medium, SpaceGrotesk_600SemiBold, SpaceGrotesk_700Bold,
+    BeVietnamPro_300Light, BeVietnamPro_400Regular, BeVietnamPro_500Medium, BeVietnamPro_600SemiBold, BeVietnamPro_700Bold, BeVietnamPro_800ExtraBold, BeVietnamPro_900Black,
+  });
+
+  useEffect(() => {
+    if (fontsLoaded) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded]);
+
+
 
 
   useEffect(() => {
@@ -27,7 +48,7 @@ function TabLayout() {
     }
   }, [hasCompletedOnboarding, segments, router]);
 
-  if (!hasCompletedOnboarding) {
+  if (!hasCompletedOnboarding || !fontsLoaded) {
     return <Tabs screenOptions={{ headerShown: false, tabBarStyle: { display: 'none' } }} />;
   }
 
@@ -42,47 +63,7 @@ function TabLayout() {
   return (
     <Tabs
       screenOptions={{ headerShown: false }}
-      tabBar={({ navigation, state, descriptors }) => {
-        return (
-          <BottomNavigation.Bar
-            navigationState={state}
-            safeAreaInsets={{ bottom: insets.bottom }}
-            style={{ backgroundColor: theme.colors.surfaceContainer }}
-            onTabPress={({ route, preventDefault }) => {
-              const event = navigation.emit({
-                type: 'tabPress',
-                target: route.key,
-                canPreventDefault: true,
-              });
-
-              if (!event.defaultPrevented) {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                navigation.navigate(route.name, route.params);
-              }
-            }}
-            renderIcon={({ route, focused, color }) => {
-              const { options } = descriptors[route.key];
-              if (options.tabBarIcon) {
-                return options.tabBarIcon({ focused, color, size: 24 });
-              }
-              const iconName = focused
-                ? routes.find((r) => r.key === route.name)?.focusedIcon
-                : routes.find((r) => r.key === route.name)?.unfocusedIcon;
-              return <MaterialCommunityIcons name={iconName as any} size={24} color={color} />;
-            }}
-            getLabelText={({ route }) => {
-              const { options } = descriptors[route.key];
-              const label =
-                options.tabBarLabel !== undefined
-                  ? options.tabBarLabel
-                  : options.title !== undefined
-                  ? options.title
-                  : route.name;
-              return typeof label === 'string' ? label : route.name;
-            }}
-          />
-        );
-      }}
+      tabBar={(props) => <CustomBottomNav {...props} />}
     >
       <Tabs.Screen name="index" options={{ title: 'Home', tabBarIcon: ({ color, focused }) => <MaterialCommunityIcons name={focused ? 'home' : 'home-outline'} size={24} color={color} /> }} />
       <Tabs.Screen name="analytics" options={{ title: 'Insights', tabBarIcon: ({ color, focused }) => <MaterialCommunityIcons name={focused ? 'chart-box' : 'chart-box-outline'} size={24} color={color} /> }} />

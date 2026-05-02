@@ -41,7 +41,7 @@ export function getLiteRtDownloadUrl(modelId: string) {
 
 export function getLiteRtCacheUri(modelId: string) {
   const model = getLiteRtModel(modelId);
-  return `${FileSystem.documentDirectory ?? ''}litert/${model.fileName}`;
+  return `${((FileSystem as any).documentDirectory as string) ?? ''}litert/${model.fileName}`;
 }
 
 export async function isLiteRtModelCached(modelId: string) {
@@ -51,7 +51,7 @@ export async function isLiteRtModelCached(modelId: string) {
 }
 
 export async function ensureLiteRtCacheDir() {
-  const baseDir = `${FileSystem.documentDirectory ?? ''}litert`;
+  const baseDir = `${((FileSystem as any).documentDirectory as string) ?? ''}litert`;
   const info = await FileSystem.getInfoAsync(baseDir);
   if (!info.exists) {
     await FileSystem.makeDirectoryAsync(baseDir, { intermediates: true });

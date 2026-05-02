@@ -102,6 +102,25 @@ export function AppThemeProvider({ children }: PropsWithChildren) {
     return {
       ...base,
       roundness: 16,
+
+      fonts: {
+        ...base.fonts,
+        displayLarge: { fontFamily: 'SpaceGrotesk_700Bold', fontWeight: '700' as '700' | '500' | '400' | '600', fontSize: 57, letterSpacing: -1.14, lineHeight: 64 },
+        displayMedium: { fontFamily: 'SpaceGrotesk_500Medium', fontWeight: '500' as '700' | '500' | '400' | '600', fontSize: 45, letterSpacing: -0.9, lineHeight: 52 },
+        displaySmall: { fontFamily: 'SpaceGrotesk_400Regular', fontWeight: '400' as '700' | '500' | '400' | '600', fontSize: 36, letterSpacing: -0.72, lineHeight: 44 },
+        headlineLarge: { fontFamily: 'SpaceGrotesk_500Medium', fontWeight: '500' as '700' | '500' | '400' | '600', fontSize: 32, letterSpacing: -0.64, lineHeight: 40 },
+        headlineMedium: { fontFamily: 'SpaceGrotesk_500Medium', fontWeight: '500' as '700' | '500' | '400' | '600', fontSize: 28, letterSpacing: -0.56, lineHeight: 36 },
+        headlineSmall: { fontFamily: 'SpaceGrotesk_500Medium', fontWeight: '500' as '700' | '500' | '400' | '600', fontSize: 24, letterSpacing: -0.48, lineHeight: 32 },
+        titleLarge: { fontFamily: 'BeVietnamPro_600SemiBold', fontWeight: '600' as '700' | '500' | '400' | '600', fontSize: 22, letterSpacing: 0, lineHeight: 28 },
+        titleMedium: { fontFamily: 'BeVietnamPro_500Medium', fontWeight: '500' as '700' | '500' | '400' | '600', fontSize: 16, letterSpacing: 0.15, lineHeight: 24 },
+        titleSmall: { fontFamily: 'BeVietnamPro_500Medium', fontWeight: '500' as '700' | '500' | '400' | '600', fontSize: 14, letterSpacing: 0.1, lineHeight: 20 },
+        labelLarge: { fontFamily: 'BeVietnamPro_500Medium', fontWeight: '500' as '700' | '500' | '400' | '600', fontSize: 14, letterSpacing: 0.1, lineHeight: 20 },
+        labelMedium: { fontFamily: 'BeVietnamPro_500Medium', fontWeight: '500' as '700' | '500' | '400' | '600', fontSize: 12, letterSpacing: 0.5, lineHeight: 16 },
+        labelSmall: { fontFamily: 'BeVietnamPro_500Medium', fontWeight: '500' as '700' | '500' | '400' | '600', fontSize: 11, letterSpacing: 0.5, lineHeight: 16 },
+        bodyLarge: { fontFamily: 'BeVietnamPro_400Regular', fontWeight: '400' as '700' | '500' | '400' | '600', fontSize: 16, letterSpacing: 0.15, lineHeight: 24 },
+        bodyMedium: { fontFamily: 'BeVietnamPro_400Regular', fontWeight: '400' as '700' | '500' | '400' | '600', fontSize: 14, letterSpacing: 0.25, lineHeight: 20 },
+        bodySmall: { fontFamily: 'BeVietnamPro_400Regular', fontWeight: '400' as '700' | '500' | '400' | '600', fontSize: 12, letterSpacing: 0.4, lineHeight: 16 },
+      },
       colors: {
         ...base.colors,
         ...colors,
