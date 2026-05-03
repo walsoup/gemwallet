@@ -1,6 +1,6 @@
-import React from 'react';
-import { ScrollView, StyleSheet, View, Pressable, Switch } from 'react-native';
-import { Text, useTheme } from 'react-native-paper';
+import React, { useState } from 'react';
+import { ScrollView, StyleSheet, View, Pressable, Switch, Modal, TextInput } from 'react-native';
+import { Button, Text, useTheme } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useGoalsStore } from '../../../../store/useGoalsStore';
 import { useRecurringStore } from '../../../../store/useRecurringStore';
@@ -13,17 +13,95 @@ export default function PlanningScreen() {
   const theme = useTheme<AppTheme>();
   const insets = useSafeAreaInsets();
   const goals = useGoalsStore((state) => state.goals);
+  const addGoal = useGoalsStore((state) => state.addGoal);
   const events = useRecurringStore((state) => state.events);
   const toggleEvent = useRecurringStore((state) => state.toggleEvent);
+
+  const [goalModalVisible, setGoalModalVisible] = useState(false);
+  const [goalName, setGoalName] = useState('');
+  const [goalTarget, setGoalTarget] = useState('');
 
   const handleToggle = (id: string, currentEnabled: boolean) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     toggleEvent(id, !currentEnabled);
   };
 
+  const openNewGoal = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setGoalName('');
+    setGoalTarget('');
+    setGoalModalVisible(true);
+  };
+
+  const closeNewGoal = () => {
+    setGoalModalVisible(false);
+  };
+
+  const submitNewGoal = () => {
+    const parsed = Number(goalTarget.replace(/[^0-9.]/g, ''));
+    if (!goalName.trim() || !Number.isFinite(parsed) || parsed <= 0) return;
+    addGoal({ name: goalName.trim(), targetCents: Math.round(parsed * 100) });
+    closeNewGoal();
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <CustomTopNav title="Planning" />
+
+      <Modal visible={goalModalVisible} transparent animationType="fade" onRequestClose={closeNewGoal}>
+        <Pressable style={styles.modalBackdrop} onPress={closeNewGoal}>
+          <Pressable
+            style={[styles.modalCard, { backgroundColor: theme.colors.surfaceContainerHigh }]}
+            onPress={() => null}
+          >
+            <Text variant="titleMedium" style={{ color: theme.colors.onSurface, marginBottom: 16 }}>
+              New Savings Goal
+            </Text>
+
+            <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8 }}>Name</Text>
+            <TextInput
+              style={[
+                styles.modalInput,
+                {
+                  backgroundColor: theme.colors.surfaceContainerLowest,
+                  color: theme.colors.onSurface,
+                  borderColor: theme.colors.outlineVariant + '4D',
+                },
+              ]}
+              placeholder="Vacation, Emergency fund…"
+              placeholderTextColor={theme.colors.onSurfaceVariant}
+              value={goalName}
+              onChangeText={setGoalName}
+            />
+
+            <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8, marginTop: 12 }}>Target</Text>
+            <TextInput
+              style={[
+                styles.modalInput,
+                {
+                  backgroundColor: theme.colors.surfaceContainerLowest,
+                  color: theme.colors.onSurface,
+                  borderColor: theme.colors.outlineVariant + '4D',
+                },
+              ]}
+              keyboardType="decimal-pad"
+              placeholder="$0.00"
+              placeholderTextColor={theme.colors.onSurfaceVariant}
+              value={goalTarget}
+              onChangeText={setGoalTarget}
+            />
+
+            <View style={styles.modalActions}>
+              <Button mode="text" onPress={closeNewGoal} textColor={theme.colors.onSurfaceVariant}>
+                Cancel
+              </Button>
+              <Button mode="contained" onPress={submitNewGoal}>
+                Create
+              </Button>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       <ScrollView contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 60 }]}>
 
@@ -33,7 +111,7 @@ export default function PlanningScreen() {
             <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Savings Goals</Text>
             <Pressable
               style={[styles.addButton, { backgroundColor: theme.colors.surfaceContainerHighest }]}
-              onPress={() => {}}
+              onPress={openNewGoal}
             >
               <MaterialCommunityIcons name="plus" size={16} color={theme.colors.primary} />
               <Text style={{ color: theme.colors.primary, fontFamily: 'BeVietnamPro_500Medium', fontSize: 14 }}>NEW</Text>
@@ -174,6 +252,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  modalCard: {
+    borderRadius: 24,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  modalInput: {
+    width: '100%',
+    borderWidth: 1,
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    fontFamily: 'BeVietnamPro_400Regular',
+    fontSize: 16,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+    marginTop: 16,
   },
   goalsGrid: {
     gap: 16,

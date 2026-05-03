@@ -37,6 +37,7 @@
     "react-dom": "19.1.4",
     "react-native": "0.81.6",
     "react-native-gesture-handler": "~2.31.1",
+    "react-native-litert-lm": "^0.3.7",
     "react-native-markdown-display": "^7.0.2",
     "react-native-nitro-modules": "0.35.5",
     "react-native-paper": "^5.15.1",

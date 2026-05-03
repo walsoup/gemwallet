@@ -1,10 +1,8 @@
 import React from 'react';
-import { View, StyleSheet, Pressable } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
-import { useRouter } from 'expo-router';
 import { AppTheme } from '../../../providers/AppThemeProvider';
 
 interface CustomTopNavProps {
@@ -14,7 +12,6 @@ interface CustomTopNavProps {
 export function CustomTopNav({ title }: CustomTopNavProps) {
   const theme = useTheme<AppTheme>();
   const insets = useSafeAreaInsets();
-  const router = useRouter();
 
   return (
     <View style={styles.positionContainer}>
@@ -26,12 +23,6 @@ export function CustomTopNav({ title }: CustomTopNavProps) {
         <Text variant="headlineSmall" style={[styles.title, { color: theme.colors.onSurface }]}>
           {title}
         </Text>
-        <Pressable
-          style={[styles.settingsButton, { backgroundColor: theme.colors.surfaceContainerHigh }]}
-          onPress={() => router.push('/settings')}
-        >
-          <MaterialCommunityIcons name="cog" size={24} color={theme.colors.onSurfaceVariant} />
-        </Pressable>
       </BlurView>
     </View>
   );
@@ -56,12 +47,5 @@ const styles = StyleSheet.create({
   title: {
     fontWeight: '500',
     letterSpacing: -0.5,
-  },
-  settingsButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });

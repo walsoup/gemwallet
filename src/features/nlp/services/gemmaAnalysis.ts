@@ -373,3 +373,54 @@ export async function* streamFinancialAnalysis(
     for (const chunk of chunkText(fallback)) yield chunk;
   }
 }
+
+export async function* streamLocalFinancialAnalysis(
+  transactions: Transaction[],
+  options: AnalysisOptions,
+  callbacks?: AnalysisCallbacks,
+  userQuestion?: string
+) {
+  const fallback = summarize(transactions, {
+    currencyCode: options.currencyCode,
+    locale: options.locale,
+  });
+
+  if (!options.localModelDownloaded) {
+    yield 'Download the on-device Gemma model in Settings to unlock private AI.';
+    for (const chunk of chunkText(fallback)) yield chunk;
+    return;
+  }
+
+  const { getLiteRtCacheUri } = await import('./liteRtModels');
+  const { streamLocalLiteRtAnalysis } = await import('./localLiteRtAnalysis');
+
+  const modelPath = getLiteRtCacheUri(options.localModelId || 'gemma-4-E2B-it');
+  const temperature = options.advanced ? 0.55 : 0.28;
+  const maxTokens = options.advanced ? 360 : MAX_TOKENS_BASE;
+
+  let raw = '';
+  for await (const chunk of streamLocalLiteRtAnalysis({
+    transactions,
+    userQuestion: userQuestion || buildPrompt(transactions, options, userQuestion),
+    modelPath,
+    temperature,
+    maxTokens,
+  })) {
+    raw += chunk;
+  }
+
+  const expenseCommand = parseAddExpenseCommand(raw);
+  const incomeCommand = parseAddIncomeCommand(raw);
+  const recurringCommand = parseAddRecurringCommand(raw);
+  const goalCommand = parseAddGoalCommand(raw);
+  if (expenseCommand && callbacks?.onCommand) callbacks.onCommand(expenseCommand);
+  if (incomeCommand && callbacks?.onIncome) callbacks.onIncome(incomeCommand);
+  if (recurringCommand && callbacks?.onRecurring) callbacks.onRecurring(recurringCommand);
+  if (goalCommand && callbacks?.onGoal) callbacks.onGoal(goalCommand);
+
+  const cleaned = sanitizeModelOutput(raw) || fallback;
+  for (const chunk of chunkText(cleaned)) {
+    await new Promise((resolve) => setTimeout(resolve, MIN_CHUNK_DELAY_MS));
+    yield chunk;
+  }
+}

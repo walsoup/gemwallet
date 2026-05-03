@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { ScrollView, StyleSheet, View, TextInput, Pressable } from 'react-native';
-import { Text, useTheme } from 'react-native-paper';
+import { ScrollView, StyleSheet, View, TextInput, Pressable, Modal } from 'react-native';
+import { Button, Text, useTheme } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTransactionStore, selectBalanceCents } from '../../../../store/useTransactionStore';
 import { useGoalsStore } from '../../../../store/useGoalsStore';
@@ -9,16 +9,53 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppTheme } from '../../../../providers/AppThemeProvider';
 import { CustomTopNav } from '../../../components/Navigation/CustomTopNav';
 
+type QuickActionMode = 'income' | 'expense';
+
 export default function HomeScreen() {
   const theme = useTheme<AppTheme>();
   const insets = useSafeAreaInsets();
   const transactions = useTransactionStore((state) => state.transactions);
   const categories = useTransactionStore((state) => state.categories);
   const balanceCents = useTransactionStore(selectBalanceCents);
+  const addIncome = useTransactionStore((state) => state.addIncome);
+  const addExpense = useTransactionStore((state) => state.addExpense);
   const goals = useGoalsStore((state) => state.goals);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('All');
+
+  const [quickActionMode, setQuickActionMode] = useState<QuickActionMode>('income');
+  const [quickActionVisible, setQuickActionVisible] = useState(false);
+  const [quickActionAmount, setQuickActionAmount] = useState('');
+  const [quickActionLabel, setQuickActionLabel] = useState('');
+
+  const openQuickAction = (mode: QuickActionMode) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setQuickActionMode(mode);
+    setQuickActionAmount('');
+    setQuickActionLabel('');
+    setQuickActionVisible(true);
+  };
+
+  const closeQuickAction = () => {
+    setQuickActionVisible(false);
+  };
+
+  const submitQuickAction = () => {
+    const parsedAmount = Number(quickActionAmount.replace(/[^0-9.]/g, ''));
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) return;
+
+    const amountCents = Math.round(parsedAmount * 100);
+    const note = quickActionLabel.trim() || (quickActionMode === 'income' ? 'Added funds' : 'Spent funds');
+
+    if (quickActionMode === 'income') {
+      addIncome({ amountCents, categoryId: 'income-custom', note });
+    } else {
+      addExpense({ amountCents, categoryId: 'expense-misc', note });
+    }
+
+    closeQuickAction();
+  };
 
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
@@ -60,6 +97,66 @@ export default function HomeScreen() {
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <CustomTopNav title="Good afternoon" />
 
+      <Modal
+        visible={quickActionVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={closeQuickAction}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={closeQuickAction}>
+          <Pressable
+            style={[styles.modalCard, { backgroundColor: theme.colors.surfaceContainerHigh }]}
+            onPress={() => null}
+          >
+            <Text variant="titleMedium" style={{ color: theme.colors.onSurface, marginBottom: 16 }}>
+              {quickActionMode === 'income' ? 'Add Funds' : 'Spend Funds'}
+            </Text>
+
+            <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8 }}>Amount</Text>
+            <TextInput
+              style={[
+                styles.modalInput,
+                {
+                  backgroundColor: theme.colors.surfaceContainerLowest,
+                  color: theme.colors.onSurface,
+                  borderColor: theme.colors.outlineVariant + '4D',
+                },
+              ]}
+              keyboardType="decimal-pad"
+              placeholder="$0.00"
+              placeholderTextColor={theme.colors.onSurfaceVariant}
+              value={quickActionAmount}
+              onChangeText={setQuickActionAmount}
+            />
+
+            <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8, marginTop: 12 }}>Label</Text>
+            <TextInput
+              style={[
+                styles.modalInput,
+                {
+                  backgroundColor: theme.colors.surfaceContainerLowest,
+                  color: theme.colors.onSurface,
+                  borderColor: theme.colors.outlineVariant + '4D',
+                },
+              ]}
+              placeholder={quickActionMode === 'income' ? 'Paycheck, refund…' : 'Rent, groceries…'}
+              placeholderTextColor={theme.colors.onSurfaceVariant}
+              value={quickActionLabel}
+              onChangeText={setQuickActionLabel}
+            />
+
+            <View style={styles.modalActions}>
+              <Button mode="text" onPress={closeQuickAction} textColor={theme.colors.onSurfaceVariant}>
+                Cancel
+              </Button>
+              <Button mode="contained" onPress={submitQuickAction}>
+                Confirm
+              </Button>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       <ScrollView contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 60 }]}>
         {/* Hero Balance Section */}
         <View style={styles.heroSection}>
@@ -79,17 +176,17 @@ export default function HomeScreen() {
           <View style={styles.quickActions}>
             <Pressable
               style={[styles.actionButton, styles.primaryButton, { backgroundColor: theme.colors.primaryContainer }]}
-              onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+              onPress={() => openQuickAction('income')}
             >
               <MaterialCommunityIcons name="plus" size={20} color={theme.colors.onPrimaryContainer} />
               <Text style={[styles.actionButtonText, { color: theme.colors.onPrimaryContainer }]}>Add Funds</Text>
             </Pressable>
             <Pressable
               style={[styles.actionButton, styles.secondaryButton, { backgroundColor: theme.colors.surfaceContainerHighest }]}
-              onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+              onPress={() => openQuickAction('expense')}
             >
               <MaterialCommunityIcons name="send" size={20} color={theme.colors.onSurface} />
-              <Text style={[styles.actionButtonText, { color: theme.colors.onSurface }]}>Send</Text>
+              <Text style={[styles.actionButtonText, { color: theme.colors.onSurface }]}>Spend Funds</Text>
             </Pressable>
           </View>
         </View>
@@ -258,6 +355,33 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 24,
     paddingBottom: 120, // space for custom bottom nav
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  modalCard: {
+    borderRadius: 24,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  modalInput: {
+    width: '100%',
+    borderWidth: 1,
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    fontFamily: 'BeVietnamPro_400Regular',
+    fontSize: 16,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+    marginTop: 16,
   },
   heroSection: {
     alignItems: 'center',

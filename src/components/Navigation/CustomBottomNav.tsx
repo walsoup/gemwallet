@@ -7,12 +7,19 @@ import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import * as Haptics from 'expo-haptics';
 import { BlurView } from 'expo-blur';
 import { AppTheme } from '../../../providers/AppThemeProvider';
+import { useSettingsStore } from '../../../store/useSettingsStore';
 
 export function CustomBottomNav({ state, descriptors, navigation }: BottomTabBarProps) {
   const theme = useTheme<AppTheme>();
   const insets = useSafeAreaInsets();
 
-  const routes = state.routes.filter((r: any) => r.name !== 'onboarding' && r.name !== 'chat' && r.name !== '+not-found'); // Ignoring chat for now or including it conditionally
+  const aiFeaturesEnabled = useSettingsStore((s) => s.aiFeaturesEnabled);
+
+  const routes = state.routes.filter((r: any) => {
+    if (r.name === 'onboarding' || r.name === '+not-found') return false;
+    if (r.name === 'chat') return aiFeaturesEnabled;
+    return true;
+  });
 
   return (
     <View style={styles.positionContainer}>
@@ -21,7 +28,7 @@ export function CustomBottomNav({ state, descriptors, navigation }: BottomTabBar
         tint="dark"
         style={[styles.container, { paddingBottom: Math.max(insets.bottom, 16) }]}
       >
-        {routes.map((route: any, index: number) => {
+        {routes.map((route: any) => {
           const { options } = descriptors[route.key];
           const label =
             options.tabBarLabel !== undefined
@@ -30,7 +37,8 @@ export function CustomBottomNav({ state, descriptors, navigation }: BottomTabBar
               ? options.title
               : route.name;
 
-          const isFocused = state.index === index;
+          const routeIndex = state.routes.findIndex((r) => r.key === route.key);
+          const isFocused = routeIndex === state.index;
 
           const onPress = () => {
             const event = navigation.emit({
@@ -67,7 +75,7 @@ export function CustomBottomNav({ state, descriptors, navigation }: BottomTabBar
 
           return (
             <Pressable
-              key={index}
+              key={route.key}
               accessibilityRole="button"
               accessibilityState={isFocused ? { selected: true } : {}}
               accessibilityLabel={options.tabBarAccessibilityLabel}
