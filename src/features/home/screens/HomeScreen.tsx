@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { ScrollView, StyleSheet, View, TextInput, Pressable } from 'react-native';
-import { Text, useTheme, Card, Avatar } from 'react-native-paper';
+import { Text, useTheme } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTransactionStore, selectBalanceCents } from '../../../../store/useTransactionStore';
 import { useGoalsStore } from '../../../../store/useGoalsStore';

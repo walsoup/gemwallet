@@ -10,7 +10,7 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test tests/**/*.test.ts",
+    "test": "bash -lc 'shopt -s globstar; tsx --test tests/**/*.test.ts'",
     "build": "expo export --platform android --output-dir dist"
   },
   "dependencies": {

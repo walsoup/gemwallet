@@ -13,8 +13,11 @@ export default function AnalyticsScreen() {
   const transactions = useTransactionStore((state) => state.transactions);
   const categories = useTransactionStore((state) => state.categories);
 
-  const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+  const now = useMemo(() => new Date(), []);
+  const startOfMonth = useMemo(
+    () => new Date(now.getFullYear(), now.getMonth(), 1).getTime(),
+    [now]
+  );
 
   // Savings Logic
   const { totalIncome, totalExpense } = useMemo(() => {
@@ -65,7 +68,7 @@ export default function AnalyticsScreen() {
       ...d,
       heightPercentage: Math.max(10, (d.totalCents / maxSpend) * 100) // min 10% height for visual
     }));
-  }, [transactions]);
+  }, [now, transactions]);
 
   // Top Movers Logic
   const topMovers = useMemo(() => {
@@ -120,7 +123,7 @@ export default function AnalyticsScreen() {
                 {savedPercentage}% Saved
               </Text>
               <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14, lineHeight: 22 }}>
-                You've saved ${(savedCents / 100).toFixed(2)} this month based on your recorded income and expenses.
+                You&apos;ve saved ${(savedCents / 100).toFixed(2)} this month based on your recorded income and expenses.
               </Text>
             </View>
           </View>
