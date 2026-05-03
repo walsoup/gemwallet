@@ -4,7 +4,7 @@ import { Text, TextInput, IconButton, useTheme, Surface } from 'react-native-pap
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTransactionStore } from '../../../../store/useTransactionStore';
 import { useSettingsStore } from '../../../../store/useSettingsStore';
-import { streamFinancialAnalysis } from '../../nlp/services/gemmaAnalysis';
+import { streamFinancialAnalysis, streamLocalFinancialAnalysis } from '../../nlp/services/gemmaAnalysis';
 
 type ChatMessage = {
   id: string;
@@ -102,7 +102,9 @@ export default function ChatScreen() {
 
     try {
       let assembled = '';
-      for await (const chunk of streamFinancialAnalysis(
+      const runner = settings.aiProvider === 'local' ? streamLocalFinancialAnalysis : streamFinancialAnalysis;
+
+      for await (const chunk of runner(
         transactions,
         settings,
         {

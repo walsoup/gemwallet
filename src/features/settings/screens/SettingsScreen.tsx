@@ -7,10 +7,16 @@ import * as Haptics from 'expo-haptics';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppTheme } from '../../../../providers/AppThemeProvider';
 import { CustomTopNav } from '../../../components/Navigation/CustomTopNav';
+import { downloadLiteRtModel, getLiteRtModel, isLiteRtModelCached } from '../../../features/nlp/services/liteRtModels';
 
 export default function SettingsScreen() {
   const theme = useTheme<AppTheme>();
   const insets = useSafeAreaInsets();
+
+  const localModelId = useSettingsStore((state) => state.localModelId);
+  const localModelDownloaded = useSettingsStore((state) => state.localModelDownloaded);
+  const setLocalModelDownloaded = useSettingsStore((state) => state.setLocalModelDownloaded);
+  const huggingFaceToken = useSettingsStore((state) => state.huggingFaceToken);
 
   const smartCategorizationEnabled = useSettingsStore((state) => state.smartCategorizationEnabled);
   const setSmartCategorizationEnabled = useSettingsStore((state) => state.setSmartCategorizationEnabled);
@@ -55,9 +61,37 @@ export default function SettingsScreen() {
                 <MaterialCommunityIcons name="robot" size={24} color={theme.colors.onSurfaceVariant} />
                 <View>
                   <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>Gemma Model Status</Text>
-                  <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>Downloaded (2.4 GB) • Active</Text>
+                  <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>
+                    {localModelDownloaded ? 'Downloaded • Active' : 'Not downloaded'}
+                  </Text>
                 </View>
               </View>
+              {!localModelDownloaded && (
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.downloadButton,
+                    { backgroundColor: pressed ? theme.colors.surfaceContainerHighest : theme.colors.surfaceContainerHigh },
+                  ]}
+                  onPress={async () => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    try {
+                      const model = getLiteRtModel(localModelId);
+                      const cached = await isLiteRtModelCached(model.id);
+                      if (!cached) {
+                        await downloadLiteRtModel(model.id, undefined, huggingFaceToken?.trim()
+                          ? { Authorization: `Bearer ${huggingFaceToken.trim()}` }
+                          : undefined);
+                      }
+                      setLocalModelDownloaded(true);
+                    } catch (error) {
+                      console.warn('LiteRT model download failed', error);
+                      setLocalModelDownloaded(false);
+                    }
+                  }}
+                >
+                  <Text style={{ color: theme.colors.primary, fontFamily: 'BeVietnamPro_600SemiBold' }}>Download</Text>
+                </Pressable>
+              )}
             </View>
             <View style={[styles.settingRow, { backgroundColor: theme.colors.surfaceContainer }]}>
               <View style={styles.settingRowLeft}>
@@ -215,6 +249,11 @@ const styles = StyleSheet.create({
     fontFamily: 'SpaceGrotesk_700Bold',
     letterSpacing: -1,
     marginBottom: 8,
+  },
+  downloadButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 14,
   },
   section: {
     borderRadius: 16,
