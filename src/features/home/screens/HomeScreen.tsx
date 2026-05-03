@@ -46,7 +46,7 @@ export default function HomeScreen() {
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) return;
 
     const amountCents = Math.round(parsedAmount * 100);
-    const note = quickActionLabel.trim() || (quickActionMode === 'income' ? 'Added funds' : 'Sent funds');
+    const note = quickActionLabel.trim() || (quickActionMode === 'income' ? 'Added funds' : 'Spent funds');
 
     if (quickActionMode === 'income') {
       addIncome({ amountCents, categoryId: 'income-custom', note });
@@ -109,7 +109,7 @@ export default function HomeScreen() {
             onPress={() => null}
           >
             <Text variant="titleMedium" style={{ color: theme.colors.onSurface, marginBottom: 16 }}>
-              {quickActionMode === 'income' ? 'Add Funds' : 'Send'}
+              {quickActionMode === 'income' ? 'Add Funds' : 'Spend Funds'}
             </Text>
 
             <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8 }}>Amount</Text>
@@ -186,7 +186,7 @@ export default function HomeScreen() {
               onPress={() => openQuickAction('expense')}
             >
               <MaterialCommunityIcons name="send" size={20} color={theme.colors.onSurface} />
-              <Text style={[styles.actionButtonText, { color: theme.colors.onSurface }]}>Send</Text>
+              <Text style={[styles.actionButtonText, { color: theme.colors.onSurface }]}>Spend Funds</Text>
             </Pressable>
           </View>
         </View>
