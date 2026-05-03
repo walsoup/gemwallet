@@ -13,8 +13,11 @@ export default function AnalyticsScreen() {
   const transactions = useTransactionStore((state) => state.transactions);
   const categories = useTransactionStore((state) => state.categories);
 
-  const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+  const now = useMemo(() => new Date(), []);
+  const startOfMonth = useMemo(
+    () => new Date(now.getFullYear(), now.getMonth(), 1).getTime(),
+    [now]
+  );
 
   // Savings Logic
   const { totalIncome, totalExpense } = useMemo(() => {
@@ -65,7 +68,7 @@ export default function AnalyticsScreen() {
       ...d,
       heightPercentage: Math.max(10, (d.totalCents / maxSpend) * 100) // min 10% height for visual
     }));
-  }, [transactions]);
+  }, [now, transactions]);
 
   // Top Movers Logic
   const topMovers = useMemo(() => {
