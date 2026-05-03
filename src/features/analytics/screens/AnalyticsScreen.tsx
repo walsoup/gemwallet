@@ -120,7 +120,7 @@ export default function AnalyticsScreen() {
                 {savedPercentage}% Saved
               </Text>
               <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14, lineHeight: 22 }}>
-                You've saved ${(savedCents / 100).toFixed(2)} this month based on your recorded income and expenses.
+                You&apos;ve saved ${(savedCents / 100).toFixed(2)} this month based on your recorded income and expenses.
               </Text>
             </View>
           </View>
