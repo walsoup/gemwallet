@@ -3,10 +3,10 @@ import React, { useEffect } from 'react';
 
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Provider as PaperProvider } from 'react-native-paper';
 import { CustomBottomNav } from '../src/components/Navigation/CustomBottomNav';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppThemeProvider } from '../providers/AppThemeProvider';
+import { BiometricGate } from '../providers/BiometricGate';
 import { useTransactionStore } from '../store/useTransactionStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 
@@ -69,9 +69,9 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <AppThemeProvider>
-          <PaperProvider>
+          <BiometricGate>
             <TabLayout />
-          </PaperProvider>
+          </BiometricGate>
         </AppThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
