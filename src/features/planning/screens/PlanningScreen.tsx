@@ -1,18 +1,16 @@
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, View, Pressable, Switch, Modal, TextInput } from 'react-native';
 import { Button, Text, useTheme } from 'react-native-paper';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useGoalsStore } from '../../../../store/useGoalsStore';
 import { useRecurringStore } from '../../../../store/useRecurringStore';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppTheme } from '../../../../providers/AppThemeProvider';
-import { CustomTopNav } from '../../../components/Navigation/CustomTopNav';
+import { ScreenLayout } from '../../../components/Layout/ScreenLayout';
 import * as Haptics from 'expo-haptics';
 import { formatAppCurrency } from '../../../../utils/currency';
 
 export default function PlanningScreen() {
   const theme = useTheme<AppTheme>();
-  const insets = useSafeAreaInsets();
   const goals = useGoalsStore((state) => state.goals);
   const addGoal = useGoalsStore((state) => state.addGoal);
   const events = useRecurringStore((state) => state.events);
@@ -46,8 +44,7 @@ export default function PlanningScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <CustomTopNav title="Planning" />
+    <ScreenLayout title="Planning" backgroundColor={theme.colors.background}>
 
       <Modal visible={goalModalVisible} transparent animationType="fade" onRequestClose={closeNewGoal}>
         <Pressable style={styles.modalBackdrop} onPress={closeNewGoal}>
@@ -104,7 +101,7 @@ export default function PlanningScreen() {
         </Pressable>
       </Modal>
 
-      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 60 }]}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
 
         {/* Savings Goals Section */}
         <View style={styles.section}>
@@ -221,7 +218,7 @@ export default function PlanningScreen() {
         </View>
 
       </ScrollView>
-    </View>
+    </ScreenLayout>
   );
 }
 
@@ -231,7 +228,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 24,
-    paddingBottom: 120,
   },
   section: {
     marginBottom: 48,

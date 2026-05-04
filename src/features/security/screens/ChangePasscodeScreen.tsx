@@ -1,12 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { Text, useTheme, Button } from 'react-native-paper';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 
 import { AppTheme } from '../../../../providers/AppThemeProvider';
-import { CustomTopNav } from '../../../components/Navigation/CustomTopNav';
+import { ScreenLayout } from '../../../components/Layout/ScreenLayout';
 import { useSettingsStore } from '../../../../store/useSettingsStore';
 import { PasscodeKeypad } from '../components/PasscodeKeypad';
 
@@ -14,7 +13,6 @@ type Step = 'verify' | 'new' | 'confirm' | 'done';
 
 export default function ChangePasscodeScreen() {
   const theme = useTheme<AppTheme>();
-  const insets = useSafeAreaInsets();
   const router = useRouter();
 
   const existingPin = useSettingsStore((state) => state.passcodePin);
@@ -128,9 +126,8 @@ export default function ChangePasscodeScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <CustomTopNav title="Security" />
-      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 60 }]}>
+    <ScreenLayout title="Security" backgroundColor={theme.colors.background}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text variant="headlineMedium" style={{ color: theme.colors.onSurface, fontFamily: 'SpaceGrotesk_700Bold' }}>
           {title}
         </Text>
@@ -158,7 +155,7 @@ export default function ChangePasscodeScreen() {
           <PasscodeKeypad theme={theme} value={value} onDigit={handleDigit} onBackspace={handleBackspace} />
         )}
       </ScrollView>
-    </View>
+    </ScreenLayout>
   );
 }
 
@@ -168,7 +165,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 24,
-    paddingBottom: 120,
   },
   dots: {
     flexDirection: 'row',
@@ -184,4 +180,3 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
 });
-

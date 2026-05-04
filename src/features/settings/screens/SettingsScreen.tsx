@@ -1,13 +1,12 @@
 import React from 'react';
 import { ScrollView, StyleSheet, View, Pressable, Switch, Alert } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSettingsStore } from '../../../../store/useSettingsStore';
 import { useTransactionStore } from '../../../../store/useTransactionStore';
 import * as Haptics from 'expo-haptics';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppTheme } from '../../../../providers/AppThemeProvider';
-import { CustomTopNav } from '../../../components/Navigation/CustomTopNav';
+import { ScreenLayout } from '../../../components/Layout/ScreenLayout';
 import { downloadLiteRtModel, getLiteRtModel, isLiteRtModelCached } from '../../../features/nlp/services/liteRtModels';
 import { useRouter } from 'expo-router';
 import type { ThemePreference } from '../../../../types/finance';
@@ -20,7 +19,6 @@ import { exportTransactionsCsv } from '../../../../utils/exportTransactionsCsv';
 
 export default function SettingsScreen() {
   const theme = useTheme<AppTheme>();
-  const insets = useSafeAreaInsets();
   const router = useRouter();
 
   const localModelId = useSettingsStore((state) => state.localModelId);
@@ -81,10 +79,8 @@ export default function SettingsScreen() {
   ];
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <CustomTopNav title="Good morning" />
-
-      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 60 }]}>
+    <ScreenLayout title="Good morning" backgroundColor={theme.colors.background}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
 
         <View style={styles.header}>
           <Text variant="displayMedium" style={[styles.title, { color: theme.colors.onSurface }]}>
@@ -663,7 +659,7 @@ export default function SettingsScreen() {
         </View>
 
       </ScrollView>
-    </View>
+    </ScreenLayout>
   );
 }
 
@@ -673,7 +669,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 24,
-    paddingBottom: 120,
   },
   header: {
     marginBottom: 48,

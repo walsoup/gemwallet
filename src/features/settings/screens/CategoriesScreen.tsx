@@ -1,17 +1,15 @@
 import React, { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View, Pressable, Modal, TextInput } from 'react-native';
 import { Text, useTheme, Button } from 'react-native-paper';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 
 import { AppTheme } from '../../../../providers/AppThemeProvider';
-import { CustomTopNav } from '../../../components/Navigation/CustomTopNav';
+import { ScreenLayout } from '../../../components/Layout/ScreenLayout';
 import { useTransactionStore } from '../../../../store/useTransactionStore';
 
 export default function CategoriesScreen() {
   const theme = useTheme<AppTheme>();
-  const insets = useSafeAreaInsets();
 
   const categories = useTransactionStore((state) => state.categories);
   const addCustomCategory = useTransactionStore((state) => state.addCustomCategory);
@@ -42,9 +40,8 @@ export default function CategoriesScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <CustomTopNav title="Categories" />
-      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 60 }]}>
+    <ScreenLayout title="Categories" backgroundColor={theme.colors.background}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.headerRow}>
           <View>
             <Text variant="displaySmall" style={[styles.title, { color: theme.colors.onSurface }]}>
@@ -151,13 +148,13 @@ export default function CategoriesScreen() {
           </View>
         </View>
       </Modal>
-    </View>
+    </ScreenLayout>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scrollContent: { padding: 24, paddingBottom: 120 },
+  scrollContent: { padding: 24 },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',

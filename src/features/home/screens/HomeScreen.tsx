@@ -1,20 +1,18 @@
 import React, { useState, useMemo } from 'react';
 import { ScrollView, StyleSheet, View, TextInput, Pressable, Modal } from 'react-native';
 import { Button, Text, useTheme } from 'react-native-paper';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTransactionStore, selectBalanceCents } from '../../../../store/useTransactionStore';
 import { useGoalsStore } from '../../../../store/useGoalsStore';
 import * as Haptics from 'expo-haptics';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppTheme } from '../../../../providers/AppThemeProvider';
-import { CustomTopNav } from '../../../components/Navigation/CustomTopNav';
+import { ScreenLayout } from '../../../components/Layout/ScreenLayout';
 import { formatAppCurrency } from '../../../../utils/currency';
 
 type QuickActionMode = 'income' | 'expense';
 
 export default function HomeScreen() {
   const theme = useTheme<AppTheme>();
-  const insets = useSafeAreaInsets();
   const transactions = useTransactionStore((state) => state.transactions);
   const categories = useTransactionStore((state) => state.categories);
   const balanceCents = useTransactionStore(selectBalanceCents);
@@ -95,8 +93,7 @@ export default function HomeScreen() {
   const filters = ['All', 'Food', 'Income', 'Transport'];
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <CustomTopNav title="Good afternoon" />
+    <ScreenLayout title="Good afternoon" backgroundColor={theme.colors.background}>
 
       <Modal
         visible={quickActionVisible}
@@ -158,7 +155,7 @@ export default function HomeScreen() {
         </Pressable>
       </Modal>
 
-      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 60 }]}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Hero Balance Section */}
         <View style={styles.heroSection}>
           <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8, fontFamily: 'BeVietnamPro_500Medium' }}>
@@ -345,7 +342,7 @@ export default function HomeScreen() {
           </View>
         </View>
       </ScrollView>
-    </View>
+    </ScreenLayout>
   );
 }
 
@@ -355,7 +352,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 24,
-    paddingBottom: 120, // space for custom bottom nav
   },
   modalBackdrop: {
     flex: 1,

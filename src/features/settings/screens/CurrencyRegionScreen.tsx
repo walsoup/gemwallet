@@ -1,12 +1,11 @@
 import React from 'react';
 import { ScrollView, StyleSheet, View, Pressable } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 
 import { AppTheme } from '../../../../providers/AppThemeProvider';
-import { CustomTopNav } from '../../../components/Navigation/CustomTopNav';
+import { ScreenLayout } from '../../../components/Layout/ScreenLayout';
 import { useSettingsStore } from '../../../../store/useSettingsStore';
 import type { CurrencyCode, RegionCode } from '../../../../types/finance';
 import { formatCurrency } from '../../../../utils/formatCurrency';
@@ -24,7 +23,6 @@ const REGIONS: readonly { code: RegionCode; label: string; locale: string }[] = 
 
 export default function CurrencyRegionScreen() {
   const theme = useTheme<AppTheme>();
-  const insets = useSafeAreaInsets();
 
   const currencyCode = useSettingsStore((state) => state.currencyCode);
   const setCurrencyCode = useSettingsStore((state) => state.setCurrencyCode);
@@ -35,9 +33,8 @@ export default function CurrencyRegionScreen() {
   const previewLocale = getEffectiveLocale({ currencyCode, region, language });
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <CustomTopNav title="Currency" />
-      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 60 }]}>
+    <ScreenLayout title="Currency" backgroundColor={theme.colors.background}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <Text variant="displaySmall" style={[styles.title, { color: theme.colors.onSurface }]}>
             Currency & Region
@@ -144,7 +141,7 @@ export default function CurrencyRegionScreen() {
           </View>
         </View>
       </ScrollView>
-    </View>
+    </ScreenLayout>
   );
 }
 
@@ -154,7 +151,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 24,
-    paddingBottom: 120,
   },
   header: {
     marginBottom: 32,

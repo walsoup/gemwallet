@@ -1,16 +1,14 @@
 import React, { useMemo } from 'react';
 import { ScrollView, StyleSheet, View, Pressable } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTransactionStore } from '../../../../store/useTransactionStore';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppTheme } from '../../../../providers/AppThemeProvider';
-import { CustomTopNav } from '../../../components/Navigation/CustomTopNav';
+import { ScreenLayout } from '../../../components/Layout/ScreenLayout';
 import { formatAppCurrency } from '../../../../utils/currency';
 
 export default function AnalyticsScreen() {
   const theme = useTheme<AppTheme>();
-  const insets = useSafeAreaInsets();
   const transactions = useTransactionStore((state) => state.transactions);
   const categories = useTransactionStore((state) => state.categories);
 
@@ -133,10 +131,8 @@ export default function AnalyticsScreen() {
   }, [now, startOfMonth, transactions]);
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <CustomTopNav title="Analytics" />
-
-      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 60 }]}>
+    <ScreenLayout title="Analytics" backgroundColor={theme.colors.background}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
 
         {/* Insight Header Card */}
         <View style={styles.section}>
@@ -243,7 +239,7 @@ export default function AnalyticsScreen() {
         </View>
 
       </ScrollView>
-    </View>
+    </ScreenLayout>
   );
 }
 
@@ -253,7 +249,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 24,
-    paddingBottom: 120,
   },
   section: {
     marginBottom: 24,
