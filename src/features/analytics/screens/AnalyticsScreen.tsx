@@ -6,6 +6,7 @@ import { useTransactionStore } from '../../../../store/useTransactionStore';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppTheme } from '../../../../providers/AppThemeProvider';
 import { CustomTopNav } from '../../../components/Navigation/CustomTopNav';
+import { formatAppCurrency } from '../../../../utils/currency';
 
 export default function AnalyticsScreen() {
   const theme = useTheme<AppTheme>();
@@ -123,7 +124,7 @@ export default function AnalyticsScreen() {
                 {savedPercentage}% Saved
               </Text>
               <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14, lineHeight: 22 }}>
-                You&apos;ve saved ${(savedCents / 100).toFixed(2)} this month based on your recorded income and expenses.
+                You&apos;ve saved {formatAppCurrency(savedCents)} this month based on your recorded income and expenses.
               </Text>
             </View>
           </View>
@@ -179,7 +180,7 @@ export default function AnalyticsScreen() {
                 </View>
                 <View style={{ alignItems: 'flex-end' }}>
                   <Text style={{ color: theme.colors.onSurface, fontFamily: 'SpaceGrotesk_500Medium', fontSize: 16 }}>
-                    -${(mover.total / 100).toFixed(2)}
+                    -{formatAppCurrency(mover.total)}
                   </Text>
                   {/* Fake percentage for UI compliance */}
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>

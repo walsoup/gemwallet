@@ -4,7 +4,27 @@ export type TransactionType = 'income' | 'expense';
 
 export type CategoryKind = 'expense' | 'income' | 'system';
 
-export type CurrencyCode = 'USD' | 'EUR' | 'GBP' | 'JPY' | 'AUD' | 'CAD' | 'MAD';
+export type CurrencyCode =
+  | 'USD'
+  | 'EUR'
+  | 'GBP'
+  | 'MAD'
+  | 'JPY'
+  | 'CNY'
+  | 'INR'
+  | 'CAD'
+  | 'AUD'
+  | 'CHF'
+  | 'BRL'
+  | 'MXN'
+  | 'KRW'
+  | 'SGD'
+  | 'AED'
+  | 'SAR'
+  | 'ZAR'
+  | 'TRY'
+  | 'SEK'
+  | 'NOK';
 
 export type LanguageCode = 'en-US' | 'en-GB' | 'fr-FR' | 'de-DE' | 'ja-JP';
 

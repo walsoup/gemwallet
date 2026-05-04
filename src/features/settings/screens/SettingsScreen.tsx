@@ -8,10 +8,14 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppTheme } from '../../../../providers/AppThemeProvider';
 import { CustomTopNav } from '../../../components/Navigation/CustomTopNav';
 import { downloadLiteRtModel, getLiteRtModel, isLiteRtModelCached } from '../../../features/nlp/services/liteRtModels';
+import { useRouter } from 'expo-router';
+import type { ThemePreference } from '../../../../types/finance';
+import { formatAppCurrency, SUPPORTED_CURRENCIES } from '../../../../utils/currency';
 
 export default function SettingsScreen() {
   const theme = useTheme<AppTheme>();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
 
   const localModelId = useSettingsStore((state) => state.localModelId);
   const localModelDownloaded = useSettingsStore((state) => state.localModelDownloaded);
@@ -26,6 +30,12 @@ export default function SettingsScreen() {
 
   const themePrimary = useSettingsStore((state) => state.themePrimary);
   const setThemePrimary = useSettingsStore((state) => state.setThemePrimary);
+
+  const themePreference = useSettingsStore((state) => state.themePreference);
+  const setThemePreference = useSettingsStore((state) => state.setThemePreference);
+
+  const currencyCode = useSettingsStore((state) => state.currencyCode);
+  const region = useSettingsStore((state) => state.region);
 
   const colors = [
     '#ff6b6b', // Coral Pink
@@ -164,6 +174,54 @@ export default function SettingsScreen() {
           <View style={[styles.sectionContent, { backgroundColor: theme.colors.surfaceContainer }]}>
             <View style={[styles.settingRow, { backgroundColor: theme.colors.surfaceContainer, flexDirection: 'column', alignItems: 'flex-start' }]}>
               <View style={[styles.settingRowLeft, { marginBottom: 16 }]}>
+                <MaterialCommunityIcons name="theme-light-dark" size={24} color={theme.colors.onSurfaceVariant} />
+                <View>
+                  <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>Theme</Text>
+                  <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>Light, Dark, or System default</Text>
+                </View>
+              </View>
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                {([
+                  { value: 'light', label: 'Light' },
+                  { value: 'dark', label: 'Dark' },
+                  { value: 'system', label: 'System' },
+                ] as const).map((option) => {
+                  const selected = themePreference === option.value;
+                  return (
+                    <Pressable
+                      key={option.value}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Set theme to ${option.label}`}
+                      style={({ pressed }) => [
+                        styles.chip,
+                        {
+                          backgroundColor: selected
+                            ? theme.colors.primaryContainer
+                            : pressed
+                              ? theme.colors.surfaceContainerHighest
+                              : theme.colors.surfaceContainerHigh,
+                        },
+                      ]}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setThemePreference(option.value as ThemePreference);
+                      }}
+                    >
+                      <Text style={{
+                        color: selected ? theme.colors.onPrimaryContainer : theme.colors.onSurface,
+                        fontFamily: 'BeVietnamPro_600SemiBold',
+                        fontSize: 14,
+                      }}>
+                        {option.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+
+            <View style={[styles.settingRow, { backgroundColor: theme.colors.surfaceContainer, flexDirection: 'column', alignItems: 'flex-start' }]}>
+              <View style={[styles.settingRowLeft, { marginBottom: 16 }]}>
                 <MaterialCommunityIcons name="palette" size={24} color={theme.colors.onSurfaceVariant} />
                 <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>Accent Color</Text>
               </View>
@@ -189,6 +247,62 @@ export default function SettingsScreen() {
                 })}
               </ScrollView>
             </View>
+          </View>
+        </View>
+
+        {/* Currency & Region Section */}
+        <View style={[styles.section, { backgroundColor: theme.colors.surfaceContainerLow }]}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.primary }]}>Currency & Region</Text>
+            <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>Change formatting across the app.</Text>
+          </View>
+          <View style={[styles.sectionContent, { backgroundColor: theme.colors.surfaceContainer }]}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.settingRow,
+                { backgroundColor: pressed ? theme.colors.surfaceContainerHigh : theme.colors.surfaceContainer },
+              ]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push('/settings/currency');
+              }}
+            >
+              <View style={styles.settingRowLeft}>
+                <MaterialCommunityIcons name="currency-usd" size={24} color={theme.colors.onSurfaceVariant} />
+                <View>
+                  <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>Currency</Text>
+                  <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>
+                    {currencyCode} • {SUPPORTED_CURRENCIES.find((item) => item.code === currencyCode)?.label ?? 'Selected'}
+                  </Text>
+                </View>
+              </View>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 12 }}>
+                  Example {formatAppCurrency(123456)}
+                </Text>
+                <MaterialCommunityIcons name="chevron-right" size={24} color={theme.colors.onSurfaceVariant} />
+              </View>
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.settingRow,
+                { backgroundColor: pressed ? theme.colors.surfaceContainerHigh : theme.colors.surfaceContainer },
+              ]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push('/settings/currency');
+              }}
+            >
+              <View style={styles.settingRowLeft}>
+                <MaterialCommunityIcons name="earth" size={24} color={theme.colors.onSurfaceVariant} />
+                <View>
+                  <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>Region</Text>
+                  <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>{region}</Text>
+                </View>
+              </View>
+              <MaterialCommunityIcons name="chevron-right" size={24} color={theme.colors.onSurfaceVariant} />
+            </Pressable>
           </View>
         </View>
 
@@ -294,5 +408,10 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 999,
   },
 });

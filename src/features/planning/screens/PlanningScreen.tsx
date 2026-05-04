@@ -8,6 +8,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppTheme } from '../../../../providers/AppThemeProvider';
 import { CustomTopNav } from '../../../components/Navigation/CustomTopNav';
 import * as Haptics from 'expo-haptics';
+import { formatAppCurrency } from '../../../../utils/currency';
 
 export default function PlanningScreen() {
   const theme = useTheme<AppTheme>();
@@ -135,10 +136,10 @@ export default function PlanningScreen() {
                     </View>
                     <View style={{ alignItems: 'flex-end' }}>
                       <Text style={{ color: theme.colors.onSurface, fontFamily: 'SpaceGrotesk_500Medium', fontSize: 18 }}>
-                        ${(goal.savedCents / 100).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        {formatAppCurrency(goal.savedCents)}
                       </Text>
                       <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 12 }}>
-                        of ${(goal.targetCents / 100).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        of {formatAppCurrency(goal.targetCents)}
                       </Text>
                     </View>
                   </View>
@@ -200,7 +201,7 @@ export default function PlanningScreen() {
                       fontFamily: 'SpaceGrotesk_500Medium',
                       fontSize: 18
                     }}>
-                      {isIncome ? '+' : '-'}${(event.amountCents / 100).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      {isIncome ? '+' : '-'}{formatAppCurrency(event.amountCents)}
                     </Text>
                     <Switch
                       value={event.enabled}

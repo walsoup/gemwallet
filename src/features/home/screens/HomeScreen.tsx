@@ -8,6 +8,7 @@ import * as Haptics from 'expo-haptics';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppTheme } from '../../../../providers/AppThemeProvider';
 import { CustomTopNav } from '../../../components/Navigation/CustomTopNav';
+import { formatAppCurrency } from '../../../../utils/currency';
 
 type QuickActionMode = 'income' | 'expense';
 
@@ -331,7 +332,7 @@ export default function HomeScreen() {
                     fontFamily: 'BeVietnamPro_500Medium',
                     fontSize: 16
                   }}>
-                    {isIncome ? '+' : '-'}${(tx.amountCents / 100).toFixed(2)}
+                    {isIncome ? '+' : '-'}{formatAppCurrency(tx.amountCents)}
                   </Text>
                 </Pressable>
               );
