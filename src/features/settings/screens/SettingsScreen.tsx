@@ -30,9 +30,16 @@ export default function SettingsScreen() {
 
   const themePrimary = useSettingsStore((state) => state.themePrimary);
   const setThemePrimary = useSettingsStore((state) => state.setThemePrimary);
+  const themeSecondary = useSettingsStore((state) => state.themeSecondary);
+  const setThemeSecondary = useSettingsStore((state) => state.setThemeSecondary);
 
   const themePreference = useSettingsStore((state) => state.themePreference);
   const setThemePreference = useSettingsStore((state) => state.setThemePreference);
+
+  const oledTrueBlackEnabled = useSettingsStore((state) => state.oledTrueBlackEnabled);
+  const setOledTrueBlackEnabled = useSettingsStore((state) => state.setOledTrueBlackEnabled);
+  const highContrastEnabled = useSettingsStore((state) => state.highContrastEnabled);
+  const setHighContrastEnabled = useSettingsStore((state) => state.setHighContrastEnabled);
 
   const currencyCode = useSettingsStore((state) => state.currencyCode);
   const region = useSettingsStore((state) => state.region);
@@ -42,6 +49,13 @@ export default function SettingsScreen() {
     '#06b6d4', // Vibrant Cyan
     '#8b5cf6', // Royal Purple
     '#f97316', // Sunset Orange
+  ];
+
+  const secondaryColors = [
+    '#52dea2', // Mint Green
+    '#fbbf24', // Amber
+    '#38bdf8', // Sky Blue
+    '#f472b6', // Pink
   ];
 
   return (
@@ -246,6 +260,76 @@ export default function SettingsScreen() {
                   );
                 })}
               </ScrollView>
+            </View>
+
+            <View style={[styles.settingRow, { backgroundColor: theme.colors.surfaceContainer, flexDirection: 'column', alignItems: 'flex-start' }]}>
+              <View style={[styles.settingRowLeft, { marginBottom: 16 }]}>
+                <MaterialCommunityIcons name="palette-swatch" size={24} color={theme.colors.onSurfaceVariant} />
+                <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>Secondary Accent</Text>
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 16 }}>
+                {secondaryColors.map((color) => {
+                  const isSelected = themeSecondary === color || (themeSecondary === '' && color === '#52dea2');
+                  return (
+                    <Pressable
+                      key={color}
+                      accessibilityRole="button"
+                      accessibilityLabel="Set secondary accent color"
+                      style={[
+                        styles.colorCircle,
+                        { backgroundColor: color },
+                        isSelected && { borderWidth: 2, borderColor: color, transform: [{ scale: 1.1 }] },
+                      ]}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setThemeSecondary(color);
+                      }}
+                    >
+                      {isSelected && <MaterialCommunityIcons name="check" size={24} color="#000000" />}
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </View>
+
+            <View style={[styles.settingRow, { backgroundColor: theme.colors.surfaceContainer }]}>
+              <View style={styles.settingRowLeft}>
+                <MaterialCommunityIcons name="contrast" size={24} color={theme.colors.onSurfaceVariant} />
+                <View>
+                  <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>High Contrast</Text>
+                  <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>Improve legibility</Text>
+                </View>
+              </View>
+              <Switch
+                value={highContrastEnabled}
+                onValueChange={(value) => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setHighContrastEnabled(value);
+                }}
+                trackColor={{ false: theme.colors.surfaceVariant, true: theme.colors.primaryContainer }}
+                thumbColor={theme.colors.onSurface}
+                accessibilityLabel={highContrastEnabled ? 'Disable high contrast' : 'Enable high contrast'}
+              />
+            </View>
+
+            <View style={[styles.settingRow, { backgroundColor: theme.colors.surfaceContainer }]}>
+              <View style={styles.settingRowLeft}>
+                <MaterialCommunityIcons name="brightness-4" size={24} color={theme.colors.onSurfaceVariant} />
+                <View>
+                  <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>True Black (OLED)</Text>
+                  <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>Dark theme only</Text>
+                </View>
+              </View>
+              <Switch
+                value={oledTrueBlackEnabled}
+                onValueChange={(value) => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setOledTrueBlackEnabled(value);
+                }}
+                trackColor={{ false: theme.colors.surfaceVariant, true: theme.colors.primaryContainer }}
+                thumbColor={theme.colors.onSurface}
+                accessibilityLabel={oledTrueBlackEnabled ? 'Disable true black' : 'Enable true black'}
+              />
             </View>
           </View>
         </View>
