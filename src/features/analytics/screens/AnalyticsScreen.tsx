@@ -73,7 +73,10 @@ export default function AnalyticsScreen() {
 
   // Top Movers Logic
   const topMovers = useMemo(() => {
-    const categoryTotals: Record<string, { total: number, count: number, name: string, icon: string }> = {};
+    const categoryTotals: Record<
+      string,
+      { id: string; total: number; count: number; name: string; icon: string }
+    > = {};
 
     transactions.forEach(tx => {
       if (tx.type === 'expense' && tx.timestamp >= startOfMonth) {
@@ -85,7 +88,7 @@ export default function AnalyticsScreen() {
             else if (cat.name === 'Shopping' || cat.name === 'Retail') icon = 'shopping';
             else if (cat.name === 'Transport' || cat.name === 'Transit') icon = 'train';
 
-            categoryTotals[cat.id] = { total: 0, count: 0, name: cat.name, icon };
+            categoryTotals[cat.id] = { id: cat.id, total: 0, count: 0, name: cat.name, icon };
           }
           categoryTotals[cat.id].total += tx.amountCents;
           categoryTotals[cat.id].count += 1;
@@ -97,6 +100,37 @@ export default function AnalyticsScreen() {
       .sort((a, b) => b.total - a.total)
       .slice(0, 3);
   }, [transactions, categories, startOfMonth]);
+
+  const moverPercentages = useMemo(() => {
+    const previousStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).getTime();
+    const previousEnd = startOfMonth;
+
+    const totalsForPeriod = (start: number, end: number) => {
+      const totals: Record<string, number> = {};
+      transactions.forEach((tx) => {
+        if (tx.type !== 'expense' || tx.timestamp < start || tx.timestamp >= end) return;
+        totals[tx.categoryId] = (totals[tx.categoryId] ?? 0) + tx.amountCents;
+      });
+      return totals;
+    };
+
+    const currentTotals = totalsForPeriod(startOfMonth, now.getTime());
+    const prevTotals = totalsForPeriod(previousStart, previousEnd);
+
+    const percentages: Record<string, number> = {};
+    Object.keys(currentTotals).forEach((categoryId) => {
+      const current = currentTotals[categoryId] ?? 0;
+      const previous = prevTotals[categoryId] ?? 0;
+
+      if (previous <= 0) {
+        percentages[categoryId] = current > 0 ? 100 : 0;
+      } else {
+        percentages[categoryId] = ((current - previous) / previous) * 100;
+      }
+    });
+
+    return percentages;
+  }, [now, startOfMonth, transactions]);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -182,10 +216,21 @@ export default function AnalyticsScreen() {
                   <Text style={{ color: theme.colors.onSurface, fontFamily: 'SpaceGrotesk_500Medium', fontSize: 16 }}>
                     -{formatAppCurrency(mover.total)}
                   </Text>
-                  {/* Fake percentage for UI compliance */}
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <MaterialCommunityIcons name="arrow-up" size={14} color={theme.colors.error} />
-                    <Text style={{ color: theme.colors.error, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>{12 - idx * 3}%</Text>
+                    {(() => {
+                      const delta = moverPercentages[mover.id] ?? 0;
+                      const isUp = delta >= 0;
+                      const abs = Math.min(999, Math.abs(delta));
+                      const display = `${abs.toFixed(0)}%`;
+                      const color = isUp ? theme.colors.error : theme.colors.tertiary;
+
+                      return (
+                        <>
+                          <MaterialCommunityIcons name={isUp ? 'arrow-up' : 'arrow-down'} size={14} color={color} />
+                          <Text style={{ color, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>{display}</Text>
+                        </>
+                      );
+                    })()}
                   </View>
                 </View>
               </Pressable>
