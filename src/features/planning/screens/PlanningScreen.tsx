@@ -50,7 +50,7 @@ export default function PlanningScreen() {
         <Pressable style={styles.modalBackdrop} onPress={closeNewGoal}>
           <Pressable
             style={[styles.modalCard, { backgroundColor: theme.colors.surfaceContainerHigh }]}
-            onPress={() => null}
+            onPress={() => undefined}
           >
             <Text variant="titleMedium" style={{ color: theme.colors.onSurface, marginBottom: 16 }}>
               New Savings Goal
