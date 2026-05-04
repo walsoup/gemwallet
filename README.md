@@ -1,47 +1,56 @@
-# GemWallet Native (Expo)
+# GemWallet
 
-Offline-first personal cash wallet built with Expo + React Native.
+GemWallet is an offline-first personal cash wallet. It’s built for tracking day-to-day spending with a quick “cash in / cash out” flow, without needing an account or an internet connection.
 
-## What’s implemented
+## What it does
 
-- PRD-style onboarding (set opening cash + optional voice toggle)
-- Single-screen dashboard with:
-  - Greeting app bar + settings access
-  - Hero available-cash card with zero/overdraft states
-  - Search + category chip filtering
-  - Sectioned transaction ledger grouped by day
-- Rebuilt FAB interactions:
-  - Tap: 2-phase manual expense flow (amount -> category instant-save)
-  - Long press: quick actions (add cash, settings, voice placeholder)
-- Add-cash flow with source chips and custom keypad
-- Undo snackbar after logging entries
-- Local-only persistence via Zustand + AsyncStorage
-- Settings for theme, OLED true black, high contrast, secure-access toggle, category management, and CSV preview export
+- Track your current cash balance
+- Log expenses in a couple taps
+- Add cash deposits and categorize where it came from
+- Browse and search your transaction history
 
-## Stack
+Everything is stored locally on your device.
 
-- Expo Router
-- React Native Paper (Material 3)
-- Zustand + AsyncStorage (offline local persistence)
+## Key features
 
-## Setup
+- **Fast expense logging**: enter an amount, pick a category, done
+- **Daily ledger**: transactions are grouped by day so you can scan quickly
+- **Search + category filters**: find past entries without scrolling forever
+- **Undo after logging**: quick “oops” recovery via snackbar
+- **Customizable look & feel**: theme options including OLED true black + high contrast
+- **Privacy-first**: offline local persistence (no accounts, no cloud)
+
+## How to use
+
+1. **Onboarding**: set your starting cash balance.
+2. **Log an expense**: use the main action button, enter the amount, then choose a category.
+3. **Add cash**: record deposits (optionally tagging the source).
+4. **Review history**: use search and category chips to filter your ledger.
+5. **Adjust settings**: theme, categories, and export/preview options live in Settings.
+
+## Getting started (development)
 
 ```bash
 npm install
 npm run start
 ```
 
-## Build/Lint
+## Lint / build
 
 ```bash
 npm run lint
 npm run build
 ```
 
-## Architecture (Migration Baseline)
+## Tech notes (for contributors)
 
-- Expo Router route files in `app` are now composition-only wrappers.
-- Feature logic is being moved into `src/features`.
-- Core migration contracts are staged in `src/core` for theme, DB, sync, crypto, and feature flags.
-- Current store/theming implementations remain as compatibility layers while SQLite/Drizzle, FlashList, and elite UI primitives are rolled out behind flags.
-- Detailed mapping and rollout slices are documented in `docs/architecture/elite-expo-migration.md`.
+- Built with Expo + React Native using Expo Router.
+- UI uses React Native Paper (Material 3).
+- State + persistence is handled with Zustand + AsyncStorage.
+
+### Architecture / migration notes
+
+- Expo Router route files in `app` are composition-only wrappers.
+- Feature logic lives under `src/features`.
+- Core migration contracts are staged in `src/core` (theme, DB, sync, crypto, flags).
+- Detailed rollout notes: `docs/architecture/elite-expo-migration.md`.
