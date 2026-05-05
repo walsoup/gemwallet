@@ -218,7 +218,7 @@ export default function AnalyticsScreen() {
                       const isUp = delta >= 0;
                       const abs = Math.min(999, Math.abs(delta));
                       const display = `${abs.toFixed(0)}%`;
-                      const color = isUp ? theme.colors.error : theme.colors.tertiary;
+                      const color = isUp ? theme.colors.tertiary : theme.colors.error;
 
                       return (
                         <>

@@ -9,6 +9,7 @@ import { AppThemeProvider } from '../providers/AppThemeProvider';
 import { BiometricGate } from '../providers/BiometricGate';
 import { useTransactionStore } from '../store/useTransactionStore';
 import { useSettingsStore } from '../store/useSettingsStore';
+import { useRecurringStore } from '../store/useRecurringStore';
 
 import { useFonts } from 'expo-font';
 import { SpaceGrotesk_300Light, SpaceGrotesk_400Regular, SpaceGrotesk_500Medium, SpaceGrotesk_600SemiBold, SpaceGrotesk_700Bold } from '@expo-google-fonts/space-grotesk';
@@ -24,6 +25,10 @@ function TabLayout() {
   useSafeAreaInsets();
   const hasCompletedOnboarding = useTransactionStore((state) => state.walletMeta.hasCompletedOnboarding);
   const aiFeaturesEnabled = useSettingsStore((state) => state.aiFeaturesEnabled);
+  const applyDueEvents = useRecurringStore((state) => state.applyDueEvents);
+  const recurringEnabled = useRecurringStore((state) => state.recurringEnabled);
+  const addExpense = useTransactionStore((state) => state.addExpense);
+  const addIncome = useTransactionStore((state) => state.addIncome);
 
   const [fontsLoaded] = useFonts({
     SpaceGrotesk_300Light, SpaceGrotesk_400Regular, SpaceGrotesk_500Medium, SpaceGrotesk_600SemiBold, SpaceGrotesk_700Bold,
@@ -44,6 +49,33 @@ function TabLayout() {
       router.replace('/onboarding');
     }
   }, [hasCompletedOnboarding, segments, router]);
+
+  useEffect(() => {
+    if (!hasCompletedOnboarding || !recurringEnabled) return;
+
+    const apply = () => {
+      applyDueEvents(Date.now(), (event) => {
+        if (event.type === 'income') {
+          addIncome({
+            amountCents: event.amountCents,
+            categoryId: event.categoryId,
+            note: `${event.name} (recurring)`,
+          });
+          return;
+        }
+
+        addExpense({
+          amountCents: event.amountCents,
+          categoryId: event.categoryId,
+          note: `${event.name} (recurring)`,
+        });
+      });
+    };
+
+    apply();
+    const interval = setInterval(apply, 60_000);
+    return () => clearInterval(interval);
+  }, [addExpense, addIncome, applyDueEvents, hasCompletedOnboarding, recurringEnabled]);
 
   if (!hasCompletedOnboarding || !fontsLoaded) {
     return <Tabs screenOptions={{ headerShown: false, tabBarStyle: { display: 'none' } }} />;

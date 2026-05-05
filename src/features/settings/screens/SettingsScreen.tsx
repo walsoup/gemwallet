@@ -21,6 +21,8 @@ export default function SettingsScreen() {
   const theme = useTheme<AppTheme>();
   const router = useRouter();
 
+  const [cloudSyncPopupDismissed, setCloudSyncPopupDismissed] = React.useState(false);
+
   const localModelId = useSettingsStore((state) => state.localModelId);
   const localModelDownloaded = useSettingsStore((state) => state.localModelDownloaded);
   const setLocalModelDownloaded = useSettingsStore((state) => state.setLocalModelDownloaded);
@@ -526,6 +528,55 @@ export default function SettingsScreen() {
                 accessibilityLabel={notificationsBudgetWarnings ? 'Disable budget warnings' : 'Enable budget warnings'}
               />
             </View>
+          </View>
+        </View>
+
+        {/* Data & Sync Section */}
+        <View style={[styles.section, { backgroundColor: theme.colors.surfaceContainerLow }]}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.primary }]}>Data &amp; Sync</Text>
+            <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>
+              Backups, sharing, and sync.
+            </Text>
+          </View>
+          <View style={[styles.sectionContent, { backgroundColor: theme.colors.surfaceContainer }]}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.settingRow,
+                { backgroundColor: pressed ? theme.colors.surfaceContainerHigh : theme.colors.surfaceContainer },
+              ]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+                if (cloudSyncPopupDismissed) {
+                  setCloudSyncPopupDismissed(false);
+                  return;
+                }
+
+                Alert.alert(
+                  'Cloud Sync (needs infrastructure)',
+                  'End-to-end encrypted cloud sync requires backend infrastructure (account identity + storage + conflict resolution).\n\nGemwallet currently runs fully on-device, so cloud sync is not available yet.',
+                  [
+                    {
+                      text: 'Dismiss',
+                      onPress: () => setCloudSyncPopupDismissed(true),
+                    },
+                    { text: 'OK', style: 'cancel' },
+                  ]
+                );
+              }}
+            >
+              <View style={styles.settingRowLeft}>
+                <MaterialCommunityIcons name="cloud-outline" size={24} color={theme.colors.onSurfaceVariant} />
+                <View>
+                  <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>Cloud Sync</Text>
+                  <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>
+                    Not available (tap to learn why)
+                  </Text>
+                </View>
+              </View>
+              <MaterialCommunityIcons name="information-outline" size={24} color={theme.colors.onSurfaceVariant} />
+            </Pressable>
           </View>
         </View>
 

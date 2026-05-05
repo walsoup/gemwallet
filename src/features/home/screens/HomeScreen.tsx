@@ -228,7 +228,7 @@ export default function HomeScreen() {
                   ${vacationGoal ? (vacationGoal.savedCents / 100).toLocaleString() : '0'}
                 </Text>
                 <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 18, fontFamily: 'SpaceGrotesk_500Medium' }}>
-                  / ${vacationGoal ? (vacationGoal.targetCents / 100000).toLocaleString() + 'k' : '0'}
+                  / ${vacationGoal ? (vacationGoal.targetCents / 100).toLocaleString() : '0'}
                 </Text>
               </View>
               <View style={[styles.progressBarBg, { backgroundColor: theme.colors.surfaceContainerHighest }]}>
