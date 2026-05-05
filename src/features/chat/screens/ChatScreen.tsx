@@ -4,6 +4,8 @@ import { Text, TextInput, IconButton, useTheme, Surface } from 'react-native-pap
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTransactionStore } from '../../../../store/useTransactionStore';
 import { useSettingsStore } from '../../../../store/useSettingsStore';
+import { useRecurringStore } from '../../../../store/useRecurringStore';
+import { useGoalsStore } from '../../../../store/useGoalsStore';
 import { streamFinancialAnalysis, streamLocalFinancialAnalysis } from '../../nlp/services/gemmaAnalysis';
 
 type ChatMessage = {
@@ -21,8 +23,11 @@ export default function ChatScreen() {
   const addIncome = useTransactionStore((s) => s.addIncome);
   const categories = useTransactionStore((s) => s.categories);
 
+  const addRecurringEvent = useRecurringStore((s) => s.addEvent);
+  const setRecurringEnabled = useRecurringStore((s) => s.setRecurringEnabled);
+  const addGoal = useGoalsStore((s) => s.addGoal);
+
   const aiProvider = useSettingsStore((s) => s.aiProvider);
-  const geminiApiKey = useSettingsStore((s) => s.geminiApiKey);
   const huggingFaceToken = useSettingsStore((s) => s.huggingFaceToken);
   const currencyCode = useSettingsStore((s) => s.currencyCode);
   const locale = useSettingsStore((s) => s.language);
@@ -45,7 +50,6 @@ export default function ChatScreen() {
   const settings = useMemo(
     () => ({
       aiProvider,
-      geminiApiKey,
       huggingFaceToken,
       currencyCode,
       locale,
@@ -57,7 +61,6 @@ export default function ChatScreen() {
     }),
     [
       aiProvider,
-      geminiApiKey,
       huggingFaceToken,
       currencyCode,
       locale,
@@ -121,6 +124,20 @@ export default function ChatScreen() {
               categoryId: resolveCategoryId(categoryHint, 'income'),
               note,
             });
+          },
+          onRecurring: ({ name, amountCents, type, interval, categoryHint, startDate }) => {
+            addRecurringEvent({
+              name,
+              amountCents,
+              type,
+              interval,
+              categoryId: resolveCategoryId(categoryHint ?? (type === 'income' ? 'Custom' : 'Misc'), type),
+              startDate,
+            });
+            setRecurringEnabled(true);
+          },
+          onGoal: ({ name, targetCents, dueDate }) => {
+            addGoal({ name, targetCents, dueDate });
           },
         },
         question

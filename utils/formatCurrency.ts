@@ -15,7 +15,6 @@ export function formatCurrency(amountCents: number, { currencyCode, locale }: Cu
       maximumFractionDigits: 2,
     }).format(amount);
   } catch (error) {
-    console.warn('Currency formatting fell back to simple formatter', error);
     return `${currencyCode} ${amount.toFixed(2)}`;
   }
 }

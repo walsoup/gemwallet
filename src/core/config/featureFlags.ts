@@ -8,11 +8,11 @@ export type FeatureFlagKey =
 export type FeatureFlagState = Record<FeatureFlagKey, boolean>;
 
 export const featureFlags: FeatureFlagState = {
-  elite_ui_foundations: false,
-  sqlite_domain_store: false,
-  flashlist_ledger: false,
+  elite_ui_foundations: true,
+  sqlite_domain_store: true,
+  flashlist_ledger: true,
   encrypted_sync: false,
-  on_device_ai_bridge: false,
+  on_device_ai_bridge: true,
 };
 
 export function isFeatureEnabled(flag: FeatureFlagKey): boolean {

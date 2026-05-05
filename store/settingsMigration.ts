@@ -9,13 +9,17 @@ export type SettingsPersistedShape = {
   themePrimary: string;
   themeSecondary: string;
   secureAccessEnabled: boolean;
+  biometricAuthEnabled: boolean;
+  notificationsTransactionAlerts: boolean;
+  notificationsWeeklySummary: boolean;
+  notificationsSavingsGoalProgress: boolean;
+  notificationsBudgetWarnings: boolean;
   passcodeEnabled: boolean;
   passcodePin: string;
   currencyCode: CurrencyCode;
   language: LanguageCode;
   region: RegionCode;
   aiProvider: AiProvider;
-  geminiApiKey: string;
   aiFeaturesEnabled: boolean;
   huggingFaceToken: string;
   gemmaModel: string;
@@ -33,6 +37,11 @@ export const defaultSettingsState: SettingsPersistedShape = {
   oledTrueBlackEnabled: true,
   highContrastEnabled: false,
   secureAccessEnabled: false,
+  biometricAuthEnabled: false,
+  notificationsTransactionAlerts: true,
+  notificationsWeeklySummary: true,
+  notificationsSavingsGoalProgress: true,
+  notificationsBudgetWarnings: true,
   passcodeEnabled: false,
   passcodePin: '',
   currencyCode: 'USD',
@@ -41,7 +50,6 @@ export const defaultSettingsState: SettingsPersistedShape = {
   aiProvider: 'google',
   themePrimary: '#ff6b6b',
   themeSecondary: '#52dea2',
-  geminiApiKey: '',
   aiFeaturesEnabled: false,
   huggingFaceToken: '',
   gemmaModel: 'gemma-4-31b-it',
@@ -74,7 +82,6 @@ export function migrateSettingsState(persistedState: unknown): SettingsPersisted
     aiProvider,
     themePrimary: legacy.themePrimary ?? defaultSettingsState.themePrimary,
     themeSecondary: legacy.themeSecondary ?? defaultSettingsState.themeSecondary,
-    geminiApiKey: legacy.geminiApiKey ?? '',
     huggingFaceToken: legacy.huggingFaceToken ?? '',
     gemmaModel: legacy.gemmaModel ?? defaultSettingsState.gemmaModel,
     localModelId: legacy.localModelId ?? defaultSettingsState.localModelId,
@@ -86,6 +93,19 @@ export function migrateSettingsState(persistedState: unknown): SettingsPersisted
     region: legacy.region ?? defaultSettingsState.region,
     passcodeEnabled: legacy.passcodeEnabled ?? defaultSettingsState.passcodeEnabled,
     passcodePin: legacy.passcodePin ?? defaultSettingsState.passcodePin,
+    biometricAuthEnabled: (legacy as Partial<SettingsPersistedShape>).biometricAuthEnabled ?? defaultSettingsState.biometricAuthEnabled,
+    notificationsTransactionAlerts:
+      (legacy as Partial<SettingsPersistedShape>).notificationsTransactionAlerts ??
+      defaultSettingsState.notificationsTransactionAlerts,
+    notificationsWeeklySummary:
+      (legacy as Partial<SettingsPersistedShape>).notificationsWeeklySummary ??
+      defaultSettingsState.notificationsWeeklySummary,
+    notificationsSavingsGoalProgress:
+      (legacy as Partial<SettingsPersistedShape>).notificationsSavingsGoalProgress ??
+      defaultSettingsState.notificationsSavingsGoalProgress,
+    notificationsBudgetWarnings:
+      (legacy as Partial<SettingsPersistedShape>).notificationsBudgetWarnings ??
+      defaultSettingsState.notificationsBudgetWarnings,
     advancedSummariesEnabled:
       legacy.advancedSummariesEnabled ?? defaultSettingsState.advancedSummariesEnabled,
     includeNotesInExport: legacy.includeNotesInExport ?? defaultSettingsState.includeNotesInExport,

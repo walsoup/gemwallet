@@ -1,31 +1,92 @@
 import React from 'react';
-import { ScrollView, StyleSheet, View, Pressable, Switch } from 'react-native';
-import { Text, useTheme } from 'react-native-paper';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScrollView, StyleSheet, View, Pressable, Switch, Alert } from 'react-native';
+import { Text, useTheme, TextInput } from 'react-native-paper';
 import { useSettingsStore } from '../../../../store/useSettingsStore';
+import { useTransactionStore } from '../../../../store/useTransactionStore';
 import * as Haptics from 'expo-haptics';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppTheme } from '../../../../providers/AppThemeProvider';
-import { CustomTopNav } from '../../../components/Navigation/CustomTopNav';
+import { ScreenLayout } from '../../../components/Layout/ScreenLayout';
 import { downloadLiteRtModel, getLiteRtModel, isLiteRtModelCached } from '../../../features/nlp/services/liteRtModels';
+import { useRouter } from 'expo-router';
+import type { ThemePreference } from '../../../../types/finance';
+import { formatAppCurrency, SUPPORTED_CURRENCIES } from '../../../../utils/currency';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
+import * as Linking from 'expo-linking';
+import appConfig from '../../../../app.json';
+import { exportTransactionsCsv } from '../../../../utils/exportTransactionsCsv';
+import { deleteGeminiApiKey, getGeminiApiKey, setGeminiApiKey } from '../../../../services/secureGeminiKey';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export default function SettingsScreen() {
   const theme = useTheme<AppTheme>();
-  const insets = useSafeAreaInsets();
+  const router = useRouter();
+
+  const [cloudSyncPopupDismissed, setCloudSyncPopupDismissed] = React.useState(false);
 
   const localModelId = useSettingsStore((state) => state.localModelId);
   const localModelDownloaded = useSettingsStore((state) => state.localModelDownloaded);
   const setLocalModelDownloaded = useSettingsStore((state) => state.setLocalModelDownloaded);
   const huggingFaceToken = useSettingsStore((state) => state.huggingFaceToken);
 
+  const aiProvider = useSettingsStore((state) => state.aiProvider);
+  const setAiProvider = useSettingsStore((state) => state.setAiProvider);
+  const aiFeaturesEnabled = useSettingsStore((state) => state.aiFeaturesEnabled);
+  const setAiFeaturesEnabled = useSettingsStore((state) => state.setAiFeaturesEnabled);
+
+  const [geminiKeyDraft, setGeminiKeyDraft] = React.useState('');
+  const [geminiKeyVisible, setGeminiKeyVisible] = React.useState(false);
+  const [geminiKeyTestStatus, setGeminiKeyTestStatus] = React.useState<null | {
+    kind: 'success' | 'error';
+    message: string;
+  }>(null);
+
+  React.useEffect(() => {
+    return () => {
+      setGeminiKeyDraft('');
+      setGeminiKeyVisible(false);
+      setGeminiKeyTestStatus(null);
+    };
+  }, []);
+
   const smartCategorizationEnabled = useSettingsStore((state) => state.smartCategorizationEnabled);
   const setSmartCategorizationEnabled = useSettingsStore((state) => state.setSmartCategorizationEnabled);
 
-  const secureAccessEnabled = useSettingsStore((state) => state.secureAccessEnabled);
-  const setSecureAccessEnabled = useSettingsStore((state) => state.setSecureAccessEnabled);
+  const biometricAuthEnabled = useSettingsStore((state) => state.biometricAuthEnabled);
+  const setBiometricAuthEnabled = useSettingsStore((state) => state.setBiometricAuthEnabled);
 
   const themePrimary = useSettingsStore((state) => state.themePrimary);
   const setThemePrimary = useSettingsStore((state) => state.setThemePrimary);
+  const themeSecondary = useSettingsStore((state) => state.themeSecondary);
+  const setThemeSecondary = useSettingsStore((state) => state.setThemeSecondary);
+
+  const themePreference = useSettingsStore((state) => state.themePreference);
+  const setThemePreference = useSettingsStore((state) => state.setThemePreference);
+
+  const oledTrueBlackEnabled = useSettingsStore((state) => state.oledTrueBlackEnabled);
+  const setOledTrueBlackEnabled = useSettingsStore((state) => state.setOledTrueBlackEnabled);
+  const highContrastEnabled = useSettingsStore((state) => state.highContrastEnabled);
+  const setHighContrastEnabled = useSettingsStore((state) => state.setHighContrastEnabled);
+
+  const currencyCode = useSettingsStore((state) => state.currencyCode);
+  const region = useSettingsStore((state) => state.region);
+
+  const includeNotesInExport = useSettingsStore((state) => state.includeNotesInExport);
+
+  const transactions = useTransactionStore((state) => state.transactions);
+  const categories = useTransactionStore((state) => state.categories);
+  const clearAllTransactions = useTransactionStore((state) => state.clearAllData);
+  const resetSettings = useSettingsStore((state) => state.resetSettings);
+
+  const notificationsTransactionAlerts = useSettingsStore((state) => state.notificationsTransactionAlerts);
+  const setNotificationsTransactionAlerts = useSettingsStore((state) => state.setNotificationsTransactionAlerts);
+  const notificationsWeeklySummary = useSettingsStore((state) => state.notificationsWeeklySummary);
+  const setNotificationsWeeklySummary = useSettingsStore((state) => state.setNotificationsWeeklySummary);
+  const notificationsSavingsGoalProgress = useSettingsStore((state) => state.notificationsSavingsGoalProgress);
+  const setNotificationsSavingsGoalProgress = useSettingsStore((state) => state.setNotificationsSavingsGoalProgress);
+  const notificationsBudgetWarnings = useSettingsStore((state) => state.notificationsBudgetWarnings);
+  const setNotificationsBudgetWarnings = useSettingsStore((state) => state.setNotificationsBudgetWarnings);
 
   const colors = [
     '#ff6b6b', // Coral Pink
@@ -34,11 +95,16 @@ export default function SettingsScreen() {
     '#f97316', // Sunset Orange
   ];
 
-  return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <CustomTopNav title="Good morning" />
+  const secondaryColors = [
+    '#52dea2', // Mint Green
+    '#fbbf24', // Amber
+    '#38bdf8', // Sky Blue
+    '#f472b6', // Pink
+  ];
 
-      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 60 }]}>
+  return (
+    <ScreenLayout title="Good morning" backgroundColor={theme.colors.background}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
 
         <View style={styles.header}>
           <Text variant="displayMedium" style={[styles.title, { color: theme.colors.onSurface }]}>
@@ -130,18 +196,21 @@ export default function SettingsScreen() {
                 </View>
               </View>
               <Switch
-                value={secureAccessEnabled}
+                value={biometricAuthEnabled}
                 onValueChange={(val) => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setSecureAccessEnabled(val);
+                  setBiometricAuthEnabled(val);
                 }}
                 trackColor={{ false: theme.colors.surfaceContainerHighest, true: theme.colors.primary }}
-                thumbColor={secureAccessEnabled ? '#000000' : theme.colors.onSurfaceVariant}
+                thumbColor={biometricAuthEnabled ? '#000000' : theme.colors.onSurfaceVariant}
               />
             </View>
             <Pressable
               style={({pressed}) => [styles.settingRow, { backgroundColor: pressed ? theme.colors.surfaceContainerHigh : theme.colors.surfaceContainer }]}
-              onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push('/settings/change-passcode');
+              }}
             >
               <View style={styles.settingRowLeft}>
                 <MaterialCommunityIcons name="lock-outline" size={24} color={theme.colors.onSurfaceVariant} />
@@ -162,6 +231,54 @@ export default function SettingsScreen() {
             <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>Personalize your interface.</Text>
           </View>
           <View style={[styles.sectionContent, { backgroundColor: theme.colors.surfaceContainer }]}>
+            <View style={[styles.settingRow, { backgroundColor: theme.colors.surfaceContainer, flexDirection: 'column', alignItems: 'flex-start' }]}>
+              <View style={[styles.settingRowLeft, { marginBottom: 16 }]}>
+                <MaterialCommunityIcons name="theme-light-dark" size={24} color={theme.colors.onSurfaceVariant} />
+                <View>
+                  <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>Theme</Text>
+                  <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>Light, Dark, or System default</Text>
+                </View>
+              </View>
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                {([
+                  { value: 'light', label: 'Light' },
+                  { value: 'dark', label: 'Dark' },
+                  { value: 'system', label: 'System' },
+                ] as const).map((option) => {
+                  const selected = themePreference === option.value;
+                  return (
+                    <Pressable
+                      key={option.value}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Set theme to ${option.label}`}
+                      style={({ pressed }) => [
+                        styles.chip,
+                        {
+                          backgroundColor: selected
+                            ? theme.colors.primaryContainer
+                            : pressed
+                              ? theme.colors.surfaceContainerHighest
+                              : theme.colors.surfaceContainerHigh,
+                        },
+                      ]}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setThemePreference(option.value as ThemePreference);
+                      }}
+                    >
+                      <Text style={{
+                        color: selected ? theme.colors.onPrimaryContainer : theme.colors.onSurface,
+                        fontFamily: 'BeVietnamPro_600SemiBold',
+                        fontSize: 14,
+                      }}>
+                        {option.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+
             <View style={[styles.settingRow, { backgroundColor: theme.colors.surfaceContainer, flexDirection: 'column', alignItems: 'flex-start' }]}>
               <View style={[styles.settingRowLeft, { marginBottom: 16 }]}>
                 <MaterialCommunityIcons name="palette" size={24} color={theme.colors.onSurfaceVariant} />
@@ -189,6 +306,585 @@ export default function SettingsScreen() {
                 })}
               </ScrollView>
             </View>
+
+            <View style={[styles.settingRow, { backgroundColor: theme.colors.surfaceContainer, flexDirection: 'column', alignItems: 'flex-start' }]}>
+              <View style={[styles.settingRowLeft, { marginBottom: 16 }]}>
+                <MaterialCommunityIcons name="palette-swatch" size={24} color={theme.colors.onSurfaceVariant} />
+                <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>Secondary Accent</Text>
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 16 }}>
+                {secondaryColors.map((color) => {
+                  const isSelected = themeSecondary === color || (themeSecondary === '' && color === '#52dea2');
+                  return (
+                    <Pressable
+                      key={color}
+                      accessibilityRole="button"
+                      accessibilityLabel="Set secondary accent color"
+                      style={[
+                        styles.colorCircle,
+                        { backgroundColor: color },
+                        isSelected && { borderWidth: 2, borderColor: color, transform: [{ scale: 1.1 }] },
+                      ]}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setThemeSecondary(color);
+                      }}
+                    >
+                      {isSelected && <MaterialCommunityIcons name="check" size={24} color="#000000" />}
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </View>
+
+            <View style={[styles.settingRow, { backgroundColor: theme.colors.surfaceContainer }]}>
+              <View style={styles.settingRowLeft}>
+                <MaterialCommunityIcons name="contrast" size={24} color={theme.colors.onSurfaceVariant} />
+                <View>
+                  <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>High Contrast</Text>
+                  <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>Improve legibility</Text>
+                </View>
+              </View>
+              <Switch
+                value={highContrastEnabled}
+                onValueChange={(value) => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setHighContrastEnabled(value);
+                }}
+                trackColor={{ false: theme.colors.surfaceVariant, true: theme.colors.primaryContainer }}
+                thumbColor={theme.colors.onSurface}
+                accessibilityLabel={highContrastEnabled ? 'Disable high contrast' : 'Enable high contrast'}
+              />
+            </View>
+
+            <View style={[styles.settingRow, { backgroundColor: theme.colors.surfaceContainer }]}>
+              <View style={styles.settingRowLeft}>
+                <MaterialCommunityIcons name="brightness-4" size={24} color={theme.colors.onSurfaceVariant} />
+                <View>
+                  <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>True Black (OLED)</Text>
+                  <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>Dark theme only</Text>
+                </View>
+              </View>
+              <Switch
+                value={oledTrueBlackEnabled}
+                onValueChange={(value) => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setOledTrueBlackEnabled(value);
+                }}
+                trackColor={{ false: theme.colors.surfaceVariant, true: theme.colors.primaryContainer }}
+                thumbColor={theme.colors.onSurface}
+                accessibilityLabel={oledTrueBlackEnabled ? 'Disable true black' : 'Enable true black'}
+              />
+            </View>
+          </View>
+        </View>
+
+        {/* AI & Assistant Section */}
+        <View style={[styles.section, { backgroundColor: theme.colors.surfaceContainerLow }]}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.primary }]}>AI &amp; Assistant</Text>
+            <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>
+              Choose the model provider.
+            </Text>
+          </View>
+          <View style={[styles.sectionContent, { backgroundColor: theme.colors.surfaceContainer }]}>
+            <View style={[styles.settingRow, { backgroundColor: theme.colors.surfaceContainer, flexDirection: 'column', alignItems: 'flex-start' }]}>
+              <View style={[styles.settingRowLeft, { marginBottom: 16 }]}>
+                <MaterialCommunityIcons name="robot" size={24} color={theme.colors.onSurfaceVariant} />
+                <View>
+                  <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>Model Provider</Text>
+                  <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>
+                    Local model or Gemini API
+                  </Text>
+                </View>
+              </View>
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                {([
+                  { value: 'local', label: 'Local Model' },
+                  { value: 'google', label: 'Cloud API (Gemini)' },
+                ] as const).map((option) => {
+                  const selected = aiProvider === option.value;
+                  return (
+                    <Pressable
+                      key={option.value}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Set model provider to ${option.label}`}
+                      style={({ pressed }) => [
+                        styles.chip,
+                        {
+                          backgroundColor: selected
+                            ? theme.colors.primaryContainer
+                            : pressed
+                              ? theme.colors.surfaceContainerHighest
+                              : theme.colors.surfaceContainerHigh,
+                        },
+                      ]}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setAiProvider(option.value);
+                      }}
+                    >
+                      <Text style={{
+                        color: selected ? theme.colors.onPrimaryContainer : theme.colors.onSurface,
+                        fontFamily: 'BeVietnamPro_600SemiBold',
+                        fontSize: 14,
+                      }}>
+                        {option.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+
+            <View style={[styles.settingRow, { backgroundColor: theme.colors.surfaceContainer }]}>
+              <View style={styles.settingRowLeft}>
+                <MaterialCommunityIcons name="message-text-outline" size={24} color={theme.colors.onSurfaceVariant} />
+                <View>
+                  <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>AI Assistant</Text>
+                  <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>
+                    Show Chat tab
+                  </Text>
+                </View>
+              </View>
+              <Switch
+                value={aiFeaturesEnabled}
+                onValueChange={(value) => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setAiFeaturesEnabled(value);
+                }}
+                trackColor={{ false: theme.colors.surfaceVariant, true: theme.colors.primaryContainer }}
+                thumbColor={theme.colors.onSurface}
+                accessibilityLabel={aiFeaturesEnabled ? 'Disable AI assistant' : 'Enable AI assistant'}
+              />
+            </View>
+
+            {aiProvider === 'google' && (
+              <View style={[styles.settingRow, { backgroundColor: theme.colors.surfaceContainer, flexDirection: 'column', alignItems: 'flex-start' }]}>
+                <View style={[styles.settingRowLeft, { marginBottom: 12 }]}>
+                  <MaterialCommunityIcons name="key-outline" size={24} color={theme.colors.onSurfaceVariant} />
+                  <View>
+                    <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>Gemini API Key</Text>
+                    <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>
+                      Stored securely on-device
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={{ width: '100%', gap: 10 }}>
+                  <View style={{ width: '100%', flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                    <View style={{ flex: 1 }}>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel="Edit Gemini API key"
+                        onPress={() => {
+                          // no-op; input is below
+                        }}
+                      >
+                        <View
+                          style={{
+                            borderWidth: 1,
+                            borderColor: theme.colors.outlineVariant + '4D',
+                            borderRadius: 14,
+                            paddingHorizontal: 12,
+                            paddingVertical: 12,
+                            backgroundColor: theme.colors.surfaceContainerLowest,
+                          }}
+                        >
+                          <Text
+                            style={{
+                              color: theme.colors.onSurface,
+                              fontFamily: 'BeVietnamPro_400Regular',
+                            }}
+                          >
+                            {geminiKeyDraft
+                              ? geminiKeyVisible
+                                ? geminiKeyDraft
+                                : '••••••••••••••••'
+                              : 'Tap to paste/type key below'}
+                          </Text>
+                        </View>
+                      </Pressable>
+                    </View>
+
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={geminiKeyVisible ? 'Hide API key' : 'Show API key'}
+                      style={({ pressed }) => ({
+                        padding: 10,
+                        borderRadius: 14,
+                        backgroundColor: pressed
+                          ? theme.colors.surfaceContainerHighest
+                          : theme.colors.surfaceContainerHigh,
+                      })}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setGeminiKeyVisible((v) => !v);
+                      }}
+                    >
+                      <MaterialCommunityIcons
+                        name={geminiKeyVisible ? 'eye-off-outline' : 'eye-outline'}
+                        size={22}
+                        color={theme.colors.onSurfaceVariant}
+                      />
+                    </Pressable>
+                  </View>
+
+                  <TextInput
+                    mode="outlined"
+                    label="Gemini API Key"
+                    value={geminiKeyDraft}
+                    onChangeText={(value) => {
+                      setGeminiKeyDraft(value);
+                      setGeminiKeyTestStatus(null);
+                    }}
+                    secureTextEntry={!geminiKeyVisible}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    textContentType="password"
+                    placeholder="Paste your key"
+                    right={
+                      <TextInput.Icon
+                        icon={geminiKeyVisible ? 'eye-off-outline' : 'eye-outline'}
+                        accessibilityLabel={geminiKeyVisible ? 'Hide API key' : 'Show API key'}
+                        onPress={() => {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          setGeminiKeyVisible((v) => !v);
+                        }}
+                      />
+                    }
+                  />
+
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Save Gemini API key"
+                      style={({ pressed }) => ({
+                        paddingHorizontal: 14,
+                        paddingVertical: 10,
+                        borderRadius: 14,
+                        backgroundColor: pressed ? theme.colors.primaryContainer : theme.colors.primary,
+                      })}
+                      onPress={async () => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setGeminiKeyTestStatus(null);
+                        try {
+                          await setGeminiApiKey(geminiKeyDraft);
+                          setGeminiKeyDraft('');
+                        } catch {
+                          setGeminiKeyTestStatus({ kind: 'error', message: 'Failed to save key.' });
+                        }
+                      }}
+                    >
+                      <Text style={{ color: theme.colors.onPrimary, fontFamily: 'BeVietnamPro_600SemiBold' }}>Save</Text>
+                    </Pressable>
+
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Delete saved Gemini API key"
+                      style={({ pressed }) => ({
+                        paddingHorizontal: 14,
+                        paddingVertical: 10,
+                        borderRadius: 14,
+                        backgroundColor: pressed ? theme.colors.surfaceContainerHighest : theme.colors.surfaceContainerHigh,
+                      })}
+                      onPress={async () => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setGeminiKeyTestStatus(null);
+                        try {
+                          await deleteGeminiApiKey();
+                          setGeminiKeyDraft('');
+                          setGeminiKeyVisible(false);
+                          setGeminiKeyTestStatus({ kind: 'success', message: 'Saved key deleted.' });
+                        } catch {
+                          setGeminiKeyTestStatus({ kind: 'error', message: 'Failed to delete key.' });
+                        }
+                      }}
+                    >
+                      <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold' }}>Delete Saved Key</Text>
+                    </Pressable>
+
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Test Gemini API connection"
+                      style={({ pressed }) => ({
+                        paddingHorizontal: 14,
+                        paddingVertical: 10,
+                        borderRadius: 14,
+                        backgroundColor: pressed ? theme.colors.surfaceContainerHighest : theme.colors.surfaceContainerHigh,
+                      })}
+                      onPress={async () => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setGeminiKeyTestStatus(null);
+                        const key = await getGeminiApiKey();
+                        if (!key) {
+                          setGeminiKeyTestStatus({ kind: 'error', message: 'No saved key found. Tap Save first.' });
+                          return;
+                        }
+
+                        try {
+                          const genAI = new GoogleGenerativeAI(key);
+                          const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+                          await model.generateContent({
+                            contents: [{ role: 'user', parts: [{ text: 'ping' }] }],
+                            generationConfig: { maxOutputTokens: 1, temperature: 0 },
+                          });
+                          setGeminiKeyTestStatus({ kind: 'success', message: 'Connection ok.' });
+                        } catch (error: any) {
+                          const message = typeof error?.message === 'string' ? error.message : 'Unknown error';
+                          if (message.toLowerCase().includes('api key') || message.toLowerCase().includes('permission')) {
+                            setGeminiKeyTestStatus({ kind: 'error', message: 'Invalid API key.' });
+                          } else if (message.toLowerCase().includes('quota') || message.toLowerCase().includes('resource')) {
+                            setGeminiKeyTestStatus({ kind: 'error', message: 'Quota exceeded or resource unavailable.' });
+                          } else if (message.toLowerCase().includes('network') || message.toLowerCase().includes('fetch')) {
+                            setGeminiKeyTestStatus({ kind: 'error', message: 'Network error.' });
+                          } else {
+                            setGeminiKeyTestStatus({ kind: 'error', message: `Connection failed: ${message}` });
+                          }
+                        }
+                      }}
+                    >
+                      <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold' }}>Test Connection</Text>
+                    </Pressable>
+                  </View>
+
+                  {geminiKeyTestStatus && (
+                    <Text
+                      style={{
+                        color: geminiKeyTestStatus.kind === 'success' ? theme.colors.tertiary : theme.colors.error,
+                        fontFamily: 'BeVietnamPro_500Medium',
+                        marginTop: 4,
+                      }}
+                    >
+                      {geminiKeyTestStatus.message}
+                    </Text>
+                  )}
+                </View>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Currency & Region Section */}
+        <View style={[styles.section, { backgroundColor: theme.colors.surfaceContainerLow }]}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.primary }]}>Currency & Region</Text>
+            <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>Change formatting across the app.</Text>
+          </View>
+          <View style={[styles.sectionContent, { backgroundColor: theme.colors.surfaceContainer }]}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.settingRow,
+                { backgroundColor: pressed ? theme.colors.surfaceContainerHigh : theme.colors.surfaceContainer },
+              ]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push('/settings/currency');
+              }}
+            >
+              <View style={styles.settingRowLeft}>
+                <MaterialCommunityIcons name="currency-usd" size={24} color={theme.colors.onSurfaceVariant} />
+                <View>
+                  <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>Currency</Text>
+                  <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>
+                    {currencyCode} • {SUPPORTED_CURRENCIES.find((item) => item.code === currencyCode)?.label ?? 'Selected'}
+                  </Text>
+                </View>
+              </View>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 12 }}>
+                  Example {formatAppCurrency(123456)}
+                </Text>
+                <MaterialCommunityIcons name="chevron-right" size={24} color={theme.colors.onSurfaceVariant} />
+              </View>
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.settingRow,
+                { backgroundColor: pressed ? theme.colors.surfaceContainerHigh : theme.colors.surfaceContainer },
+              ]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push('/settings/currency');
+              }}
+            >
+              <View style={styles.settingRowLeft}>
+                <MaterialCommunityIcons name="earth" size={24} color={theme.colors.onSurfaceVariant} />
+                <View>
+                  <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>Region</Text>
+                  <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>{region}</Text>
+                </View>
+              </View>
+              <MaterialCommunityIcons name="chevron-right" size={24} color={theme.colors.onSurfaceVariant} />
+            </Pressable>
+          </View>
+        </View>
+
+        {/* Categories Section */}
+        <View style={[styles.section, { backgroundColor: theme.colors.surfaceContainerLow }]}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.primary }]}>Categories</Text>
+            <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>Manage your spending labels.</Text>
+          </View>
+          <View style={[styles.sectionContent, { backgroundColor: theme.colors.surfaceContainer }]}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.settingRow,
+                { backgroundColor: pressed ? theme.colors.surfaceContainerHigh : theme.colors.surfaceContainer },
+              ]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push('/settings/categories');
+              }}
+            >
+              <View style={styles.settingRowLeft}>
+                <MaterialCommunityIcons name="tag-multiple" size={24} color={theme.colors.onSurfaceVariant} />
+                <View>
+                  <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>Manage Categories</Text>
+                  <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>Add custom expense categories</Text>
+                </View>
+              </View>
+              <MaterialCommunityIcons name="chevron-right" size={24} color={theme.colors.onSurfaceVariant} />
+            </Pressable>
+          </View>
+        </View>
+
+        {/* Notifications Section */}
+        <View style={[styles.section, { backgroundColor: theme.colors.surfaceContainerLow }]}
+        >
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.primary }]}>Notifications</Text>
+            <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>
+              Choose which alerts you want.
+            </Text>
+          </View>
+          <View style={[styles.sectionContent, { backgroundColor: theme.colors.surfaceContainer }]}>
+            <View style={[styles.settingRow, { backgroundColor: theme.colors.surfaceContainer }]}>
+              <View style={styles.settingRowLeft}>
+                <MaterialCommunityIcons name="bell" size={24} color={theme.colors.onSurfaceVariant} />
+                <View>
+                  <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>Transaction Alerts</Text>
+                  <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>When money moves</Text>
+                </View>
+              </View>
+              <Switch
+                value={notificationsTransactionAlerts}
+                onValueChange={(val) => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setNotificationsTransactionAlerts(val);
+                }}
+                trackColor={{ false: theme.colors.surfaceVariant, true: theme.colors.primaryContainer }}
+                thumbColor={theme.colors.onSurface}
+                accessibilityLabel={notificationsTransactionAlerts ? 'Disable transaction alerts' : 'Enable transaction alerts'}
+              />
+            </View>
+            <View style={[styles.settingRow, { backgroundColor: theme.colors.surfaceContainer }]}>
+              <View style={styles.settingRowLeft}>
+                <MaterialCommunityIcons name="calendar-week" size={24} color={theme.colors.onSurfaceVariant} />
+                <View>
+                  <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>Weekly Summary</Text>
+                  <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>Spending recap</Text>
+                </View>
+              </View>
+              <Switch
+                value={notificationsWeeklySummary}
+                onValueChange={(val) => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setNotificationsWeeklySummary(val);
+                }}
+                trackColor={{ false: theme.colors.surfaceVariant, true: theme.colors.primaryContainer }}
+                thumbColor={theme.colors.onSurface}
+                accessibilityLabel={notificationsWeeklySummary ? 'Disable weekly summary' : 'Enable weekly summary'}
+              />
+            </View>
+            <View style={[styles.settingRow, { backgroundColor: theme.colors.surfaceContainer }]}>
+              <View style={styles.settingRowLeft}>
+                <MaterialCommunityIcons name="target" size={24} color={theme.colors.onSurfaceVariant} />
+                <View>
+                  <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>Savings Goal Progress</Text>
+                  <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>Goal milestones</Text>
+                </View>
+              </View>
+              <Switch
+                value={notificationsSavingsGoalProgress}
+                onValueChange={(val) => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setNotificationsSavingsGoalProgress(val);
+                }}
+                trackColor={{ false: theme.colors.surfaceVariant, true: theme.colors.primaryContainer }}
+                thumbColor={theme.colors.onSurface}
+                accessibilityLabel={notificationsSavingsGoalProgress ? 'Disable savings goal alerts' : 'Enable savings goal alerts'}
+              />
+            </View>
+            <View style={[styles.settingRow, { backgroundColor: theme.colors.surfaceContainer }]}>
+              <View style={styles.settingRowLeft}>
+                <MaterialCommunityIcons name="alert" size={24} color={theme.colors.onSurfaceVariant} />
+                <View>
+                  <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>Budget Warnings</Text>
+                  <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>Approaching limits</Text>
+                </View>
+              </View>
+              <Switch
+                value={notificationsBudgetWarnings}
+                onValueChange={(val) => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setNotificationsBudgetWarnings(val);
+                }}
+                trackColor={{ false: theme.colors.surfaceVariant, true: theme.colors.primaryContainer }}
+                thumbColor={theme.colors.onSurface}
+                accessibilityLabel={notificationsBudgetWarnings ? 'Disable budget warnings' : 'Enable budget warnings'}
+              />
+            </View>
+          </View>
+        </View>
+
+        {/* Data & Sync Section */}
+        <View style={[styles.section, { backgroundColor: theme.colors.surfaceContainerLow }]}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.primary }]}>Data &amp; Sync</Text>
+            <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>
+              Backups, sharing, and sync.
+            </Text>
+          </View>
+          <View style={[styles.sectionContent, { backgroundColor: theme.colors.surfaceContainer }]}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.settingRow,
+                { backgroundColor: pressed ? theme.colors.surfaceContainerHigh : theme.colors.surfaceContainer },
+              ]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+                if (cloudSyncPopupDismissed) {
+                  setCloudSyncPopupDismissed(false);
+                  return;
+                }
+
+                Alert.alert(
+                  'Cloud Sync (needs infrastructure)',
+                  'End-to-end encrypted cloud sync requires backend infrastructure (account identity + storage + conflict resolution).\n\nGemwallet currently runs fully on-device, so cloud sync is not available yet.',
+                  [
+                    {
+                      text: 'Dismiss',
+                      onPress: () => setCloudSyncPopupDismissed(true),
+                    },
+                    { text: 'OK', style: 'cancel' },
+                  ]
+                );
+              }}
+            >
+              <View style={styles.settingRowLeft}>
+                <MaterialCommunityIcons name="cloud-outline" size={24} color={theme.colors.onSurfaceVariant} />
+                <View>
+                  <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>Cloud Sync</Text>
+                  <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>
+                    Not available (tap to learn why)
+                  </Text>
+                </View>
+              </View>
+              <MaterialCommunityIcons name="information-outline" size={24} color={theme.colors.onSurfaceVariant} />
+            </Pressable>
           </View>
         </View>
 
@@ -201,26 +897,119 @@ export default function SettingsScreen() {
           <View style={[styles.sectionContent, { backgroundColor: theme.colors.surfaceContainer }]}>
             <Pressable
               style={({pressed}) => [styles.settingRow, { backgroundColor: pressed ? theme.colors.surfaceContainerHigh : theme.colors.surfaceContainer }]}
-              onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+              onPress={async () => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+                try {
+                  const csv = exportTransactionsCsv({
+                    transactions,
+                    categories,
+                    includeNotes: includeNotesInExport,
+                  });
+                  const fileUri = `${FileSystem.cacheDirectory}gemwallet-transactions.csv`;
+                  await FileSystem.writeAsStringAsync(fileUri, csv, { encoding: FileSystem.EncodingType.UTF8 });
+
+                  const canShare = await Sharing.isAvailableAsync();
+                  if (!canShare) {
+                    Alert.alert('Sharing not available', 'This device does not support sharing files.');
+                    return;
+                  }
+
+                  await Sharing.shareAsync(fileUri, {
+                    mimeType: 'text/csv',
+                    dialogTitle: 'Export Transactions',
+                    UTI: 'public.comma-separated-values-text',
+                  });
+                } catch {
+                  Alert.alert('Export failed', 'Could not export transactions.');
+                }
+              }}
             >
               <View style={styles.settingRowLeft}>
                 <MaterialCommunityIcons name="download" size={24} color={theme.colors.onSurfaceVariant} />
                 <View>
-                  <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>Export Local Backup</Text>
-                  <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>Save encrypted data locally</Text>
+                  <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>Export Data</Text>
+                  <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>Export transactions as CSV</Text>
                 </View>
               </View>
               <MaterialCommunityIcons name="chevron-right" size={24} color={theme.colors.onSurfaceVariant} />
             </Pressable>
             <Pressable
               style={({pressed}) => [styles.settingRow, { backgroundColor: pressed ? theme.colors.surfaceContainerHigh : theme.colors.surfaceContainer }]}
-              onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+                Alert.alert(
+                  'Clear all data?',
+                  'This will delete all transactions, categories, and settings stored on this device.',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Continue',
+                      style: 'destructive',
+                      onPress: () => {
+                        Alert.alert('Confirm delete', 'This action cannot be undone.', [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'Delete',
+                            style: 'destructive',
+                            onPress: () => {
+                              clearAllTransactions();
+                              resetSettings();
+                            },
+                          },
+                        ]);
+                      },
+                    },
+                  ]
+                );
+              }}
             >
               <View style={styles.settingRowLeft}>
                 <MaterialCommunityIcons name="delete" size={24} color={theme.colors.onSurfaceVariant} />
                 <View>
-                  <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>Clear Local Cache</Text>
-                  <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>Free up space on device</Text>
+                  <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>Clear All Data</Text>
+                  <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>Reset stores on this device</Text>
+                </View>
+              </View>
+              <MaterialCommunityIcons name="chevron-right" size={24} color={theme.colors.onSurfaceVariant} />
+            </Pressable>
+          </View>
+        </View>
+
+        {/* About Section */}
+        <View style={[styles.section, { backgroundColor: theme.colors.surfaceContainerLow }]}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.primary }]}>About</Text>
+            <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>App info and support.</Text>
+          </View>
+          <View style={[styles.sectionContent, { backgroundColor: theme.colors.surfaceContainer }]}>
+            <View style={[styles.settingRow, { backgroundColor: theme.colors.surfaceContainer }]}>
+              <View style={styles.settingRowLeft}>
+                <MaterialCommunityIcons name="information" size={24} color={theme.colors.onSurfaceVariant} />
+                <View>
+                  <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>Version</Text>
+                  <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>{appConfig.expo.version}</Text>
+                </View>
+              </View>
+            </View>
+            <Pressable
+              style={({ pressed }) => [
+                styles.settingRow,
+                { backgroundColor: pressed ? theme.colors.surfaceContainerHigh : theme.colors.surfaceContainer },
+              ]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                const subject = encodeURIComponent('GemWallet Feedback');
+                const body = encodeURIComponent('');
+                Linking.openURL(`mailto:support@gemwallet.app?subject=${subject}&body=${body}`);
+              }}
+            >
+              <View style={styles.settingRowLeft}>
+                <MaterialCommunityIcons name="email" size={24} color={theme.colors.onSurfaceVariant} />
+                <View>
+                  <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>Send Feedback</Text>
+                  <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>Open your mail client</Text>
                 </View>
               </View>
               <MaterialCommunityIcons name="chevron-right" size={24} color={theme.colors.onSurfaceVariant} />
@@ -229,7 +1018,7 @@ export default function SettingsScreen() {
         </View>
 
       </ScrollView>
-    </View>
+    </ScreenLayout>
   );
 }
 
@@ -239,7 +1028,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 24,
-    paddingBottom: 120,
   },
   header: {
     marginBottom: 48,
@@ -294,5 +1082,10 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 999,
   },
 });

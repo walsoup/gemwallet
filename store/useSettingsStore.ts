@@ -18,13 +18,17 @@ export type SettingsState = {
   themePrimary: string;
   themeSecondary: string;
   secureAccessEnabled: boolean;
+  biometricAuthEnabled: boolean;
+  notificationsTransactionAlerts: boolean;
+  notificationsWeeklySummary: boolean;
+  notificationsSavingsGoalProgress: boolean;
+  notificationsBudgetWarnings: boolean;
   passcodeEnabled: boolean;
   passcodePin: string;
   currencyCode: CurrencyCode;
   language: LanguageCode;
   region: RegionCode;
   aiProvider: AiProvider;
-  geminiApiKey: string;
   aiFeaturesEnabled: boolean;
   huggingFaceToken: string;
   gemmaModel: string; // Used for cloud
@@ -41,13 +45,17 @@ export type SettingsState = {
   setThemePrimary: (color: string) => void;
   setThemeSecondary: (color: string) => void;
   setSecureAccessEnabled: (enabled: boolean) => void;
+  setBiometricAuthEnabled: (enabled: boolean) => void;
+  setNotificationsTransactionAlerts: (enabled: boolean) => void;
+  setNotificationsWeeklySummary: (enabled: boolean) => void;
+  setNotificationsSavingsGoalProgress: (enabled: boolean) => void;
+  setNotificationsBudgetWarnings: (enabled: boolean) => void;
   setPasscodeEnabled: (enabled: boolean) => void;
   setPasscodePin: (pin: string) => void;
   setCurrencyCode: (code: CurrencyCode) => void;
   setLanguage: (language: LanguageCode) => void;
   setRegion: (region: RegionCode) => void;
   setAiProvider: (provider: AiProvider) => void;
-  setGeminiApiKey: (key: string) => void;
   setAiFeaturesEnabled: (enabled: boolean) => void;
   setHuggingFaceToken: (token: string) => void;
   setGemmaModel: (model: string) => void;
@@ -74,13 +82,20 @@ export const useSettingsStore = create<SettingsState>()(
       setThemePrimary: (themePrimary) => set({ themePrimary: themePrimary.trim() }),
       setThemeSecondary: (themeSecondary) => set({ themeSecondary: themeSecondary.trim() }),
       setSecureAccessEnabled: (secureAccessEnabled) => set({ secureAccessEnabled }),
+      setBiometricAuthEnabled: (biometricAuthEnabled) => set({ biometricAuthEnabled }),
+      setNotificationsTransactionAlerts: (notificationsTransactionAlerts) =>
+        set({ notificationsTransactionAlerts }),
+      setNotificationsWeeklySummary: (notificationsWeeklySummary) => set({ notificationsWeeklySummary }),
+      setNotificationsSavingsGoalProgress: (notificationsSavingsGoalProgress) =>
+        set({ notificationsSavingsGoalProgress }),
+      setNotificationsBudgetWarnings: (notificationsBudgetWarnings) =>
+        set({ notificationsBudgetWarnings }),
       setPasscodeEnabled: (passcodeEnabled) => set({ passcodeEnabled }),
       setPasscodePin: (passcodePin) => set({ passcodePin }),
       setCurrencyCode: (currencyCode) => set({ currencyCode }),
       setLanguage: (language) => set({ language }),
       setRegion: (region) => set({ region }),
       setAiProvider: (aiProvider) => set({ aiProvider }),
-      setGeminiApiKey: (geminiApiKey) => set({ geminiApiKey: geminiApiKey.trim() }),
       setAiFeaturesEnabled: (aiFeaturesEnabled) => set({ aiFeaturesEnabled }),
       setHuggingFaceToken: (huggingFaceToken) => set({ huggingFaceToken: huggingFaceToken.trim() }),
       setGemmaModel: (gemmaModel) => set({ gemmaModel }),
