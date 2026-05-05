@@ -28,7 +28,6 @@ export default function ChatScreen() {
   const addGoal = useGoalsStore((s) => s.addGoal);
 
   const aiProvider = useSettingsStore((s) => s.aiProvider);
-  const geminiApiKey = useSettingsStore((s) => s.geminiApiKey);
   const huggingFaceToken = useSettingsStore((s) => s.huggingFaceToken);
   const currencyCode = useSettingsStore((s) => s.currencyCode);
   const locale = useSettingsStore((s) => s.language);
@@ -51,7 +50,6 @@ export default function ChatScreen() {
   const settings = useMemo(
     () => ({
       aiProvider,
-      geminiApiKey,
       huggingFaceToken,
       currencyCode,
       locale,
@@ -63,7 +61,6 @@ export default function ChatScreen() {
     }),
     [
       aiProvider,
-      geminiApiKey,
       huggingFaceToken,
       currencyCode,
       locale,

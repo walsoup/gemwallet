@@ -20,7 +20,6 @@ export type SettingsPersistedShape = {
   language: LanguageCode;
   region: RegionCode;
   aiProvider: AiProvider;
-  geminiApiKey: string;
   aiFeaturesEnabled: boolean;
   huggingFaceToken: string;
   gemmaModel: string;
@@ -51,7 +50,6 @@ export const defaultSettingsState: SettingsPersistedShape = {
   aiProvider: 'google',
   themePrimary: '#ff6b6b',
   themeSecondary: '#52dea2',
-  geminiApiKey: '',
   aiFeaturesEnabled: false,
   huggingFaceToken: '',
   gemmaModel: 'gemma-4-31b-it',
@@ -84,7 +82,6 @@ export function migrateSettingsState(persistedState: unknown): SettingsPersisted
     aiProvider,
     themePrimary: legacy.themePrimary ?? defaultSettingsState.themePrimary,
     themeSecondary: legacy.themeSecondary ?? defaultSettingsState.themeSecondary,
-    geminiApiKey: legacy.geminiApiKey ?? '',
     huggingFaceToken: legacy.huggingFaceToken ?? '',
     gemmaModel: legacy.gemmaModel ?? defaultSettingsState.gemmaModel,
     localModelId: legacy.localModelId ?? defaultSettingsState.localModelId,

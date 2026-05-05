@@ -1,6 +1,6 @@
 import React from 'react';
 import { ScrollView, StyleSheet, View, Pressable, Switch, Alert } from 'react-native';
-import { Text, useTheme } from 'react-native-paper';
+import { Text, useTheme, TextInput } from 'react-native-paper';
 import { useSettingsStore } from '../../../../store/useSettingsStore';
 import { useTransactionStore } from '../../../../store/useTransactionStore';
 import * as Haptics from 'expo-haptics';
@@ -16,6 +16,8 @@ import * as Sharing from 'expo-sharing';
 import * as Linking from 'expo-linking';
 import appConfig from '../../../../app.json';
 import { exportTransactionsCsv } from '../../../../utils/exportTransactionsCsv';
+import { deleteGeminiApiKey, getGeminiApiKey, setGeminiApiKey } from '../../../../services/secureGeminiKey';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export default function SettingsScreen() {
   const theme = useTheme<AppTheme>();
@@ -27,6 +29,26 @@ export default function SettingsScreen() {
   const localModelDownloaded = useSettingsStore((state) => state.localModelDownloaded);
   const setLocalModelDownloaded = useSettingsStore((state) => state.setLocalModelDownloaded);
   const huggingFaceToken = useSettingsStore((state) => state.huggingFaceToken);
+
+  const aiProvider = useSettingsStore((state) => state.aiProvider);
+  const setAiProvider = useSettingsStore((state) => state.setAiProvider);
+  const aiFeaturesEnabled = useSettingsStore((state) => state.aiFeaturesEnabled);
+  const setAiFeaturesEnabled = useSettingsStore((state) => state.setAiFeaturesEnabled);
+
+  const [geminiKeyDraft, setGeminiKeyDraft] = React.useState('');
+  const [geminiKeyVisible, setGeminiKeyVisible] = React.useState(false);
+  const [geminiKeyTestStatus, setGeminiKeyTestStatus] = React.useState<null | {
+    kind: 'success' | 'error';
+    message: string;
+  }>(null);
+
+  React.useEffect(() => {
+    return () => {
+      setGeminiKeyDraft('');
+      setGeminiKeyVisible(false);
+      setGeminiKeyTestStatus(null);
+    };
+  }, []);
 
   const smartCategorizationEnabled = useSettingsStore((state) => state.smartCategorizationEnabled);
   const setSmartCategorizationEnabled = useSettingsStore((state) => state.setSmartCategorizationEnabled);
@@ -354,6 +376,292 @@ export default function SettingsScreen() {
                 accessibilityLabel={oledTrueBlackEnabled ? 'Disable true black' : 'Enable true black'}
               />
             </View>
+          </View>
+        </View>
+
+        {/* AI & Assistant Section */}
+        <View style={[styles.section, { backgroundColor: theme.colors.surfaceContainerLow }]}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.primary }]}>AI &amp; Assistant</Text>
+            <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>
+              Choose the model provider.
+            </Text>
+          </View>
+          <View style={[styles.sectionContent, { backgroundColor: theme.colors.surfaceContainer }]}>
+            <View style={[styles.settingRow, { backgroundColor: theme.colors.surfaceContainer, flexDirection: 'column', alignItems: 'flex-start' }]}>
+              <View style={[styles.settingRowLeft, { marginBottom: 16 }]}>
+                <MaterialCommunityIcons name="robot" size={24} color={theme.colors.onSurfaceVariant} />
+                <View>
+                  <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>Model Provider</Text>
+                  <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>
+                    Local model or Gemini API
+                  </Text>
+                </View>
+              </View>
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                {([
+                  { value: 'local', label: 'Local Model' },
+                  { value: 'google', label: 'Cloud API (Gemini)' },
+                ] as const).map((option) => {
+                  const selected = aiProvider === option.value;
+                  return (
+                    <Pressable
+                      key={option.value}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Set model provider to ${option.label}`}
+                      style={({ pressed }) => [
+                        styles.chip,
+                        {
+                          backgroundColor: selected
+                            ? theme.colors.primaryContainer
+                            : pressed
+                              ? theme.colors.surfaceContainerHighest
+                              : theme.colors.surfaceContainerHigh,
+                        },
+                      ]}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setAiProvider(option.value);
+                      }}
+                    >
+                      <Text style={{
+                        color: selected ? theme.colors.onPrimaryContainer : theme.colors.onSurface,
+                        fontFamily: 'BeVietnamPro_600SemiBold',
+                        fontSize: 14,
+                      }}>
+                        {option.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+
+            <View style={[styles.settingRow, { backgroundColor: theme.colors.surfaceContainer }]}>
+              <View style={styles.settingRowLeft}>
+                <MaterialCommunityIcons name="message-text-outline" size={24} color={theme.colors.onSurfaceVariant} />
+                <View>
+                  <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>AI Assistant</Text>
+                  <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>
+                    Show Chat tab
+                  </Text>
+                </View>
+              </View>
+              <Switch
+                value={aiFeaturesEnabled}
+                onValueChange={(value) => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setAiFeaturesEnabled(value);
+                }}
+                trackColor={{ false: theme.colors.surfaceVariant, true: theme.colors.primaryContainer }}
+                thumbColor={theme.colors.onSurface}
+                accessibilityLabel={aiFeaturesEnabled ? 'Disable AI assistant' : 'Enable AI assistant'}
+              />
+            </View>
+
+            {aiProvider === 'google' && (
+              <View style={[styles.settingRow, { backgroundColor: theme.colors.surfaceContainer, flexDirection: 'column', alignItems: 'flex-start' }]}>
+                <View style={[styles.settingRowLeft, { marginBottom: 12 }]}>
+                  <MaterialCommunityIcons name="key-outline" size={24} color={theme.colors.onSurfaceVariant} />
+                  <View>
+                    <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>Gemini API Key</Text>
+                    <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>
+                      Stored securely on-device
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={{ width: '100%', gap: 10 }}>
+                  <View style={{ width: '100%', flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                    <View style={{ flex: 1 }}>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel="Edit Gemini API key"
+                        onPress={() => {
+                          // no-op; input is below
+                        }}
+                      >
+                        <View
+                          style={{
+                            borderWidth: 1,
+                            borderColor: theme.colors.outlineVariant + '4D',
+                            borderRadius: 14,
+                            paddingHorizontal: 12,
+                            paddingVertical: 12,
+                            backgroundColor: theme.colors.surfaceContainerLowest,
+                          }}
+                        >
+                          <Text
+                            style={{
+                              color: theme.colors.onSurface,
+                              fontFamily: 'BeVietnamPro_400Regular',
+                            }}
+                          >
+                            {geminiKeyDraft
+                              ? geminiKeyVisible
+                                ? geminiKeyDraft
+                                : '••••••••••••••••'
+                              : 'Tap to paste/type key below'}
+                          </Text>
+                        </View>
+                      </Pressable>
+                    </View>
+
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={geminiKeyVisible ? 'Hide API key' : 'Show API key'}
+                      style={({ pressed }) => ({
+                        padding: 10,
+                        borderRadius: 14,
+                        backgroundColor: pressed
+                          ? theme.colors.surfaceContainerHighest
+                          : theme.colors.surfaceContainerHigh,
+                      })}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setGeminiKeyVisible((v) => !v);
+                      }}
+                    >
+                      <MaterialCommunityIcons
+                        name={geminiKeyVisible ? 'eye-off-outline' : 'eye-outline'}
+                        size={22}
+                        color={theme.colors.onSurfaceVariant}
+                      />
+                    </Pressable>
+                  </View>
+
+                  <TextInput
+                    mode="outlined"
+                    label="Gemini API Key"
+                    value={geminiKeyDraft}
+                    onChangeText={(value) => {
+                      setGeminiKeyDraft(value);
+                      setGeminiKeyTestStatus(null);
+                    }}
+                    secureTextEntry={!geminiKeyVisible}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    textContentType="password"
+                    placeholder="Paste your key"
+                    right={
+                      <TextInput.Icon
+                        icon={geminiKeyVisible ? 'eye-off-outline' : 'eye-outline'}
+                        accessibilityLabel={geminiKeyVisible ? 'Hide API key' : 'Show API key'}
+                        onPress={() => {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          setGeminiKeyVisible((v) => !v);
+                        }}
+                      />
+                    }
+                  />
+
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Save Gemini API key"
+                      style={({ pressed }) => ({
+                        paddingHorizontal: 14,
+                        paddingVertical: 10,
+                        borderRadius: 14,
+                        backgroundColor: pressed ? theme.colors.primaryContainer : theme.colors.primary,
+                      })}
+                      onPress={async () => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setGeminiKeyTestStatus(null);
+                        try {
+                          await setGeminiApiKey(geminiKeyDraft);
+                          setGeminiKeyDraft('');
+                        } catch {
+                          setGeminiKeyTestStatus({ kind: 'error', message: 'Failed to save key.' });
+                        }
+                      }}
+                    >
+                      <Text style={{ color: theme.colors.onPrimary, fontFamily: 'BeVietnamPro_600SemiBold' }}>Save</Text>
+                    </Pressable>
+
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Delete saved Gemini API key"
+                      style={({ pressed }) => ({
+                        paddingHorizontal: 14,
+                        paddingVertical: 10,
+                        borderRadius: 14,
+                        backgroundColor: pressed ? theme.colors.surfaceContainerHighest : theme.colors.surfaceContainerHigh,
+                      })}
+                      onPress={async () => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setGeminiKeyTestStatus(null);
+                        try {
+                          await deleteGeminiApiKey();
+                          setGeminiKeyDraft('');
+                          setGeminiKeyVisible(false);
+                          setGeminiKeyTestStatus({ kind: 'success', message: 'Saved key deleted.' });
+                        } catch {
+                          setGeminiKeyTestStatus({ kind: 'error', message: 'Failed to delete key.' });
+                        }
+                      }}
+                    >
+                      <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold' }}>Delete Saved Key</Text>
+                    </Pressable>
+
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Test Gemini API connection"
+                      style={({ pressed }) => ({
+                        paddingHorizontal: 14,
+                        paddingVertical: 10,
+                        borderRadius: 14,
+                        backgroundColor: pressed ? theme.colors.surfaceContainerHighest : theme.colors.surfaceContainerHigh,
+                      })}
+                      onPress={async () => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setGeminiKeyTestStatus(null);
+                        const key = await getGeminiApiKey();
+                        if (!key) {
+                          setGeminiKeyTestStatus({ kind: 'error', message: 'No saved key found. Tap Save first.' });
+                          return;
+                        }
+
+                        try {
+                          const genAI = new GoogleGenerativeAI(key);
+                          const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
+                          await model.generateContent({
+                            contents: [{ role: 'user', parts: [{ text: 'ping' }] }],
+                            generationConfig: { maxOutputTokens: 1, temperature: 0 },
+                          });
+                          setGeminiKeyTestStatus({ kind: 'success', message: 'Connection ok.' });
+                        } catch (error: any) {
+                          const message = typeof error?.message === 'string' ? error.message : 'Unknown error';
+                          if (message.toLowerCase().includes('api key') || message.toLowerCase().includes('permission')) {
+                            setGeminiKeyTestStatus({ kind: 'error', message: 'Invalid API key.' });
+                          } else if (message.toLowerCase().includes('quota') || message.toLowerCase().includes('resource')) {
+                            setGeminiKeyTestStatus({ kind: 'error', message: 'Quota exceeded or resource unavailable.' });
+                          } else if (message.toLowerCase().includes('network') || message.toLowerCase().includes('fetch')) {
+                            setGeminiKeyTestStatus({ kind: 'error', message: 'Network error.' });
+                          } else {
+                            setGeminiKeyTestStatus({ kind: 'error', message: `Connection failed: ${message}` });
+                          }
+                        }
+                      }}
+                    >
+                      <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold' }}>Test Connection</Text>
+                    </Pressable>
+                  </View>
+
+                  {geminiKeyTestStatus && (
+                    <Text
+                      style={{
+                        color: geminiKeyTestStatus.kind === 'success' ? theme.colors.tertiary : theme.colors.error,
+                        fontFamily: 'BeVietnamPro_500Medium',
+                        marginTop: 4,
+                      }}
+                    >
+                      {geminiKeyTestStatus.message}
+                    </Text>
+                  )}
+                </View>
+              </View>
+            )}
           </View>
         </View>
 
