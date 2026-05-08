@@ -115,7 +115,12 @@ function sanitizeModelOutput(text: string) {
   const withoutTags = text.replace(/<\|.*?\|>/g, '');
   const lines = withoutTags
     .split('\n')
-    .filter((line) => line && !SYSTEM_PATTERNS.some((pattern) => pattern.test(line)) && !line.startsWith('ADD_EXPENSE'));
+    .filter(
+      (line) =>
+        line &&
+        !SYSTEM_PATTERNS.some((pattern) => pattern.test(line)) &&
+        !/^ADD_(EXPENSE|INCOME|RECURRING|GOAL):/i.test(line.trim())
+    );
 
   if (!lines.length) return '';
   const cleaned = lines
@@ -124,6 +129,17 @@ function sanitizeModelOutput(text: string) {
     .trim();
 
   return cleaned;
+}
+
+function applyDetectedCommands(raw: string, callbacks?: AnalysisCallbacks) {
+  const expenseCommand = parseAddExpenseCommand(raw);
+  const incomeCommand = parseAddIncomeCommand(raw);
+  const recurringCommand = parseAddRecurringCommand(raw);
+  const goalCommand = parseAddGoalCommand(raw);
+  if (expenseCommand && callbacks?.onCommand) callbacks.onCommand(expenseCommand);
+  if (incomeCommand && callbacks?.onIncome) callbacks.onIncome(incomeCommand);
+  if (recurringCommand && callbacks?.onRecurring) callbacks.onRecurring(recurringCommand);
+  if (goalCommand && callbacks?.onGoal) callbacks.onGoal(goalCommand);
 }
 
 export function parseAddExpenseCommand(text: string) {
@@ -328,43 +344,15 @@ export async function* streamFinancialAnalysis(
     }
 
     if (options.aiProvider === 'google') {
-       if (!options.geminiApiKey?.trim()) {
-         yield 'Add your Gemini API key in Settings to unlock Gemma insights.';
-         for (const chunk of chunkText(fallback)) yield chunk;
-         return;
-       }
-
-       const genAI = new GoogleGenerativeAI(options.geminiApiKey.trim());
-       const modelsToTry = [preferredModel, FALLBACK_MODEL];
-
-       for (const modelName of modelsToTry) {
-         try {
-           const model = genAI.getGenerativeModel({ model: modelName });
-           const response = await model.generateContent({
-             contents: [{ role: 'user', parts: [{ text: prompt }] }],
-             generationConfig: {
-               temperature: options.advanced ? 0.55 : 0.28,
-               maxOutputTokens: options.advanced ? 360 : MAX_TOKENS_BASE,
-               topP: 0.85,
-             },
-           });
-
-           const prefix = modelName === FALLBACK_MODEL ? 'Using fallback Gemini 3.1 Flash Lite model.\n\n' : '';
-           const raw = `${prefix}${response.response.text()?.trim() || fallback}`;
-           const command = parseAddExpenseCommand(raw);
-           if (command && callbacks?.onCommand) callbacks.onCommand(command);
-           
-           const cleaned = sanitizeModelOutput(raw) || fallback;
-           for (const chunk of chunkText(cleaned)) {
-             await new Promise((resolve) => setTimeout(resolve, MIN_CHUNK_DELAY_MS));
-             yield chunk;
-           }
-           return;
-         } catch (error) {
-           console.warn(`Gemma analysis failed on model ${modelName}`, error);
-           continue;
-         }
-       }
+      for await (const chunk of streamGeminiFinancialAnalysis(
+        transactions,
+        options,
+        callbacks,
+        userQuestion
+      )) {
+        yield chunk;
+      }
+      return;
     }
 
   } catch (error) {
@@ -372,6 +360,76 @@ export async function* streamFinancialAnalysis(
     yield 'AI had an issue processing this request. Check your settings and try again.';
     for (const chunk of chunkText(fallback)) yield chunk;
   }
+}
+
+export async function* streamGeminiFinancialAnalysis(
+  transactions: Transaction[],
+  options: AnalysisOptions,
+  callbacks?: AnalysisCallbacks,
+  userQuestion?: string
+) {
+  const fallback = summarize(transactions, {
+    currencyCode: options.currencyCode,
+    locale: options.locale,
+  });
+
+  if (!options.geminiApiKey?.trim()) {
+    yield 'Add your Gemini API key in Settings to unlock Gemma insights.';
+    for (const chunk of chunkText(fallback)) yield chunk;
+    return;
+  }
+
+  const prompt = buildPrompt(transactions, options, userQuestion);
+  const preferredModel = options.model || DEFAULT_MODEL;
+  const genAI = new GoogleGenerativeAI(options.geminiApiKey.trim());
+  const modelsToTry = [preferredModel, FALLBACK_MODEL];
+
+  for (const modelName of modelsToTry) {
+    let streamedAny = false;
+    const prefix = modelName === FALLBACK_MODEL ? 'Using fallback Gemini 3.1 Flash Lite model.\n\n' : '';
+    let raw = prefix;
+
+    try {
+      const model = genAI.getGenerativeModel({ model: modelName });
+      const stream = await model.generateContentStream({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: options.advanced ? 0.55 : 0.28,
+          maxOutputTokens: options.advanced ? 360 : MAX_TOKENS_BASE,
+          topP: 0.85,
+        },
+      });
+
+      if (prefix) {
+        streamedAny = true;
+        yield prefix;
+      }
+
+      for await (const chunk of stream.stream) {
+        const text = chunk.text();
+        if (!text) continue;
+        streamedAny = true;
+        raw += text;
+        yield text;
+      }
+
+      if (!streamedAny) {
+        raw = fallback;
+        for (const chunk of chunkText(fallback)) {
+          await new Promise((resolve) => setTimeout(resolve, MIN_CHUNK_DELAY_MS));
+          yield chunk;
+        }
+      }
+
+      applyDetectedCommands(raw, callbacks);
+      return;
+    } catch {
+      continue;
+    }
+  }
+
+  yield 'AI had an issue processing this request. Check your settings and try again.';
+  for (const chunk of chunkText(fallback)) yield chunk;
 }
 
 export async function* streamLocalFinancialAnalysis(
@@ -407,20 +465,7 @@ export async function* streamLocalFinancialAnalysis(
     maxTokens,
   })) {
     raw += chunk;
-  }
-
-  const expenseCommand = parseAddExpenseCommand(raw);
-  const incomeCommand = parseAddIncomeCommand(raw);
-  const recurringCommand = parseAddRecurringCommand(raw);
-  const goalCommand = parseAddGoalCommand(raw);
-  if (expenseCommand && callbacks?.onCommand) callbacks.onCommand(expenseCommand);
-  if (incomeCommand && callbacks?.onIncome) callbacks.onIncome(incomeCommand);
-  if (recurringCommand && callbacks?.onRecurring) callbacks.onRecurring(recurringCommand);
-  if (goalCommand && callbacks?.onGoal) callbacks.onGoal(goalCommand);
-
-  const cleaned = sanitizeModelOutput(raw) || fallback;
-  for (const chunk of chunkText(cleaned)) {
-    await new Promise((resolve) => setTimeout(resolve, MIN_CHUNK_DELAY_MS));
     yield chunk;
   }
+  applyDetectedCommands(raw, callbacks);
 }

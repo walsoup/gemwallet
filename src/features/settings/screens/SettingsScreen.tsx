@@ -8,7 +8,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppTheme } from '../../../../providers/AppThemeProvider';
 import { ScreenLayout } from '../../../components/Layout/ScreenLayout';
 import { downloadLiteRtModel, getLiteRtModel, isLiteRtModelCached } from '../../../features/nlp/services/liteRtModels';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import type { ThemePreference } from '../../../../types/finance';
 import { formatAppCurrency, SUPPORTED_CURRENCIES } from '../../../../utils/currency';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -39,6 +39,9 @@ function mapGeminiConnectionError(error: unknown) {
 export default function SettingsScreen() {
   const theme = useTheme<AppTheme>();
   const router = useRouter();
+  const params = useLocalSearchParams<{ section?: string }>();
+  const scrollRef = React.useRef<ScrollView>(null);
+  const [aiSectionY, setAiSectionY] = React.useState<number | null>(null);
 
   const [cloudSyncPopupDismissed, setCloudSyncPopupDismissed] = React.useState(false);
 
@@ -173,9 +176,17 @@ export default function SettingsScreen() {
     '#f472b6', // Pink
   ];
 
+  React.useEffect(() => {
+    if (params.section !== 'ai' || aiSectionY === null) return;
+    const timeout = setTimeout(() => {
+      scrollRef.current?.scrollTo({ y: Math.max(0, aiSectionY - 24), animated: true });
+    }, 0);
+    return () => clearTimeout(timeout);
+  }, [params.section, aiSectionY]);
+
   return (
     <ScreenLayout title="Good morning" backgroundColor={theme.colors.background}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView ref={scrollRef} contentContainerStyle={styles.scrollContent}>
 
         <View style={styles.header}>
           <Text variant="displayMedium" style={[styles.title, { color: theme.colors.onSurface }]}>
@@ -439,7 +450,10 @@ export default function SettingsScreen() {
         </View>
 
         {/* AI & Assistant Section */}
-        <View style={[styles.section, { backgroundColor: theme.colors.surfaceContainerLow }]}>
+        <View
+          style={[styles.section, { backgroundColor: theme.colors.surfaceContainerLow }]}
+          onLayout={(event) => setAiSectionY(event.nativeEvent.layout.y)}
+        >
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: theme.colors.primary }]}>AI &amp; Assistant</Text>
             <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>
