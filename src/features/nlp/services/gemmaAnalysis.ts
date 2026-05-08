@@ -423,7 +423,9 @@ export async function* streamGeminiFinancialAnalysis(
 
       applyDetectedCommands(raw, callbacks);
       return;
-    } catch {
+    } catch (error) {
+      const errorName = error instanceof Error ? error.name : 'UnknownError';
+      console.warn(`Gemini stream failed on model ${modelName} (${errorName})`);
       continue;
     }
   }

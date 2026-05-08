@@ -143,6 +143,7 @@ export default function ChatScreen() {
     } catch {
       setLocalModelDownloaded(false);
       setLocalModelReady(false);
+      pushSystemMessage('Local model download failed. Please try again from AI Settings.');
     } finally {
       setIsDownloadingLocalModel(false);
     }
@@ -160,18 +161,18 @@ export default function ChatScreen() {
   const onSend = async () => {
     const question = inputText.trim();
     if (!question || isSending) return;
-    const isLocal = settings.aiProvider === 'local';
-    const geminiApiKey = isLocal ? null : await getGeminiApiKey();
-    if (!isLocal) {
+    const isLocalProvider = settings.aiProvider === 'local';
+    const geminiApiKey = isLocalProvider ? null : await getGeminiApiKey();
+    if (!isLocalProvider) {
       setGeminiKeyExists(Boolean(geminiApiKey));
     }
 
-    if (!isLocal && !geminiApiKey) {
+    if (!isLocalProvider && !geminiApiKey) {
       setGeminiKeyExists(false);
       return;
     }
 
-    if (isLocal && !localModelReady) {
+    if (isLocalProvider && !localModelReady) {
       return;
     }
 

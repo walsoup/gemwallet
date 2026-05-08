@@ -4,6 +4,7 @@ import { describe, it } from 'node:test';
 import {
   parseAddExpenseCommand,
   streamFinancialAnalysis,
+  streamGeminiFinancialAnalysis,
   generatePersonalGreeting,
 } from '../src/features/nlp/services/gemmaAnalysis';
 
@@ -28,6 +29,26 @@ describe('gemmaAnalysis service', () => {
     const chunks: string[] = [];
 
     for await (const chunk of streamFinancialAnalysis(
+      [],
+      {
+        aiProvider: 'google',
+        currencyCode: 'USD',
+        locale: 'en-US',
+        region: 'US',
+      }
+    )) {
+      chunks.push(chunk);
+    }
+
+    const output = chunks.join('');
+    assert.match(output, /Add your Gemini API key/i);
+    assert.match(output, /No transactions yet/i);
+  });
+
+  it('falls back for gemini-specific stream when no API key exists', async () => {
+    const chunks: string[] = [];
+
+    for await (const chunk of streamGeminiFinancialAnalysis(
       [],
       {
         aiProvider: 'google',

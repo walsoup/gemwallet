@@ -84,6 +84,7 @@ export default function SettingsScreen() {
         setLocalModelStatus(cached ? 'ready' : 'missing');
       } catch {
         if (cancelled) return;
+        console.warn('Failed to check local model cache status');
         setLocalModelDownloaded(false);
         setLocalModelStatus('missing');
       }
@@ -117,6 +118,7 @@ export default function SettingsScreen() {
       setLocalModelDownloaded(true);
       setLocalModelStatus('ready');
     } catch {
+      Alert.alert('Download failed', 'Could not download the local model. Please try again.');
       setLocalModelDownloaded(false);
       setLocalModelStatus('missing');
     } finally {
