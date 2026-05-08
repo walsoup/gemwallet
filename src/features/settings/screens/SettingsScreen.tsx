@@ -58,6 +58,8 @@ export default function SettingsScreen() {
     kind: 'success' | 'error';
     message: string;
   }>(null);
+  const [localModelStatus, setLocalModelStatus] = React.useState<'checking' | 'ready' | 'missing'>('checking');
+  const [localModelDownloadInFlight, setLocalModelDownloadInFlight] = React.useState(false);
 
   React.useEffect(() => {
     return () => {
@@ -66,6 +68,58 @@ export default function SettingsScreen() {
       setGeminiKeyTestStatus(null);
     };
   }, []);
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    const syncStatus = async () => {
+      setLocalModelStatus('checking');
+      try {
+        const cached = await isLiteRtModelCached(localModelId);
+        if (cancelled) return;
+        setLocalModelDownloaded(cached);
+        setLocalModelStatus(cached ? 'ready' : 'missing');
+      } catch {
+        if (cancelled) return;
+        setLocalModelDownloaded(false);
+        setLocalModelStatus('missing');
+      }
+    };
+
+    syncStatus();
+    return () => {
+      cancelled = true;
+    };
+  }, [localModelId, setLocalModelDownloaded]);
+
+  const selectedLocalModel = getLiteRtModel(localModelId);
+  const localModelStatusText =
+    localModelStatus === 'checking'
+      ? 'Checking local model status…'
+      : localModelDownloaded
+        ? `Downloaded • ${selectedLocalModel.sizeLabel}`
+        : `Not downloaded • ${selectedLocalModel.sizeLabel}`;
+
+  const handleDownloadLocalModel = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setLocalModelDownloadInFlight(true);
+    setLocalModelStatus('checking');
+    try {
+      const cached = await isLiteRtModelCached(selectedLocalModel.id);
+      if (!cached) {
+        await downloadLiteRtModel(selectedLocalModel.id, undefined, huggingFaceToken?.trim()
+          ? { Authorization: `Bearer ${huggingFaceToken.trim()}` }
+          : undefined);
+      }
+      setLocalModelDownloaded(true);
+      setLocalModelStatus('ready');
+    } catch {
+      setLocalModelDownloaded(false);
+      setLocalModelStatus('missing');
+    } finally {
+      setLocalModelDownloadInFlight(false);
+    }
+  };
 
   const smartCategorizationEnabled = useSettingsStore((state) => state.smartCategorizationEnabled);
   const setSmartCategorizationEnabled = useSettingsStore((state) => state.setSmartCategorizationEnabled);
@@ -145,7 +199,7 @@ export default function SettingsScreen() {
                 <View>
                   <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>Gemma Model Status</Text>
                   <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>
-                    {localModelDownloaded ? 'Downloaded • Active' : 'Not downloaded'}
+                    {localModelStatusText}
                   </Text>
                 </View>
               </View>
@@ -155,24 +209,12 @@ export default function SettingsScreen() {
                     styles.downloadButton,
                     { backgroundColor: pressed ? theme.colors.surfaceContainerHighest : theme.colors.surfaceContainerHigh },
                   ]}
-                  onPress={async () => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    try {
-                      const model = getLiteRtModel(localModelId);
-                      const cached = await isLiteRtModelCached(model.id);
-                      if (!cached) {
-                        await downloadLiteRtModel(model.id, undefined, huggingFaceToken?.trim()
-                          ? { Authorization: `Bearer ${huggingFaceToken.trim()}` }
-                          : undefined);
-                      }
-                      setLocalModelDownloaded(true);
-                    } catch (error) {
-                      console.warn('LiteRT model download failed', error);
-                      setLocalModelDownloaded(false);
-                    }
-                  }}
+                  disabled={localModelDownloadInFlight}
+                  onPress={handleDownloadLocalModel}
                 >
-                  <Text style={{ color: theme.colors.primary, fontFamily: 'BeVietnamPro_600SemiBold' }}>Download</Text>
+                  <Text style={{ color: theme.colors.primary, fontFamily: 'BeVietnamPro_600SemiBold' }}>
+                    {localModelDownloadInFlight ? 'Downloading…' : 'Download'}
+                  </Text>
                 </Pressable>
               )}
             </View>
@@ -668,6 +710,39 @@ export default function SettingsScreen() {
                     </Text>
                   )}
                 </View>
+              </View>
+            )}
+            {aiProvider === 'local' && (
+              <View style={[styles.settingRow, { backgroundColor: theme.colors.surfaceContainer, flexDirection: 'column', alignItems: 'flex-start', gap: 10 }]}>
+                <View style={styles.settingRowLeft}>
+                  <MaterialCommunityIcons name="cpu-64-bit" size={24} color={theme.colors.onSurfaceVariant} />
+                  <View>
+                    <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>
+                      Local Model Status
+                    </Text>
+                    <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>
+                      {localModelStatusText}
+                    </Text>
+                  </View>
+                </View>
+                {!localModelDownloaded && (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Download local AI model"
+                    style={({ pressed }) => ({
+                      paddingHorizontal: 14,
+                      paddingVertical: 10,
+                      borderRadius: 14,
+                      backgroundColor: pressed ? theme.colors.surfaceContainerHighest : theme.colors.surfaceContainerHigh,
+                    })}
+                    disabled={localModelDownloadInFlight}
+                    onPress={handleDownloadLocalModel}
+                  >
+                    <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold' }}>
+                      {localModelDownloadInFlight ? 'Downloading…' : 'Download'}
+                    </Text>
+                  </Pressable>
+                )}
               </View>
             )}
           </View>
