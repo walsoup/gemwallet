@@ -345,6 +345,7 @@ export default function ChatScreen() {
                       : theme.colors.onSecondaryContainer,
                 }}
               >
+                {isSystem ? 'System • ' : ''}
                 {message.text || (message.role === 'assistant' && isSending ? '…' : '')}
               </Text>
             </Surface>
