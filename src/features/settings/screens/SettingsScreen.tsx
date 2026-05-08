@@ -19,6 +19,23 @@ import { exportTransactionsCsv } from '../../../../utils/exportTransactionsCsv';
 import { deleteGeminiApiKey, getGeminiApiKey, setGeminiApiKey } from '../../../../services/secureGeminiKey';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
+function mapGeminiConnectionError(error: unknown) {
+  const message = typeof (error as { message?: unknown })?.message === 'string'
+    ? (error as { message: string }).message.toLowerCase()
+    : '';
+
+  if (message.includes('api key') || message.includes('permission') || message.includes('unauthenticated')) {
+    return 'Invalid API key.';
+  }
+  if (message.includes('quota') || message.includes('resource') || message.includes('rate')) {
+    return 'Quota exceeded or resource unavailable.';
+  }
+  if (message.includes('network') || message.includes('fetch') || message.includes('offline')) {
+    return 'Network error.';
+  }
+  return 'Connection failed. Please try again.';
+}
+
 export default function SettingsScreen() {
   const theme = useTheme<AppTheme>();
   const router = useRouter();
@@ -630,17 +647,8 @@ export default function SettingsScreen() {
                             generationConfig: { maxOutputTokens: 1, temperature: 0 },
                           });
                           setGeminiKeyTestStatus({ kind: 'success', message: 'Connection ok.' });
-                        } catch (error: any) {
-                          const message = typeof error?.message === 'string' ? error.message : 'Unknown error';
-                          if (message.toLowerCase().includes('api key') || message.toLowerCase().includes('permission')) {
-                            setGeminiKeyTestStatus({ kind: 'error', message: 'Invalid API key.' });
-                          } else if (message.toLowerCase().includes('quota') || message.toLowerCase().includes('resource')) {
-                            setGeminiKeyTestStatus({ kind: 'error', message: 'Quota exceeded or resource unavailable.' });
-                          } else if (message.toLowerCase().includes('network') || message.toLowerCase().includes('fetch')) {
-                            setGeminiKeyTestStatus({ kind: 'error', message: 'Network error.' });
-                          } else {
-                            setGeminiKeyTestStatus({ kind: 'error', message: `Connection failed: ${message}` });
-                          }
+                        } catch (error) {
+                          setGeminiKeyTestStatus({ kind: 'error', message: mapGeminiConnectionError(error) });
                         }
                       }}
                     >
