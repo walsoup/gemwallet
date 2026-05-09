@@ -2,7 +2,10 @@
 
 buildscript {
   ext {
-    kotlinVersion = '2.0.21'
+    kotlinVersion = '2.3.0'
+    kspVersion = '2.3.0'
+    minSdkVersion = 26
+    ndkVersion = "27.1.12297006"
   }
   repositories {
     google()
