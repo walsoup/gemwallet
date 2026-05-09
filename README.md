@@ -35,10 +35,9 @@ npm install
 npm run start
 ```
 
-## Lint / build
+## Build
 
 ```bash
-npm run lint
 npm run build
 ```
 
