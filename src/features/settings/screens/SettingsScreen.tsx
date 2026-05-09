@@ -8,7 +8,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppTheme } from '../../../../providers/AppThemeProvider';
 import { ScreenLayout } from '../../../components/Layout/ScreenLayout';
 import { downloadLiteRtModel, getLiteRtModel, isLiteRtModelCached } from '../../../features/nlp/services/liteRtModels';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import type { ThemePreference } from '../../../../types/finance';
 import { formatAppCurrency, SUPPORTED_CURRENCIES } from '../../../../utils/currency';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -19,9 +19,29 @@ import { exportTransactionsCsv } from '../../../../utils/exportTransactionsCsv';
 import { deleteGeminiApiKey, getGeminiApiKey, setGeminiApiKey } from '../../../../services/secureGeminiKey';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
+function mapGeminiConnectionError(error: unknown) {
+  const message = typeof (error as { message?: unknown })?.message === 'string'
+    ? (error as { message: string }).message.toLowerCase()
+    : '';
+
+  if (message.includes('api key') || message.includes('permission') || message.includes('unauthenticated')) {
+    return 'Invalid API key.';
+  }
+  if (message.includes('quota') || message.includes('resource') || message.includes('rate')) {
+    return 'Quota exceeded or resource unavailable.';
+  }
+  if (message.includes('network') || message.includes('fetch') || message.includes('offline')) {
+    return 'Network error.';
+  }
+  return 'Connection failed. Please try again.';
+}
+
 export default function SettingsScreen() {
   const theme = useTheme<AppTheme>();
   const router = useRouter();
+  const params = useLocalSearchParams<{ section?: string }>();
+  const scrollRef = React.useRef<ScrollView>(null);
+  const [aiSectionY, setAiSectionY] = React.useState<number | null>(null);
 
   const [cloudSyncPopupDismissed, setCloudSyncPopupDismissed] = React.useState(false);
 
@@ -41,6 +61,8 @@ export default function SettingsScreen() {
     kind: 'success' | 'error';
     message: string;
   }>(null);
+  const [localModelStatus, setLocalModelStatus] = React.useState<'checking' | 'ready' | 'missing'>('checking');
+  const [localModelDownloadInFlight, setLocalModelDownloadInFlight] = React.useState(false);
 
   React.useEffect(() => {
     return () => {
@@ -49,6 +71,60 @@ export default function SettingsScreen() {
       setGeminiKeyTestStatus(null);
     };
   }, []);
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    const syncStatus = async () => {
+      setLocalModelStatus('checking');
+      try {
+        const cached = await isLiteRtModelCached(localModelId);
+        if (cancelled) return;
+        setLocalModelDownloaded(cached);
+        setLocalModelStatus(cached ? 'ready' : 'missing');
+      } catch {
+        if (cancelled) return;
+        console.warn('Failed to check local model cache status');
+        setLocalModelDownloaded(false);
+        setLocalModelStatus('missing');
+      }
+    };
+
+    syncStatus();
+    return () => {
+      cancelled = true;
+    };
+  }, [localModelId, setLocalModelDownloaded]);
+
+  const selectedLocalModel = getLiteRtModel(localModelId);
+  const localModelStatusText =
+    localModelStatus === 'checking'
+      ? 'Checking local model status…'
+      : localModelDownloaded
+        ? `Downloaded • ${selectedLocalModel.sizeLabel}`
+        : `Not downloaded • ${selectedLocalModel.sizeLabel}`;
+
+  const handleDownloadLocalModel = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setLocalModelDownloadInFlight(true);
+    setLocalModelStatus('checking');
+    try {
+      const cached = await isLiteRtModelCached(selectedLocalModel.id);
+      if (!cached) {
+        await downloadLiteRtModel(selectedLocalModel.id, undefined, huggingFaceToken?.trim()
+          ? { Authorization: `Bearer ${huggingFaceToken.trim()}` }
+          : undefined);
+      }
+      setLocalModelDownloaded(true);
+      setLocalModelStatus('ready');
+    } catch {
+      Alert.alert('Download failed', 'Could not download the local model. Please try again.');
+      setLocalModelDownloaded(false);
+      setLocalModelStatus('missing');
+    } finally {
+      setLocalModelDownloadInFlight(false);
+    }
+  };
 
   const smartCategorizationEnabled = useSettingsStore((state) => state.smartCategorizationEnabled);
   const setSmartCategorizationEnabled = useSettingsStore((state) => state.setSmartCategorizationEnabled);
@@ -102,9 +178,17 @@ export default function SettingsScreen() {
     '#f472b6', // Pink
   ];
 
+  React.useEffect(() => {
+    if (params.section !== 'ai' || aiSectionY === null) return;
+    const timeout = setTimeout(() => {
+      scrollRef.current?.scrollTo({ y: Math.max(0, aiSectionY - 24), animated: true });
+    }, 0);
+    return () => clearTimeout(timeout);
+  }, [params.section, aiSectionY]);
+
   return (
     <ScreenLayout title="Good morning" backgroundColor={theme.colors.background}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView ref={scrollRef} contentContainerStyle={styles.scrollContent}>
 
         <View style={styles.header}>
           <Text variant="displayMedium" style={[styles.title, { color: theme.colors.onSurface }]}>
@@ -128,7 +212,7 @@ export default function SettingsScreen() {
                 <View>
                   <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>Gemma Model Status</Text>
                   <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>
-                    {localModelDownloaded ? 'Downloaded • Active' : 'Not downloaded'}
+                    {localModelStatusText}
                   </Text>
                 </View>
               </View>
@@ -138,24 +222,12 @@ export default function SettingsScreen() {
                     styles.downloadButton,
                     { backgroundColor: pressed ? theme.colors.surfaceContainerHighest : theme.colors.surfaceContainerHigh },
                   ]}
-                  onPress={async () => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    try {
-                      const model = getLiteRtModel(localModelId);
-                      const cached = await isLiteRtModelCached(model.id);
-                      if (!cached) {
-                        await downloadLiteRtModel(model.id, undefined, huggingFaceToken?.trim()
-                          ? { Authorization: `Bearer ${huggingFaceToken.trim()}` }
-                          : undefined);
-                      }
-                      setLocalModelDownloaded(true);
-                    } catch (error) {
-                      console.warn('LiteRT model download failed', error);
-                      setLocalModelDownloaded(false);
-                    }
-                  }}
+                  disabled={localModelDownloadInFlight}
+                  onPress={handleDownloadLocalModel}
                 >
-                  <Text style={{ color: theme.colors.primary, fontFamily: 'BeVietnamPro_600SemiBold' }}>Download</Text>
+                  <Text style={{ color: theme.colors.primary, fontFamily: 'BeVietnamPro_600SemiBold' }}>
+                    {localModelDownloadInFlight ? 'Downloading…' : 'Download'}
+                  </Text>
                 </Pressable>
               )}
             </View>
@@ -380,7 +452,10 @@ export default function SettingsScreen() {
         </View>
 
         {/* AI & Assistant Section */}
-        <View style={[styles.section, { backgroundColor: theme.colors.surfaceContainerLow }]}>
+        <View
+          style={[styles.section, { backgroundColor: theme.colors.surfaceContainerLow }]}
+          onLayout={(event) => setAiSectionY(event.nativeEvent.layout.y)}
+        >
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: theme.colors.primary }]}>AI &amp; Assistant</Text>
             <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>
@@ -630,17 +705,8 @@ export default function SettingsScreen() {
                             generationConfig: { maxOutputTokens: 1, temperature: 0 },
                           });
                           setGeminiKeyTestStatus({ kind: 'success', message: 'Connection ok.' });
-                        } catch (error: any) {
-                          const message = typeof error?.message === 'string' ? error.message : 'Unknown error';
-                          if (message.toLowerCase().includes('api key') || message.toLowerCase().includes('permission')) {
-                            setGeminiKeyTestStatus({ kind: 'error', message: 'Invalid API key.' });
-                          } else if (message.toLowerCase().includes('quota') || message.toLowerCase().includes('resource')) {
-                            setGeminiKeyTestStatus({ kind: 'error', message: 'Quota exceeded or resource unavailable.' });
-                          } else if (message.toLowerCase().includes('network') || message.toLowerCase().includes('fetch')) {
-                            setGeminiKeyTestStatus({ kind: 'error', message: 'Network error.' });
-                          } else {
-                            setGeminiKeyTestStatus({ kind: 'error', message: `Connection failed: ${message}` });
-                          }
+                        } catch (error) {
+                          setGeminiKeyTestStatus({ kind: 'error', message: mapGeminiConnectionError(error) });
                         }
                       }}
                     >
@@ -660,6 +726,39 @@ export default function SettingsScreen() {
                     </Text>
                   )}
                 </View>
+              </View>
+            )}
+            {aiProvider === 'local' && (
+              <View style={[styles.settingRow, { backgroundColor: theme.colors.surfaceContainer, flexDirection: 'column', alignItems: 'flex-start', gap: 10 }]}>
+                <View style={styles.settingRowLeft}>
+                  <MaterialCommunityIcons name="cpu-64-bit" size={24} color={theme.colors.onSurfaceVariant} />
+                  <View>
+                    <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>
+                      Local Model Status
+                    </Text>
+                    <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>
+                      {localModelStatusText}
+                    </Text>
+                  </View>
+                </View>
+                {!localModelDownloaded && (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Download local AI model"
+                    style={({ pressed }) => ({
+                      paddingHorizontal: 14,
+                      paddingVertical: 10,
+                      borderRadius: 14,
+                      backgroundColor: pressed ? theme.colors.surfaceContainerHighest : theme.colors.surfaceContainerHigh,
+                    })}
+                    disabled={localModelDownloadInFlight}
+                    onPress={handleDownloadLocalModel}
+                  >
+                    <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold' }}>
+                      {localModelDownloadInFlight ? 'Downloading…' : 'Download'}
+                    </Text>
+                  </Pressable>
+                )}
               </View>
             )}
           </View>

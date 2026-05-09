@@ -51,6 +51,12 @@ function TabLayout() {
   }, [hasCompletedOnboarding, segments, router]);
 
   useEffect(() => {
+    if (!aiFeaturesEnabled && segments[0] === 'chat') {
+      router.replace('/index');
+    }
+  }, [aiFeaturesEnabled, router, segments]);
+
+  useEffect(() => {
     if (!hasCompletedOnboarding || !recurringEnabled) return;
 
     const apply = () => {
