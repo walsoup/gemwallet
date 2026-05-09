@@ -87,9 +87,6 @@ export default function HomeScreen() {
     });
   }, [transactions, categories, searchQuery, selectedFilter]);
 
-  const balanceDollars = Math.floor(balanceCents / 100);
-  const balanceCentsPart = (balanceCents % 100).toString().padStart(2, '0');
-
   const filters = ['All', 'Food', 'Income', 'Transport'];
 
   return (
@@ -161,14 +158,9 @@ export default function HomeScreen() {
           <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8, fontFamily: 'BeVietnamPro_500Medium' }}>
             Available Cash
           </Text>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-            <Text variant="displayLarge" style={{ color: theme.colors.onSurface }}>
-              ${balanceDollars.toLocaleString()}
-            </Text>
-            <Text variant="displaySmall" style={{ color: theme.colors.onSurfaceVariant, marginTop: 12 }}>
-              .{balanceCentsPart}
-            </Text>
-          </View>
+          <Text variant="displayLarge" style={{ color: theme.colors.onSurface }}>
+            {formatAppCurrency(balanceCents)}
+          </Text>
 
           {/* Quick Actions */}
           <View style={styles.quickActions}>
@@ -204,7 +196,7 @@ export default function HomeScreen() {
             </View>
             <View style={{ marginTop: 16 }}>
               <Text variant="headlineLarge" style={{ color: theme.colors.onSurface }}>
-                ${(monthlySpendCents / 100).toLocaleString('en-US', { minimumFractionDigits: 0 })}
+                {formatAppCurrency(monthlySpendCents)}
               </Text>
               <View style={[styles.progressBarBg, { backgroundColor: theme.colors.surfaceContainerHighest }]}>
                 <View style={[styles.progressBarFill, { backgroundColor: theme.colors.primaryContainer, width: '65%' }]} />
@@ -225,10 +217,10 @@ export default function HomeScreen() {
             <View style={{ marginTop: 16 }}>
               <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
                 <Text variant="headlineLarge" style={{ color: theme.colors.onSurface }}>
-                  ${vacationGoal ? (vacationGoal.savedCents / 100).toLocaleString() : '0'}
+                  {formatAppCurrency(vacationGoal?.savedCents ?? 0)}
                 </Text>
                 <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 18, fontFamily: 'SpaceGrotesk_500Medium' }}>
-                  / ${vacationGoal ? (vacationGoal.targetCents / 100).toLocaleString() : '0'}
+                  / {formatAppCurrency(vacationGoal?.targetCents ?? 0)}
                 </Text>
               </View>
               <View style={[styles.progressBarBg, { backgroundColor: theme.colors.surfaceContainerHighest }]}>

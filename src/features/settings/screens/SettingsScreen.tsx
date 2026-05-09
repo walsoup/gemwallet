@@ -3,6 +3,8 @@ import { ScrollView, StyleSheet, View, Pressable, Switch, Alert } from 'react-na
 import { Text, useTheme, TextInput } from 'react-native-paper';
 import { useSettingsStore } from '../../../../store/useSettingsStore';
 import { useTransactionStore } from '../../../../store/useTransactionStore';
+import { useGoalsStore } from '../../../../store/useGoalsStore';
+import { useRecurringStore } from '../../../../store/useRecurringStore';
 import * as Haptics from 'expo-haptics';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppTheme } from '../../../../providers/AppThemeProvider';
@@ -153,6 +155,8 @@ export default function SettingsScreen() {
   const transactions = useTransactionStore((state) => state.transactions);
   const categories = useTransactionStore((state) => state.categories);
   const clearAllTransactions = useTransactionStore((state) => state.clearAllData);
+  const clearAllGoals = useGoalsStore((state) => state.clearAllData);
+  const clearAllRecurring = useRecurringStore((state) => state.clearAllData);
   const resetSettings = useSettingsStore((state) => state.resetSettings);
 
   const notificationsTransactionAlerts = useSettingsStore((state) => state.notificationsTransactionAlerts);
@@ -549,37 +553,29 @@ export default function SettingsScreen() {
                 <View style={{ width: '100%', gap: 10 }}>
                   <View style={{ width: '100%', flexDirection: 'row', gap: 8, alignItems: 'center' }}>
                     <View style={{ flex: 1 }}>
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityLabel="Edit Gemini API key"
-                        onPress={() => {
-                          // no-op; input is below
+                      <View
+                        style={{
+                          borderWidth: 1,
+                          borderColor: theme.colors.outlineVariant + '4D',
+                          borderRadius: 14,
+                          paddingHorizontal: 12,
+                          paddingVertical: 12,
+                          backgroundColor: theme.colors.surfaceContainerLowest,
                         }}
                       >
-                        <View
+                        <Text
                           style={{
-                            borderWidth: 1,
-                            borderColor: theme.colors.outlineVariant + '4D',
-                            borderRadius: 14,
-                            paddingHorizontal: 12,
-                            paddingVertical: 12,
-                            backgroundColor: theme.colors.surfaceContainerLowest,
+                            color: theme.colors.onSurface,
+                            fontFamily: 'BeVietnamPro_400Regular',
                           }}
                         >
-                          <Text
-                            style={{
-                              color: theme.colors.onSurface,
-                              fontFamily: 'BeVietnamPro_400Regular',
-                            }}
-                          >
-                            {geminiKeyDraft
-                              ? geminiKeyVisible
-                                ? geminiKeyDraft
-                                : '••••••••••••••••'
-                              : 'Tap to paste/type key below'}
-                          </Text>
-                        </View>
-                      </Pressable>
+                          {geminiKeyDraft
+                            ? geminiKeyVisible
+                              ? geminiKeyDraft
+                              : '••••••••••••••••'
+                            : 'Paste/type key below'}
+                        </Text>
+                      </View>
                     </View>
 
                     <Pressable
@@ -1054,6 +1050,8 @@ export default function SettingsScreen() {
                             style: 'destructive',
                             onPress: () => {
                               clearAllTransactions();
+                              clearAllGoals();
+                              clearAllRecurring();
                               resetSettings();
                             },
                           },

@@ -13,6 +13,7 @@ type GoalState = {
   toggleGoal: (goalId: string, enabled: boolean) => void;
   deleteGoal: (goalId: string) => void;
   setGoalsEnabled: (enabled: boolean) => void;
+  clearAllData: () => void;
   hydrateFromBackup: (data: { goals: Goal[]; goalsEnabled: boolean }) => void;
 };
 
@@ -60,6 +61,7 @@ export const useGoalsStore = create<GoalState>()(
         })),
       deleteGoal: (goalId) => set((state) => ({ goals: state.goals.filter((goal) => goal.id !== goalId) })),
       setGoalsEnabled: (enabled) => set({ goalsEnabled: enabled }),
+      clearAllData: () => set({ goals: [], goalsEnabled: false }),
       hydrateFromBackup: ({ goals, goalsEnabled }) => set({ goals: goals ?? [], goalsEnabled: !!goalsEnabled }),
     }),
     {

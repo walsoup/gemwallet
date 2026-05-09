@@ -21,6 +21,7 @@ type RecurringState = {
   applyDueEvents: (now: number, apply: (event: RecurringCashEvent) => void) => void;
   runEventNow: (id: string, apply: (event: RecurringCashEvent) => void, now: number) => void;
   setRecurringEnabled: (enabled: boolean) => void;
+  clearAllData: () => void;
   hydrateFromBackup: (data: { events: RecurringCashEvent[]; recurringEnabled: boolean }) => void;
 };
 
@@ -86,6 +87,7 @@ export const useRecurringStore = create<RecurringState>()(
         });
       },
       setRecurringEnabled: (enabled) => set({ recurringEnabled: enabled }),
+      clearAllData: () => set({ events: [], recurringEnabled: false }),
       hydrateFromBackup: ({ events, recurringEnabled }) =>
         set({ events: events ?? [], recurringEnabled: !!recurringEnabled }),
     }),
