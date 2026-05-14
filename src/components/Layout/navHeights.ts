@@ -1,0 +1,3 @@
+export const TOP_NAV_ESTIMATED_HEIGHT = 72;
+export const BOTTOM_NAV_ESTIMATED_HEIGHT = 92;
+

@@ -2,26 +2,75 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-import type { ThemePreference } from '../types/finance';
+import type { CurrencyCode, LanguageCode, RegionCode, ThemePreference } from '../types/finance';
+import {
+  defaultSettingsState,
+  migrateSettingsState,
+  type AiProvider,
+} from './settingsMigration';
 
-type SettingsState = {
+export type { AiProvider } from './settingsMigration';
+
+export type SettingsState = {
   themePreference: ThemePreference;
   oledTrueBlackEnabled: boolean;
   highContrastEnabled: boolean;
+  themePrimary: string;
+  themeSecondary: string;
   secureAccessEnabled: boolean;
+  biometricAuthEnabled: boolean;
+  notificationsTransactionAlerts: boolean;
+  notificationsWeeklySummary: boolean;
+  notificationsSavingsGoalProgress: boolean;
+  notificationsBudgetWarnings: boolean;
+  passcodeEnabled: boolean;
+  passcodePin: string;
+  currencyCode: CurrencyCode;
+  language: LanguageCode;
+  region: RegionCode;
+  aiProvider: AiProvider;
+  aiFeaturesEnabled: boolean;
+  huggingFaceToken: string;
+  gemmaModel: string; // Used for cloud
+  localModelId: string; // LiteRT model selection
+  localModelDownloaded: boolean; // Indicates if local model is downloaded
+  smartCategorizationEnabled: boolean;
+  advancedSummariesEnabled: boolean;
+  includeNotesInExport: boolean;
+  setupCoachDismissed: boolean;
+  backupConfigured: boolean;
   setThemePreference: (preference: ThemePreference) => void;
   setOledTrueBlackEnabled: (enabled: boolean) => void;
   setHighContrastEnabled: (enabled: boolean) => void;
+  setThemePrimary: (color: string) => void;
+  setThemeSecondary: (color: string) => void;
   setSecureAccessEnabled: (enabled: boolean) => void;
+  setBiometricAuthEnabled: (enabled: boolean) => void;
+  setNotificationsTransactionAlerts: (enabled: boolean) => void;
+  setNotificationsWeeklySummary: (enabled: boolean) => void;
+  setNotificationsSavingsGoalProgress: (enabled: boolean) => void;
+  setNotificationsBudgetWarnings: (enabled: boolean) => void;
+  setPasscodeEnabled: (enabled: boolean) => void;
+  setPasscodePin: (pin: string) => void;
+  setCurrencyCode: (code: CurrencyCode) => void;
+  setLanguage: (language: LanguageCode) => void;
+  setRegion: (region: RegionCode) => void;
+  setAiProvider: (provider: AiProvider) => void;
+  setAiFeaturesEnabled: (enabled: boolean) => void;
+  setHuggingFaceToken: (token: string) => void;
+  setGemmaModel: (model: string) => void;
+  setLocalModelId: (modelId: string) => void;
+  setLocalModelDownloaded: (downloaded: boolean) => void;
+  setSmartCategorizationEnabled: (enabled: boolean) => void;
+  setAdvancedSummariesEnabled: (enabled: boolean) => void;
+  setIncludeNotesInExport: (enabled: boolean) => void;
+  setSetupCoachDismissed: (dismissed: boolean) => void;
+  setBackupConfigured: (configured: boolean) => void;
+  hydrateFromBackup: (incoming: Partial<SettingsState>) => void;
   resetSettings: () => void;
 };
 
-const defaultState = {
-  themePreference: 'system' as ThemePreference,
-  oledTrueBlackEnabled: false,
-  highContrastEnabled: false,
-  secureAccessEnabled: false,
-};
+const defaultState = defaultSettingsState;
 
 export const useSettingsStore = create<SettingsState>()(
   persist(
@@ -30,12 +79,45 @@ export const useSettingsStore = create<SettingsState>()(
       setThemePreference: (themePreference) => set({ themePreference }),
       setOledTrueBlackEnabled: (oledTrueBlackEnabled) => set({ oledTrueBlackEnabled }),
       setHighContrastEnabled: (highContrastEnabled) => set({ highContrastEnabled }),
+      setThemePrimary: (themePrimary) => set({ themePrimary: themePrimary.trim() }),
+      setThemeSecondary: (themeSecondary) => set({ themeSecondary: themeSecondary.trim() }),
       setSecureAccessEnabled: (secureAccessEnabled) => set({ secureAccessEnabled }),
+      setBiometricAuthEnabled: (biometricAuthEnabled) => set({ biometricAuthEnabled }),
+      setNotificationsTransactionAlerts: (notificationsTransactionAlerts) =>
+        set({ notificationsTransactionAlerts }),
+      setNotificationsWeeklySummary: (notificationsWeeklySummary) => set({ notificationsWeeklySummary }),
+      setNotificationsSavingsGoalProgress: (notificationsSavingsGoalProgress) =>
+        set({ notificationsSavingsGoalProgress }),
+      setNotificationsBudgetWarnings: (notificationsBudgetWarnings) =>
+        set({ notificationsBudgetWarnings }),
+      setPasscodeEnabled: (passcodeEnabled) => set({ passcodeEnabled }),
+      setPasscodePin: (passcodePin) => set({ passcodePin }),
+      setCurrencyCode: (currencyCode) => set({ currencyCode }),
+      setLanguage: (language) => set({ language }),
+      setRegion: (region) => set({ region }),
+      setAiProvider: (aiProvider) => set({ aiProvider }),
+      setAiFeaturesEnabled: (aiFeaturesEnabled) => set({ aiFeaturesEnabled }),
+      setHuggingFaceToken: (huggingFaceToken) => set({ huggingFaceToken: huggingFaceToken.trim() }),
+      setGemmaModel: (gemmaModel) => set({ gemmaModel }),
+      setLocalModelId: (localModelId) => set({ localModelId }),
+      setLocalModelDownloaded: (localModelDownloaded) => set({ localModelDownloaded }),
+      setSmartCategorizationEnabled: (smartCategorizationEnabled) => set({ smartCategorizationEnabled }),
+      setAdvancedSummariesEnabled: (advancedSummariesEnabled) => set({ advancedSummariesEnabled }),
+      setIncludeNotesInExport: (includeNotesInExport) => set({ includeNotesInExport }),
+      setSetupCoachDismissed: (setupCoachDismissed) => set({ setupCoachDismissed }),
+      setBackupConfigured: (backupConfigured) => set({ backupConfigured }),
+      hydrateFromBackup: (incoming) =>
+        set(() => ({
+          ...defaultState,
+          ...incoming,
+        })),
       resetSettings: () => set(defaultState),
     }),
     {
-      name: 'gemwallet-settings-v2',
+      name: 'gemwallet-settings-v5',
       storage: createJSONStorage(() => AsyncStorage),
+      version: 5,
+      migrate: (persistedState: unknown, _version: number) => migrateSettingsState(persistedState),
     }
   )
 );

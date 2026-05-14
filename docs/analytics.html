@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Kinetic Analytics</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&amp;family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">tailwind.config = {darkMode: "class", theme: {extend: {colors: {"tertiary-fixed": "#72fbbc", "secondary-fixed": "#ffdad8", "surface-container-low": "#1e1b1b", error: "#ffb4ab", "secondary-container": "#753635", "primary-fixed-dim": "#ffb3b0", "inverse-primary": "#ae2f34", "primary-container": "#ff6b6b", "on-error": "#690005", "on-primary-container": "#6d0010", "on-tertiary": "#003824", background: "#151313", tertiary: "#52dea2", "inverse-on-surface": "#33302f", "on-secondary": "#561e1e", "error-container": "#93000a", "on-background": "#e8e1e0", "on-primary-fixed-variant": "#8c1520", "primary-fixed": "#ffdad8", "on-tertiary-container": "#003b26", "on-surface-variant": "#e0bfbd", "surface-container-highest": "#383434", "on-error-container": "#ffdad6", "tertiary-fixed-dim": "#52dea2", primary: "#ffb3b0", "on-secondary-fixed": "#3a090b", "on-primary-fixed": "#410006", "on-secondary-container": "#f8a29e", "on-secondary-fixed-variant": "#723433", "inverse-surface": "#e8e1e0", "on-primary": "#68000f", "surface-tint": "#ffb3b0", "on-tertiary-fixed-variant": "#005236", "outline-variant": "#584140", surface: "#151313", outline: "#a78a88", "surface-bright": "#3c3838", "tertiary-container": "#00b179", "secondary-fixed-dim": "#ffb3b0", "on-tertiary-fixed": "#002113", "surface-container-high": "#2d2929", "surface-dim": "#151313", "surface-container-lowest": "#100e0e", "surface-variant": "#383434", secondary: "#ffb3b0", "surface-container": "#221f1f", "on-surface": "#e8e1e0"}, borderRadius: {DEFAULT: "0.25rem", lg: "0.5rem", xl: "0.75rem", full: "9999px"}, fontFamily: {headline: ["Space Grotesk"], body: ["Be Vietnam Pro"], label: ["Be Vietnam Pro"], display: "Space Grotesk"}}}};</script>
+<style>
+        body { font-family: 'Be Vietnam Pro', sans-serif; }
+        h1, h2, h3, h4, h5, h6, .font-headline { font-family: 'Space Grotesk', sans-serif; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface min-h-screen flex flex-col antialiased selection:bg-primary-container selection:text-on-primary-container">
+<!-- TopAppBar -->
+<header class="docked full-width top-0 sticky no-border bg-zinc-900/40 flat no shadows flex justify-between items-center px-6 py-4 w-full z-40 backdrop-blur-xl">
+<div class="flex items-center hover:opacity-80 transition-opacity Active: scale-95 duration-200 cursor-pointer">
+<h1 class="font-['Space_Grotesk'] text-xl font-medium text-zinc-100 tracking-tight">Good afternoon</h1>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full bg-surface-container-low text-zinc-400 hover:text-[#FF6B6B] hover:bg-surface-container-high transition-all">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">settings</span>
+</button>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow px-6 pb-32 pt-6 max-w-3xl mx-auto w-full space-y-12">
+<!-- Hero Section: Cashflow Trends -->
+<section class="space-y-6">
+<div class="space-y-1">
+<h2 class="font-headline text-lg font-medium text-on-surface-variant tracking-tight">Cashflow Trends</h2>
+<div class="relative">
+<div class="absolute -inset-4 bg-primary-container/20 blur-[60px] rounded-full z-0 pointer-events-none"></div>
+<div class="relative z-10 flex items-baseline gap-3">
+<span class="font-headline text-5xl md:text-6xl font-medium tracking-tighter text-on-surface">+ $4,250.00</span>
+<span class="font-body text-sm font-medium text-tertiary flex items-center bg-tertiary/10 px-2 py-1 rounded-md">
+<span class="material-symbols-outlined text-sm mr-1">trending_up</span>
+                            8.4%
+                        </span>
+</div>
+</div>
+<p class="font-body text-sm text-on-surface-variant">Net momentum this month</p>
+</div>
+<!-- Stylized Line Chart Area -->
+<div class="h-48 w-full bg-surface-container-low rounded-xl relative overflow-hidden flex items-end pt-8 px-4 pb-4">
+<!-- Abstract Graph Visual -->
+<svg class="w-full h-full preserve-3d" preserveaspectratio="none" viewbox="0 0 400 100">
+<defs>
+<lineargradient id="lineGrad" x1="0%" x2="100%" y1="0%" y2="0%">
+<stop offset="0%" stop-color="#ffb3b0" stop-opacity="0.2"></stop>
+<stop offset="50%" stop-color="#ff6b6b" stop-opacity="0.8"></stop>
+<stop offset="100%" stop-color="#ff6b6b" stop-opacity="1"></stop>
+</lineargradient>
+<lineargradient id="fillGrad" x1="0%" x2="0%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#ff6b6b" stop-opacity="0.15"></stop>
+<stop offset="100%" stop-color="#151313" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+<path d="M0,80 Q50,90 100,60 T200,40 T300,20 T400,10 L400,100 L0,100 Z" fill="url(#fillGrad)"></path>
+<path d="M0,80 Q50,90 100,60 T200,40 T300,20 T400,10" fill="none" stroke="url(#lineGrad)" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"></path>
+<!-- Plot points -->
+<circle cx="100" cy="60" fill="#151313" r="4" stroke="#ff6b6b" stroke-width="2"></circle>
+<circle cx="200" cy="40" fill="#151313" r="4" stroke="#ff6b6b" stroke-width="2"></circle>
+<circle cx="300" cy="20" fill="#151313" r="4" stroke="#ff6b6b" stroke-width="2"></circle>
+<circle cx="400" cy="10" fill="#ff6b6b" r="5"></circle>
+</svg>
+</div>
+</section>
+<!-- Bento Grid: Insights & Alerts -->
+<section class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- High Outflow Alert -->
+<div class="bg-surface-container-low rounded-xl p-6 flex flex-col justify-between h-48 relative overflow-hidden group hover:bg-surface-container transition-colors duration-300">
+<div class="absolute right-0 top-0 w-32 h-32 bg-error/5 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110 duration-500"></div>
+<div class="relative z-10 flex items-start justify-between">
+<div class="bg-surface-container-highest p-2 rounded-lg text-error">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">warning</span>
+</div>
+<span class="font-headline text-xs font-medium text-error uppercase tracking-wider bg-error/10 px-2 py-1 rounded-md">Alert</span>
+</div>
+<div class="relative z-10 mt-auto">
+<h3 class="font-headline text-2xl font-medium text-on-surface mb-1">High Outflow</h3>
+<p class="font-body text-sm text-on-surface-variant leading-relaxed">Dining expenses are up 24% compared to last week.</p>
+</div>
+</div>
+<!-- Savings Rate Insight -->
+<div class="bg-surface-container-low rounded-xl p-6 flex flex-col justify-between h-48 relative overflow-hidden group hover:bg-surface-container transition-colors duration-300">
+<div class="absolute right-0 top-0 w-32 h-32 bg-tertiary/5 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110 duration-500"></div>
+<div class="relative z-10 flex items-start justify-between">
+<div class="bg-surface-container-highest p-2 rounded-lg text-tertiary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">savings</span>
+</div>
+<span class="font-headline text-xs font-medium text-tertiary uppercase tracking-wider bg-tertiary/10 px-2 py-1 rounded-md">Insight</span>
+</div>
+<div class="relative z-10 mt-auto">
+<h3 class="font-headline text-2xl font-medium text-on-surface mb-1">18.5% Saved</h3>
+<p class="font-body text-sm text-on-surface-variant leading-relaxed">You're on track to hit your monthly goal of 20%.</p>
+</div>
+</div>
+</section>
+<!-- Daily Velocity -->
+<section class="space-y-4">
+<h2 class="font-headline text-lg font-medium text-on-surface-variant tracking-tight">Daily Velocity</h2>
+<div class="bg-surface-container-low rounded-xl p-6">
+<div class="flex items-end justify-between h-32 gap-2">
+<!-- Bars -->
+<div class="w-full flex flex-col items-center gap-2 group">
+<div class="w-full bg-surface-container-highest rounded-t-sm rounded-b-sm h-12 relative overflow-hidden transition-all duration-300 group-hover:bg-primary-container/40">
+<div class="absolute bottom-0 w-full bg-primary-container h-1/2 opacity-80 rounded-t-sm rounded-b-sm"></div>
+</div>
+<span class="font-body text-xs text-on-surface-variant">M</span>
+</div>
+<div class="w-full flex flex-col items-center gap-2 group">
+<div class="w-full bg-surface-container-highest rounded-t-sm rounded-b-sm h-16 relative overflow-hidden transition-all duration-300 group-hover:bg-primary-container/40">
+<div class="absolute bottom-0 w-full bg-primary-container h-2/3 opacity-80 rounded-t-sm rounded-b-sm"></div>
+</div>
+<span class="font-body text-xs text-on-surface-variant">T</span>
+</div>
+<div class="w-full flex flex-col items-center gap-2 group">
+<div class="w-full bg-surface-container-highest rounded-t-sm rounded-b-sm h-24 relative overflow-hidden transition-all duration-300 group-hover:bg-primary-container/40">
+<div class="absolute bottom-0 w-full bg-primary-container h-full rounded-t-sm rounded-b-sm"></div>
+</div>
+<span class="font-body text-xs text-on-surface-variant">W</span>
+</div>
+<div class="w-full flex flex-col items-center gap-2 group">
+<div class="w-full bg-surface-container-highest rounded-t-sm rounded-b-sm h-10 relative overflow-hidden transition-all duration-300 group-hover:bg-primary-container/40">
+<div class="absolute bottom-0 w-full bg-primary-container h-1/3 opacity-80 rounded-t-sm rounded-b-sm"></div>
+</div>
+<span class="font-body text-xs text-on-surface-variant">T</span>
+</div>
+<div class="w-full flex flex-col items-center gap-2 group">
+<div class="w-full bg-surface-container-highest rounded-t-sm rounded-b-sm h-20 relative overflow-hidden transition-all duration-300 group-hover:bg-primary-container/40">
+<div class="absolute bottom-0 w-full bg-primary-container h-4/5 opacity-80 rounded-t-sm rounded-b-sm"></div>
+</div>
+<span class="font-body text-xs text-on-surface-variant text-on-surface font-medium">F</span>
+</div>
+<div class="w-full flex flex-col items-center gap-2 group">
+<div class="w-full bg-surface-container-highest rounded-t-sm rounded-b-sm h-8 relative overflow-hidden transition-all duration-300 group-hover:bg-primary-container/40">
+<div class="absolute bottom-0 w-full bg-primary-container h-1/4 opacity-60 rounded-t-sm rounded-b-sm"></div>
+</div>
+<span class="font-body text-xs text-on-surface-variant">S</span>
+</div>
+<div class="w-full flex flex-col items-center gap-2 group">
+<div class="w-full bg-surface-container-highest rounded-t-sm rounded-b-sm h-14 relative overflow-hidden transition-all duration-300 group-hover:bg-primary-container/40">
+<div class="absolute bottom-0 w-full bg-primary-container h-2/5 opacity-80 rounded-t-sm rounded-b-sm"></div>
+</div>
+<span class="font-body text-xs text-on-surface-variant">S</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Top Movers List -->
+<section class="space-y-4">
+<h2 class="font-headline text-lg font-medium text-on-surface-variant tracking-tight">Top Movers</h2>
+<div class="bg-surface-container-low rounded-xl p-2 space-y-1">
+<!-- Item 1 -->
+<div class="flex items-center justify-between p-4 rounded-lg hover:bg-surface-container-highest transition-colors cursor-pointer group">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant group-hover:bg-surface-container-low group-hover:text-primary-container transition-colors">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">restaurant</span>
+</div>
+<div>
+<h4 class="font-headline text-base font-medium text-on-surface">Dining</h4>
+<p class="font-body text-sm text-on-surface-variant">32 transactions</p>
+</div>
+</div>
+<div class="text-right">
+<p class="font-headline text-base font-medium text-on-surface">-$840.50</p>
+<p class="font-body text-sm text-error flex items-center justify-end gap-1">
+<span class="material-symbols-outlined text-[14px]">arrow_upward</span>
+                            12%
+                        </p>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="flex items-center justify-between p-4 rounded-lg hover:bg-surface-container-highest transition-colors cursor-pointer group">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant group-hover:bg-surface-container-low group-hover:text-primary-container transition-colors">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">shopping_bag</span>
+</div>
+<div>
+<h4 class="font-headline text-base font-medium text-on-surface">Retail</h4>
+<p class="font-body text-sm text-on-surface-variant">14 transactions</p>
+</div>
+</div>
+<div class="text-right">
+<p class="font-headline text-base font-medium text-on-surface">-$420.00</p>
+<p class="font-body text-sm text-error flex items-center justify-end gap-1">
+<span class="material-symbols-outlined text-[14px]">arrow_upward</span>
+                            5%
+                        </p>
+</div>
+</div>
+<!-- Item 3 -->
+<div class="flex items-center justify-between p-4 rounded-lg hover:bg-surface-container-highest transition-colors cursor-pointer group">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant group-hover:bg-surface-container-low group-hover:text-tertiary transition-colors">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">commute</span>
+</div>
+<div>
+<h4 class="font-headline text-base font-medium text-on-surface">Transit</h4>
+<p class="font-body text-sm text-on-surface-variant">8 transactions</p>
+</div>
+</div>
+<div class="text-right">
+<p class="font-headline text-base font-medium text-on-surface">-$120.00</p>
+<p class="font-body text-sm text-tertiary flex items-center justify-end gap-1">
+<span class="material-symbols-outlined text-[14px]">arrow_downward</span>
+                            2%
+                        </p>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full flex justify-around items-center px-4 py-3 pb-6 bg-[#151313]/80 backdrop-blur-xl z-50 rounded-t-[1.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.3)] md:hidden">
+<a class="flex flex-col items-center justify-center text-zinc-500 px-4 py-1.5 hover:bg-zinc-800/50 transition-colors Active: scale-90 duration-200 rounded-2xl group" href="#">
+<span class="material-symbols-outlined mb-1 group-hover:text-on-surface transition-colors" style="font-variation-settings: 'FILL' 0;">home</span>
+<span class="font-['Be_Vietnam_Pro'] text-[11px] font-medium group-hover:text-on-surface transition-colors">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#FF6B6B] bg-[#FF6B6B]/10 rounded-2xl px-4 py-1.5 hover:bg-zinc-800/50 transition-colors Active: scale-90 duration-200" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">insights</span>
+<span class="font-['Be_Vietnam_Pro'] text-[11px] font-medium">Analytics</span>
+</a>
+<a class="flex flex-col items-center justify-center text-zinc-500 px-4 py-1.5 hover:bg-zinc-800/50 transition-colors Active: scale-90 duration-200 rounded-2xl group" href="#">
+<span class="material-symbols-outlined mb-1 group-hover:text-on-surface transition-colors" style="font-variation-settings: 'FILL' 0;">event_note</span>
+<span class="font-['Be_Vietnam_Pro'] text-[11px] font-medium group-hover:text-on-surface transition-colors">Planning</span>
+</a>
+<a class="flex flex-col items-center justify-center text-zinc-500 px-4 py-1.5 hover:bg-zinc-800/50 transition-colors Active: scale-90 duration-200 rounded-2xl group" href="#">
+<span class="material-symbols-outlined mb-1 group-hover:text-on-surface transition-colors" style="font-variation-settings: 'FILL' 0;">settings</span>
+<span class="font-['Be_Vietnam_Pro'] text-[11px] font-medium group-hover:text-on-surface transition-colors">Settings</span>
+</a>
+</nav>
+<!-- Desktop Navigation Cluster (Hidden on Mobile, shown on MD+) -->
+<nav class="hidden md:flex fixed top-0 right-20 h-16 items-center gap-8 z-50 pointer-events-none">
+<a class="font-body text-sm font-medium text-zinc-400 hover:text-on-surface transition-colors pointer-events-auto" href="#">Home</a>
+<a class="font-body text-sm font-medium text-[#FF6B6B] border-b-2 border-[#FF6B6B] pb-1 pointer-events-auto" href="#">Analytics</a>
+<a class="font-body text-sm font-medium text-zinc-400 hover:text-on-surface transition-colors pointer-events-auto" href="#">Planning</a>
+<a class="font-body text-sm font-medium text-zinc-400 hover:text-on-surface transition-colors pointer-events-auto" href="#">Settings</a>
+</nav>
+</body></html>

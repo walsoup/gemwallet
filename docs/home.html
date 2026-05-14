@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Kinetic - Home</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&amp;family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        
+        /* The Glow Effect for Balance */
+        .balance-glow::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 150px;
+            height: 150px;
+            background-color: var(--tw-colors-primary-container);
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.15;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<script id="tailwind-config">tailwind.config = {darkMode: "class", theme: {extend: {colors: {"tertiary-fixed": "#72fbbc", "secondary-fixed": "#ffdad8", "surface-container-low": "#1e1b1b", error: "#ffb4ab", "secondary-container": "#753635", "primary-fixed-dim": "#ffb3b0", "inverse-primary": "#ae2f34", "primary-container": "#ff6b6b", "on-error": "#690005", "on-primary-container": "#6d0010", "on-tertiary": "#003824", background: "#151313", tertiary: "#52dea2", "inverse-on-surface": "#33302f", "on-secondary": "#561e1e", "error-container": "#93000a", "on-background": "#e8e1e0", "on-primary-fixed-variant": "#8c1520", "primary-fixed": "#ffdad8", "on-tertiary-container": "#003b26", "on-surface-variant": "#e0bfbd", "surface-container-highest": "#383434", "on-error-container": "#ffdad6", "tertiary-fixed-dim": "#52dea2", primary: "#ffb3b0", "on-secondary-fixed": "#3a090b", "on-primary-fixed": "#410006", "on-secondary-container": "#f8a29e", "on-secondary-fixed-variant": "#723433", "inverse-surface": "#e8e1e0", "on-primary": "#68000f", "surface-tint": "#ffb3b0", "on-tertiary-fixed-variant": "#005236", "outline-variant": "#584140", surface: "#151313", outline: "#a78a88", "surface-bright": "#3c3838", "tertiary-container": "#00b179", "secondary-fixed-dim": "#ffb3b0", "on-tertiary-fixed": "#002113", "surface-container-high": "#2d2929", "surface-dim": "#151313", "surface-container-lowest": "#100e0e", "surface-variant": "#383434", secondary: "#ffb3b0", "surface-container": "#221f1f", "on-surface": "#e8e1e0"}, borderRadius: {DEFAULT: "0.25rem", lg: "0.5rem", xl: "0.75rem", full: "9999px"}, spacing: {}, fontFamily: {headline: ["Space Grotesk"], body: ["Be Vietnam Pro"], label: ["Be Vietnam Pro"], display: "Space Grotesk"}}}};</script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface font-body min-h-screen flex flex-col md:flex-row pb-24 md:pb-0 overflow-x-hidden">
+<!-- TopAppBar (Mobile & Web Shell Layout) -->
+<header class="flex justify-between items-center px-6 py-4 w-full bg-[#151313]/80 backdrop-blur-xl docked full-width top-0 sticky z-40 transition-opacity hover:opacity-80">
+<div class="flex items-center gap-3">
+<h1 class="font-['Space_Grotesk'] font-medium tracking-tight text-zinc-100 text-lg">Good afternoon</h1>
+</div>
+<button aria-label="Settings" class="p-2 rounded-full bg-surface-container-high text-zinc-400 hover:text-[#FF6B6B] transition-colors">
+<span class="material-symbols-outlined text-[24px]">settings</span>
+</button>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 w-full max-w-3xl mx-auto px-6 py-8 flex flex-col gap-10">
+<!-- Hero Balance Section -->
+<section class="relative balance-glow flex flex-col items-center justify-center text-center mt-4">
+<p class="font-body text-sm text-on-surface-variant mb-2">Available Cash</p>
+<h2 class="font-headline text-5xl md:text-6xl font-medium tracking-[-0.02em] text-on-surface">$12,450<span class="text-on-surface-variant text-4xl">.00</span></h2>
+<!-- Quick Actions -->
+<div class="flex gap-4 mt-8">
+<button class="bg-primary-container text-on-primary-container font-body font-medium px-8 py-4 rounded-full flex items-center gap-2 hover:brightness-110 transition-all shadow-[0_20px_40px_rgba(255,107,107,0.15)]">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">add</span>
+                    Add Funds
+                </button>
+<button class="bg-surface-container-highest text-on-surface font-body font-medium px-8 py-4 rounded-full flex items-center gap-2 hover:bg-surface-variant transition-all">
+<span class="material-symbols-outlined text-[20px]">send</span>
+                    Send
+                </button>
+</div>
+</section>
+<!-- Insights Bento Grid -->
+<section class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Monthly Spend -->
+<div class="bg-surface-container-low rounded-3xl p-6 flex flex-col justify-between min-h-[160px]">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[20px]">insights</span>
+<h3 class="font-body text-sm font-medium">Monthly Spend</h3>
+</div>
+<span class="text-xs font-medium text-tertiary px-2 py-1 bg-tertiary/10 rounded-full">On track</span>
+</div>
+<div class="mt-4">
+<p class="font-headline text-3xl font-medium tracking-tight text-on-surface">$2,140</p>
+<div class="w-full h-2 bg-surface-container-highest rounded-full mt-3 overflow-hidden">
+<div class="h-full bg-primary-container rounded-full w-[65%]"></div>
+</div>
+</div>
+</div>
+<!-- Savings Goal -->
+<div class="bg-surface-container-low rounded-3xl p-6 flex flex-col justify-between min-h-[160px]">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[20px]">flag</span>
+<h3 class="font-body text-sm font-medium">Vacation Fund</h3>
+</div>
+</div>
+<div class="mt-4">
+<p class="font-headline text-3xl font-medium tracking-tight text-on-surface">$4,500 <span class="text-lg text-on-surface-variant">/ $5k</span></p>
+<div class="w-full h-2 bg-surface-container-highest rounded-full mt-3 overflow-hidden">
+<div class="h-full bg-tertiary rounded-full w-[90%]"></div>
+</div>
+</div>
+</div>
+</section>
+<!-- Recent Transactions -->
+<section class="flex flex-col gap-4">
+<div class="flex flex-col gap-3 mb-2">
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full bg-surface-container-low border border-outline-variant/30 text-on-surface rounded-2xl py-3 pl-12 pr-4 focus:outline-none focus:border-primary-container focus:ring-1 focus:ring-primary-container placeholder:text-on-surface-variant transition-all font-body text-base" placeholder="Search transactions..." type="text"/>
+</div>
+<div class="flex gap-2 overflow-x-auto pb-1 no-scrollbar text-sm font-body font-medium">
+<button class="bg-primary-container text-on-primary-container px-4 py-1.5 rounded-full whitespace-nowrap hover:brightness-110 transition-all">All</button>
+<button class="bg-surface-container-low text-on-surface px-4 py-1.5 rounded-full whitespace-nowrap border border-outline-variant/20 hover:bg-surface-variant transition-colors">Food</button>
+<button class="bg-surface-container-low text-on-surface px-4 py-1.5 rounded-full whitespace-nowrap border border-outline-variant/20 hover:bg-surface-variant transition-colors">Income</button>
+<button class="bg-surface-container-low text-on-surface px-4 py-1.5 rounded-full whitespace-nowrap border border-outline-variant/20 hover:bg-surface-variant transition-colors">Transport</button>
+</div>
+</div>
+<div class="bg-surface-container-low rounded-3xl overflow-hidden">
+<!-- Transaction Item -->
+<div class="flex items-center justify-between p-4 px-6 hover:bg-surface-container transition-colors group border-b border-outline-variant/15 last:border-0">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-surface-container-highest flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined">shopping_cart</span>
+</div>
+<div>
+<p class="font-body text-base font-medium text-on-surface">Whole Foods</p>
+<p class="font-body text-sm text-on-surface-variant">Groceries</p>
+</div>
+</div>
+<p class="font-body text-base font-medium text-on-surface">-$142.50</p>
+</div>
+<!-- Transaction Item -->
+<div class="flex items-center justify-between p-4 px-6 hover:bg-surface-container transition-colors group border-b border-outline-variant/15 last:border-0">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-surface-container-highest flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined">directions_transit</span>
+</div>
+<div>
+<p class="font-body text-base font-medium text-on-surface">Metro Transit</p>
+<p class="font-body text-sm text-on-surface-variant">Transport</p>
+</div>
+</div>
+<p class="font-body text-base font-medium text-on-surface">-$3.50</p>
+</div>
+<!-- Transaction Item -->
+<div class="flex items-center justify-between p-4 px-6 hover:bg-surface-container transition-colors group border-b border-outline-variant/15 last:border-0">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-tertiary/10 flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">payments</span>
+</div>
+<div>
+<p class="font-body text-base font-medium text-on-surface">Salary</p>
+<p class="font-body text-sm text-on-surface-variant">Income</p>
+</div>
+</div>
+<p class="font-body text-base font-medium text-tertiary">+$3,200.00</p>
+</div>
+<!-- Transaction Item -->
+<div class="flex items-center justify-between p-4 px-6 hover:bg-surface-container transition-colors group border-b border-outline-variant/15 last:border-0">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-surface-container-highest flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined">movie</span>
+</div>
+<div>
+<p class="font-body text-base font-medium text-on-surface">StreamFlix</p>
+<p class="font-body text-sm text-on-surface-variant">Entertainment</p>
+</div>
+</div>
+<p class="font-body text-base font-medium text-on-surface">-$15.99</p>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar (Mobile Layout) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full flex justify-around items-center px-4 py-3 pb-6 bg-[#151313]/80 backdrop-blur-xl z-50 rounded-t-[1.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.3)] border-t-0 font-['Be_Vietnam_Pro'] text-[11px] font-medium">
+<a class="flex flex-col items-center justify-center text-[#FF6B6B] bg-[#FF6B6B]/10 rounded-2xl px-4 py-1.5 transition-colors scale-90 duration-200" href="#">
+<span class="material-symbols-outlined text-[24px] mb-1" style="font-variation-settings: 'FILL' 1;">home</span>
+<span>Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-zinc-500 px-4 py-1.5 hover:bg-zinc-800/50 rounded-2xl transition-colors" href="#">
+<span class="material-symbols-outlined text-[24px] mb-1">insights</span>
+<span>Analytics</span>
+</a>
+<a class="flex flex-col items-center justify-center text-zinc-500 px-4 py-1.5 hover:bg-zinc-800/50 rounded-2xl transition-colors" href="#">
+<span class="material-symbols-outlined text-[24px] mb-1">event_note</span>
+<span>Planning</span>
+</a>
+<a class="flex flex-col items-center justify-center text-zinc-500 px-4 py-1.5 hover:bg-zinc-800/50 rounded-2xl transition-colors" href="#">
+<span class="material-symbols-outlined text-[24px] mb-1">settings</span>
+<span>Settings</span>
+</a>
+</nav>
+<!-- SideNav (Web Shell Layout Placeholder - Normally active on md:flex, but instructed to focus on Bottom Nav per JSON) -->
+<!-- Not rendering full side nav to adhere to provided BottomNavBar JSON, but the responsive pivot implies top row nav on web -->
+</body></html>

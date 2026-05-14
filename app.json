@@ -16,15 +16,17 @@
       "**/*"
     ],
     "android": {
+      "icon": "./assets/icon.png",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true,
+      "minSdkVersion": 26,
       "package": "com.walsoup.gemwallet"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true

@@ -1,38 +1,10 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
+export { streamFinancialAnalysis } from '../src/features/nlp/services/gemmaAnalysis';
+
 // In an Expo app, public env vars start with EXPO_PUBLIC_
 const apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY || '';
 const genAI = new GoogleGenerativeAI(apiKey);
-
-export async function* streamFinancialAnalysis(transactions: any[]) {
-  if (!apiKey) {
-    yield "Error: Gemini API key not found. Please set EXPO_PUBLIC_GEMINI_API_KEY in your environment.";
-    return;
-  }
-  
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-  
-  const prompt = `
-You are a snarky, highly critical, yet ultimately helpful financial advisor.
-Review the following transaction data (provided in JSON).
-Give a short, punchy, and sarcastic analysis of your client's spending habits.
-Highlight any ridiculous expenses, but also acknowledge if there's any income.
-Keep it under 3 short paragraphs.
-Format with emojis.
-
-Transactions:
-${JSON.stringify(transactions, null, 2)}
-`;
-
-  try {
-    const result = await model.generateContentStream(prompt);
-    for await (const chunk of result.stream) {
-      yield chunk.text();
-    }
-  } catch (error: any) {
-    yield `\n\nError generating analysis: ${error.message}`;
-  }
-}
 
 export async function parseTransactionsWithAI(text: string, categories: any[]) {
   if (!apiKey) {
