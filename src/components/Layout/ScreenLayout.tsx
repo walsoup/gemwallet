@@ -20,8 +20,8 @@ export function ScreenLayout({ title, backgroundColor, contentContainerStyle, ch
       <View
         style={[
           {
-            paddingTop: insets.top + TOP_NAV_ESTIMATED_HEIGHT,
-            paddingBottom: insets.bottom + BOTTOM_NAV_ESTIMATED_HEIGHT,
+            paddingTop: 0,
+            paddingBottom: insets.bottom,
           },
           contentContainerStyle,
         ]}

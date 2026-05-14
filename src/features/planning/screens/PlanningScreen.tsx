@@ -9,6 +9,26 @@ import { ScreenLayout } from '../../../components/Layout/ScreenLayout';
 import * as Haptics from 'expo-haptics';
 import { formatAppCurrency } from '../../../../utils/currency';
 
+import Animated, { FadeInUp } from 'react-native-reanimated';
+import { useBouncyPress } from '../../../hooks/useBouncyPress';
+
+const BouncyButton = ({ onPress, style, children, disabled, ...props }: any) => {
+  const { animatedStyle, onPressIn, onPressOut } = useBouncyPress(0.95, disabled);
+  return (
+    <Pressable
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+      onPress={onPress}
+      disabled={disabled}
+      {...props}
+    >
+      <Animated.View style={[style, animatedStyle]}>
+        {children}
+      </Animated.View>
+    </Pressable>
+  );
+};
+
 export default function PlanningScreen() {
   const theme = useTheme<AppTheme>();
   const goals = useGoalsStore((state) => state.goals);
@@ -104,16 +124,16 @@ export default function PlanningScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
 
         {/* Savings Goals Section */}
-        <View style={styles.section}>
+        <Animated.View entering={FadeInUp.delay(100).springify()} style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Savings Goals</Text>
-            <Pressable
+            <BouncyButton
               style={[styles.addButton, { backgroundColor: theme.colors.surfaceContainerHighest }]}
               onPress={openNewGoal}
             >
               <MaterialCommunityIcons name="plus" size={16} color={theme.colors.primary} />
               <Text style={{ color: theme.colors.primary, fontFamily: 'BeVietnamPro_500Medium', fontSize: 14 }}>NEW</Text>
-            </Pressable>
+            </BouncyButton>
           </View>
 
           <View style={styles.goalsGrid}>
@@ -165,7 +185,7 @@ export default function PlanningScreen() {
         </View>
 
         {/* Recurring Events Section */}
-        <View style={styles.section}>
+        <Animated.View entering={FadeInUp.delay(200).springify()} style={styles.section}>
           <Text style={[styles.sectionTitle, { color: theme.colors.onBackground, marginBottom: 24 }]}>Recurring Events</Text>
           <View style={[styles.eventsContainer, { backgroundColor: theme.colors.surfaceContainerLow }]}>
             {events.length > 0 ? events.map(event => {

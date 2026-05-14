@@ -6,6 +6,25 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppTheme } from '../../../../providers/AppThemeProvider';
 import { ScreenLayout } from '../../../components/Layout/ScreenLayout';
 import { formatAppCurrency } from '../../../../utils/currency';
+import Animated from 'react-native-reanimated';
+import { useBouncyPress } from '../../../hooks/useBouncyPress';
+
+const BouncyButton = ({ onPress, style, children, disabled, ...props }: any) => {
+  const { animatedStyle, onPressIn, onPressOut } = useBouncyPress(0.95, disabled);
+  return (
+    <Pressable
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+      onPress={onPress}
+      disabled={disabled}
+      {...props}
+    >
+      <Animated.View style={[style, animatedStyle]}>
+        {children}
+      </Animated.View>
+    </Pressable>
+  );
+};
 
 export default function AnalyticsScreen() {
   const theme = useTheme<AppTheme>();
@@ -192,12 +211,12 @@ export default function AnalyticsScreen() {
           <Text style={[styles.sectionTitle, { color: theme.colors.onSurfaceVariant }]}>Top Movers</Text>
           <View style={[styles.moversCard, { backgroundColor: theme.colors.surfaceContainerLow }]}>
             {topMovers.length > 0 ? topMovers.map((mover, idx) => (
-              <Pressable
+              <BouncyButton
                 key={idx}
-                style={({pressed}) => [
-                  styles.moverItem,
-                  pressed && { backgroundColor: theme.colors.surfaceContainerHighest }
-                ]}
+                style={styles.moverItem}
+                onPress={() => {
+                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }}
               >
                 <View style={styles.moverLeft}>
                   <View style={[styles.moverIcon, { backgroundColor: theme.colors.surfaceContainer }]}>
@@ -229,7 +248,7 @@ export default function AnalyticsScreen() {
                     })()}
                   </View>
                 </View>
-              </Pressable>
+              </BouncyButton>
             )) : (
               <View style={{ padding: 24, alignItems: 'center' }}>
                 <Text style={{ color: theme.colors.onSurfaceVariant }}>No expense data for this month yet.</Text>

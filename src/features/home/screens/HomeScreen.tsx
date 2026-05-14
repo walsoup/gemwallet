@@ -8,8 +8,27 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppTheme } from '../../../../providers/AppThemeProvider';
 import { ScreenLayout } from '../../../components/Layout/ScreenLayout';
 import { formatAppCurrency } from '../../../../utils/currency';
+import Animated from 'react-native-reanimated';
+import { useBouncyPress } from '../../../hooks/useBouncyPress';
 
 type QuickActionMode = 'income' | 'expense';
+
+const BouncyButton = ({ onPress, style, children, disabled, ...props }: any) => {
+  const { animatedStyle, onPressIn, onPressOut } = useBouncyPress(0.95, disabled);
+  return (
+    <Pressable
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+      onPress={onPress}
+      disabled={disabled}
+      {...props}
+    >
+      <Animated.View style={[style, animatedStyle]}>
+        {children}
+      </Animated.View>
+    </Pressable>
+  );
+};
 
 export default function HomeScreen() {
   const theme = useTheme<AppTheme>();
@@ -98,7 +117,13 @@ export default function HomeScreen() {
         animationType="fade"
         onRequestClose={closeQuickAction}
       >
-        <Pressable style={styles.modalBackdrop} onPress={closeQuickAction}>
+        <Pressable 
+          style={[
+            styles.modalBackdrop, 
+            { backgroundColor: theme.dark ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.3)' }
+          ]} 
+          onPress={closeQuickAction}
+        >
           <Pressable
             style={[styles.modalCard, { backgroundColor: theme.colors.surfaceContainerHigh }]}
             onPress={() => undefined}
@@ -164,20 +189,20 @@ export default function HomeScreen() {
 
           {/* Quick Actions */}
           <View style={styles.quickActions}>
-            <Pressable
+            <BouncyButton
               style={[styles.actionButton, styles.primaryButton, { backgroundColor: theme.colors.primaryContainer }]}
               onPress={() => openQuickAction('income')}
             >
               <MaterialCommunityIcons name="plus" size={20} color={theme.colors.onPrimaryContainer} />
               <Text style={[styles.actionButtonText, { color: theme.colors.onPrimaryContainer }]}>Add Funds</Text>
-            </Pressable>
-            <Pressable
+            </BouncyButton>
+            <BouncyButton
               style={[styles.actionButton, styles.secondaryButton, { backgroundColor: theme.colors.surfaceContainerHighest }]}
               onPress={() => openQuickAction('expense')}
             >
               <MaterialCommunityIcons name="send" size={20} color={theme.colors.onSurface} />
               <Text style={[styles.actionButtonText, { color: theme.colors.onSurface }]}>Spend Funds</Text>
-            </Pressable>
+            </BouncyButton>
           </View>
         </View>
 
@@ -236,7 +261,7 @@ export default function HomeScreen() {
         </View>
 
         {/* Recent Transactions */}
-        <View style={styles.transactionsSection}>
+        <Animated.View entering={FadeInUp.delay(300).springify()} style={styles.transactionsSection}>
           <View style={styles.searchSection}>
             <View style={styles.searchBarContainer}>
               <MaterialCommunityIcons name="magnify" size={20} color={theme.colors.onSurfaceVariant} style={styles.searchIcon} />
@@ -347,7 +372,7 @@ const styles = StyleSheet.create({
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: theme.dark ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.4)',
     justifyContent: 'center',
     padding: 24,
   },

@@ -1,18 +1,31 @@
 import { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
 
-export function useBouncyPress(scaleDown = 0.92) {
+export function useBouncyPress(scaleDown = 0.95, disabled = false) {
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
+    opacity: withSpring(disabled ? 0.5 : 1),
   }));
 
   const onPressIn = () => {
-    scale.value = withSpring(scaleDown, { damping: 10, stiffness: 520, mass: 0.7 });
+    if (disabled) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    scale.value = withSpring(scaleDown, { 
+      damping: 15, 
+      stiffness: 300, 
+      mass: 0.5 
+    });
   };
 
   const onPressOut = () => {
-    scale.value = withSpring(1, { damping: 14, stiffness: 360, mass: 0.8 });
+    if (disabled) return;
+    scale.value = withSpring(1, { 
+      damping: 12, 
+      stiffness: 200, 
+      mass: 0.8 
+    });
   };
 
   return { animatedStyle, onPressIn, onPressOut };

@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, StyleSheet, Pressable, Platform } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, StyleSheet, Pressable, Platform, Dimensions } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,27 +8,66 @@ import * as Haptics from 'expo-haptics';
 import { BlurView } from 'expo-blur';
 import { AppTheme } from '../../../providers/AppThemeProvider';
 import { useSettingsStore } from '../../../store/useSettingsStore';
+import Animated, { 
+  useAnimatedStyle, 
+  useSharedValue, 
+  withSpring 
+} from 'react-native-reanimated';
+
+const { width } = Dimensions.get('window');
 
 export function CustomBottomNav({ state, descriptors, navigation }: BottomTabBarProps) {
   const theme = useTheme<AppTheme>();
   const insets = useSafeAreaInsets();
-
   const aiFeaturesEnabled = useSettingsStore((s) => s.aiFeaturesEnabled);
 
+  const allowedTabs = ['index', 'analytics', 'chat', 'planning', 'settings'];
   const routes = state.routes.filter((r: any) => {
-    if (r.name === 'onboarding' || r.name === '+not-found') return false;
+    if (!allowedTabs.includes(r.name)) return false;
     if (r.name === 'chat') return aiFeaturesEnabled;
     return true;
   });
+
+  const tabWidth = (width - 32) / routes.length;
+  // Calculate active index relative to the FILTERED routes
+  const activeIndex = routes.findIndex(r => state.routes[state.index].name === r.name);
+  const translateX = useSharedValue(activeIndex * tabWidth);
+
+  useEffect(() => {
+    translateX.value = withSpring(activeIndex * tabWidth, {
+      damping: 20,
+      stiffness: 150,
+      mass: 1
+    });
+  }, [activeIndex, tabWidth]);
+
+  const indicatorStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
+  }));
 
   return (
     <View style={styles.positionContainer}>
       <BlurView
         intensity={80}
-        tint="dark"
-        style={[styles.container, { paddingBottom: Math.max(insets.bottom, 16) }]}
+        tint={theme.dark ? "dark" : "light"}
+        style={[
+          styles.container, 
+          { 
+            paddingBottom: Math.max(insets.bottom, 16),
+            backgroundColor: theme.dark ? 'rgba(21, 19, 19, 0.4)' : 'rgba(255, 255, 255, 0.4)',
+            borderColor: theme.colors.outlineVariant + '33'
+          }
+        ]}
       >
-        {routes.map((route: any) => {
+        <Animated.View 
+          style={[
+            styles.indicator, 
+            indicatorStyle, 
+            { width: tabWidth, backgroundColor: theme.colors.primaryContainer + '4D' }
+          ]} 
+        />
+        
+        {routes.map((route: any, index: number) => {
           const { options } = descriptors[route.key];
           const label =
             options.tabBarLabel !== undefined
@@ -37,8 +76,7 @@ export function CustomBottomNav({ state, descriptors, navigation }: BottomTabBar
               ? options.title
               : route.name;
 
-          const routeIndex = state.routes.findIndex((r) => r.key === route.key);
-          const isFocused = routeIndex === state.index;
+          const isFocused = activeIndex === index;
 
           const onPress = () => {
             const event = navigation.emit({
@@ -48,54 +86,36 @@ export function CustomBottomNav({ state, descriptors, navigation }: BottomTabBar
             });
 
             if (!isFocused && !event.defaultPrevented) {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              Haptics.selectionAsync();
               navigation.navigate(route.name, route.params);
             }
           };
 
-          const onLongPress = () => {
-            navigation.emit({
-              type: 'tabLongPress',
-              target: route.key,
-            });
-          };
-
           let iconName = 'help-circle-outline';
-          if (route.name === 'index') iconName = 'home';
-          if (route.name === 'analytics') iconName = 'chart-box';
-          if (route.name === 'chat') iconName = 'message-text';
-          if (route.name === 'planning') iconName = 'target';
-          if (route.name === 'settings') iconName = 'cog';
-
-          if (!isFocused && route.name === 'index') iconName = 'home-outline';
-          if (!isFocused && route.name === 'analytics') iconName = 'chart-box-outline';
-          if (!isFocused && route.name === 'chat') iconName = 'message-text-outline';
-          if (!isFocused && route.name === 'settings') iconName = 'cog-outline';
-
+          if (route.name === 'index') iconName = isFocused ? 'home' : 'home-outline';
+          if (route.name === 'analytics') iconName = isFocused ? 'chart-box' : 'chart-box-outline';
+          if (route.name === 'chat') iconName = isFocused ? 'message-text' : 'message-text-outline';
+          if (route.name === 'planning') iconName = isFocused ? 'target' : 'target-account';
+          if (route.name === 'settings') iconName = isFocused ? 'cog' : 'cog-outline';
 
           return (
             <Pressable
               key={route.key}
-              accessibilityRole="button"
-              accessibilityState={isFocused ? { selected: true } : {}}
-              accessibilityLabel={options.tabBarAccessibilityLabel}
-              testID={(options as any).tabBarTestID as string}
               onPress={onPress}
-              onLongPress={onLongPress}
-              style={[
-                styles.tabItem,
-                isFocused && { backgroundColor: theme.colors.primaryContainer + '20' } // 20 hex opacity
-              ]}
+              style={styles.tabItem}
             >
               <MaterialCommunityIcons
                 name={iconName as any}
                 size={24}
                 color={isFocused ? theme.colors.primary : theme.colors.onSurfaceVariant}
-                style={styles.icon}
               />
               <Text
                 variant="labelSmall"
-                style={{ color: isFocused ? theme.colors.primary : theme.colors.onSurfaceVariant }}
+                style={{ 
+                  color: isFocused ? theme.colors.primary : theme.colors.onSurfaceVariant,
+                  marginTop: 4,
+                  fontWeight: isFocused ? '600' : '400'
+                }}
               >
                 {label as string}
               </Text>
@@ -117,35 +137,26 @@ const styles = StyleSheet.create({
   },
   container: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
     paddingHorizontal: 16,
     paddingTop: 12,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
     overflow: 'hidden',
-    backgroundColor: 'rgba(21, 19, 19, 0.8)', // fallback for blur
-    // Shadow for android and ios
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -10 },
-        shadowOpacity: 0.3,
-        shadowRadius: 40,
-      },
-      android: {
-        elevation: 20,
-      },
-    }),
+    borderTopWidth: 1,
+  },
+  indicator: {
+    position: 'absolute',
+    top: 8,
+    height: 52,
+    borderRadius: 26,
+    left: 16,
+    zIndex: -1,
   },
   tabItem: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 16,
-    borderRadius: 16,
-  },
-  icon: {
-    marginBottom: 4,
+    paddingVertical: 10,
+    zIndex: 1,
   },
 });

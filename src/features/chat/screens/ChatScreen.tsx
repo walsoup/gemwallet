@@ -12,6 +12,8 @@ import { streamGeminiFinancialAnalysis, streamLocalFinancialAnalysis } from '../
 import { getGeminiApiKey } from '../../../../services/secureGeminiKey';
 import { downloadLiteRtModel, getLiteRtModel, isLiteRtModelCached } from '../../nlp/services/liteRtModels';
 import { formatCurrency } from '../../../../utils/formatCurrency';
+import { ScreenLayout } from '../../../components/Layout/ScreenLayout';
+import Animated, { FadeInLeft, FadeInRight, Layout } from 'react-native-reanimated';
 
 type ChatMessage = {
   id: string;
@@ -263,118 +265,125 @@ export default function ChatScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
-    >
-      <View style={styles.header}>
-        <Text variant="headlineMedium" style={{ color: theme.colors.onBackground, fontWeight: 'bold' }}>
-          AI Assistant
-        </Text>
-        <Surface
-          style={[styles.providerBadge, { backgroundColor: theme.colors.surfaceVariant }]}
-          elevation={0}
-        >
-          <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>
-            {activeModelLabel}
-          </Text>
-        </Surface>
-      </View>
-
-      <ScrollView
-        style={styles.chatArea}
-        contentContainerStyle={styles.chatContent}
-        keyboardShouldPersistTaps="handled"
+    <ScreenLayout title="AI Assistant" backgroundColor={theme.colors.background}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        {aiProvider === 'google' && geminiKeyExists === false && (
-          <Surface style={[styles.inlineNotice, { backgroundColor: theme.colors.errorContainer }]} elevation={0}>
-            <Text variant="bodySmall" style={{ color: theme.colors.onErrorContainer }}>
-              Cloud API is selected but no Gemini key is saved.
-            </Text>
-            <Text
-              variant="labelMedium"
-              style={{ color: theme.colors.onErrorContainer, textDecorationLine: 'underline', marginTop: 6 }}
-              onPress={() => router.push('/settings?section=ai')}
-            >
-              Open AI settings
+        <View style={styles.providerHeader}>
+          <Surface
+            style={[styles.providerBadge, { backgroundColor: theme.colors.surfaceVariant }]}
+            elevation={0}
+          >
+            <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>
+              {activeModelLabel}
             </Text>
           </Surface>
-        )}
+        </View>
 
-        {aiProvider === 'local' && !localModelReady && (
-          <Surface style={[styles.inlineNotice, { backgroundColor: theme.colors.tertiaryContainer }]} elevation={0}>
-            <Text variant="bodySmall" style={{ color: theme.colors.onTertiaryContainer }}>
-              Local model is not downloaded yet.
-            </Text>
-            <Text
-              variant="labelMedium"
-              style={{ color: theme.colors.onTertiaryContainer, textDecorationLine: 'underline', marginTop: 6 }}
-              onPress={downloadLocalModel}
-            >
-              {isDownloadingLocalModel ? 'Downloading…' : 'Download model'}
-            </Text>
-          </Surface>
-        )}
-
-        {messages.map((message) => {
-          const isUser = message.role === 'user';
-          const isSystem = message.role === 'system';
-          return (
-            <Surface
-              key={message.id}
-              style={[
-                styles.messageBubble,
-                isSystem ? styles.systemBubble : isUser ? styles.userBubble : styles.assistantBubble,
-                {
-                  backgroundColor: isSystem
-                    ? theme.colors.tertiaryContainer
-                    : isUser
-                      ? theme.colors.primaryContainer
-                      : theme.colors.secondaryContainer,
-                },
-              ]}
-              elevation={0}
-            >
+        <ScrollView
+          style={styles.chatArea}
+          contentContainerStyle={styles.chatContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          {aiProvider === 'google' && geminiKeyExists === false && (
+            <Surface style={[styles.inlineNotice, { backgroundColor: theme.colors.errorContainer }]} elevation={0}>
+              <Text variant="bodySmall" style={{ color: theme.colors.onErrorContainer }}>
+                Cloud API is selected but no Gemini key is saved.
+              </Text>
               <Text
-                variant="bodyMedium"
-                style={{
-                  color: isSystem
-                    ? theme.colors.onTertiaryContainer
-                    : isUser
-                      ? theme.colors.onPrimaryContainer
-                      : theme.colors.onSecondaryContainer,
-                }}
+                variant="labelMedium"
+                style={{ color: theme.colors.onErrorContainer, textDecorationLine: 'underline', marginTop: 6 }}
+                onPress={() => router.push('/settings?section=ai')}
               >
-                {isSystem ? 'System • ' : ''}
-                {message.text || (message.role === 'assistant' && isSending ? '…' : '')}
+                Open AI settings
               </Text>
             </Surface>
-          );
-        })}
-      </ScrollView>
+          )}
 
-      <View style={[styles.inputArea, { paddingBottom: insets.bottom + 16, backgroundColor: theme.colors.surface }]}>
-        <TextInput
-          mode="outlined"
-          placeholder="Ask me anything..."
-          style={styles.input}
-          outlineStyle={{ borderRadius: 24 }}
-          value={inputText}
-          onChangeText={setInputText}
-          multiline
-        />
-        <IconButton
-          icon="send"
-          mode="contained"
-          containerColor={theme.colors.primary}
-          iconColor={theme.colors.onPrimary}
-          disabled={isSending || !inputText.trim()}
-          onPress={onSend}
-          accessibilityLabel="Send message"
-        />
-      </View>
-    </KeyboardAvoidingView>
+          {aiProvider === 'local' && !localModelReady && (
+            <Surface style={[styles.inlineNotice, { backgroundColor: theme.colors.tertiaryContainer }]} elevation={0}>
+              <Text variant="bodySmall" style={{ color: theme.colors.onTertiaryContainer }}>
+                Local model is not downloaded yet.
+              </Text>
+              <Text
+                variant="labelMedium"
+                style={{ color: theme.colors.onTertiaryContainer, textDecorationLine: 'underline', marginTop: 6 }}
+                onPress={downloadLocalModel}
+              >
+                {isDownloadingLocalModel ? 'Downloading…' : 'Download model'}
+              </Text>
+            </Surface>
+          )}
+
+          {messages.map((message) => {
+            const isUser = message.role === 'user';
+            const isSystem = message.role === 'system';
+            return (
+              <Animated.View
+                key={message.id}
+                entering={isUser ? FadeInRight.springify() : FadeInLeft.springify()}
+                layout={Layout.springify()}
+                style={[
+                  styles.messageBubbleContainer,
+                  isUser ? styles.userBubbleContainer : styles.assistantBubbleContainer
+                ]}
+              >
+                <Surface
+                  style={[
+                    styles.messageBubble,
+                    isSystem ? styles.systemBubble : isUser ? styles.userBubble : styles.assistantBubble,
+                    {
+                      backgroundColor: isSystem
+                        ? theme.colors.tertiaryContainer
+                        : isUser
+                          ? theme.colors.primaryContainer
+                          : theme.colors.secondaryContainer,
+                    },
+                  ]}
+                  elevation={0}
+                >
+                  <Text
+                    variant="bodyMedium"
+                    style={{
+                      color: isSystem
+                        ? theme.colors.onTertiaryContainer
+                        : isUser
+                          ? theme.colors.onPrimaryContainer
+                          : theme.colors.onSecondaryContainer,
+                    }}
+                  >
+                    {isSystem ? 'System • ' : ''}
+                    {message.text || (message.role === 'assistant' && isSending ? '…' : '')}
+                  </Text>
+                </Surface>
+              </Animated.View>
+            );
+          })}
+        </ScrollView>
+
+        <View style={[styles.inputArea, { paddingBottom: 16, backgroundColor: theme.colors.surface }]}>
+          <TextInput
+            mode="outlined"
+            placeholder="Ask me anything..."
+            style={styles.input}
+            outlineStyle={{ borderRadius: 24 }}
+            value={inputText}
+            onChangeText={setInputText}
+            multiline
+          />
+          <IconButton
+            icon="send"
+            mode="contained"
+            containerColor={theme.colors.primary}
+            iconColor={theme.colors.onPrimary}
+            disabled={isSending || !inputText.trim()}
+            onPress={onSend}
+            accessibilityLabel="Send message"
+          />
+        </View>
+      </KeyboardAvoidingView>
+    </ScreenLayout>
   );
 }
 
@@ -382,9 +391,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    padding: 16,
-    gap: 8,
+  providerHeader: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
   providerBadge: {
     alignSelf: 'flex-start',
@@ -400,17 +409,25 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     gap: 12,
   },
+  messageBubbleContainer: {
+    width: '100%',
+    flexDirection: 'row',
+  },
+  userBubbleContainer: {
+    justifyContent: 'flex-end',
+  },
+  assistantBubbleContainer: {
+    justifyContent: 'flex-start',
+  },
   messageBubble: {
     padding: 16,
     borderRadius: 24,
     maxWidth: '80%',
   },
   assistantBubble: {
-    alignSelf: 'flex-start',
     borderBottomLeftRadius: 4,
   },
   userBubble: {
-    alignSelf: 'flex-end',
     borderBottomRightRadius: 4,
   },
   systemBubble: {

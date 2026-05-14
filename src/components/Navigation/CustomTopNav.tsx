@@ -17,8 +17,14 @@ export function CustomTopNav({ title }: CustomTopNavProps) {
     <View style={styles.positionContainer}>
       <BlurView
         intensity={80}
-        tint="dark"
-        style={[styles.container, { paddingTop: Math.max(insets.top, 16) }]}
+        tint={theme.dark ? "dark" : "light"}
+        style={[
+          styles.container, 
+          { 
+            paddingTop: Math.max(insets.top, 16),
+            backgroundColor: theme.dark ? 'rgba(21, 19, 19, 0.8)' : 'rgba(255, 255, 255, 0.8)'
+          }
+        ]}
       >
         <Text variant="headlineSmall" style={[styles.title, { color: theme.colors.onSurface }]}>
           {title}
@@ -30,11 +36,8 @@ export function CustomTopNav({ title }: CustomTopNavProps) {
 
 const styles = StyleSheet.create({
   positionContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
     zIndex: 40,
+    backgroundColor: 'transparent',
   },
   container: {
     flexDirection: 'row',
@@ -42,7 +45,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 24,
     paddingBottom: 16,
-    backgroundColor: 'rgba(21, 19, 19, 0.8)', // fallback for blur
   },
   title: {
     fontWeight: '500',
