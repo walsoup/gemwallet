@@ -204,7 +204,7 @@ export default function HomeScreen() {
               <Text style={[styles.actionButtonText, { color: theme.colors.onSurface }]}>Spend Funds</Text>
             </BouncyButton>
           </View>
-        </View>
+        </Animated.View>
 
         {/* Insights Bento Grid */}
         <View style={styles.bentoGrid}>
