@@ -4,6 +4,7 @@ import { Text, Button, Surface, Switch, useTheme, IconButton } from 'react-nativ
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTransactionStore } from '../../../../store/useTransactionStore';
 import { useSettingsStore } from '../../../../store/useSettingsStore';
+import { AppTheme } from '../../../../providers/AppThemeProvider';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import Animated, { 
@@ -42,7 +43,7 @@ const ONBOARDING_STEPS = [
 ];
 
 export default function OnboardingScreen() {
-  const theme = useTheme();
+  const theme = useTheme<AppTheme>();
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
   const scrollX = useSharedValue(0);
