@@ -40,6 +40,14 @@ type AddIncomeInput = {
   timestamp?: number;
 };
 
+type UpdateTransactionInput = {
+  id: string;
+  amountCents?: number;
+  categoryId?: string;
+  note?: string;
+  type?: 'expense' | 'income';
+};
+
 type TransactionState = {
   transactions: Transaction[];
   categories: Category[];
@@ -48,6 +56,7 @@ type TransactionState = {
   setVoiceAssistantEnabled: (enabled: boolean) => void;
   addExpense: (params: AddExpenseInput) => Transaction;
   addIncome: (params: AddIncomeInput) => Transaction;
+  updateTransaction: (params: UpdateTransactionInput) => void;
   undoTransaction: (transactionId: string) => void;
   addCustomCategory: (params: { name: string; emoji: string }) => void;
   deleteCategory: (categoryId: string) => void;
@@ -114,6 +123,21 @@ export const useTransactionStore = create<TransactionState>()(
         };
         set((state) => ({ transactions: [transaction, ...state.transactions] }));
         return transaction;
+      },
+      updateTransaction: (params) => {
+        set((state) => ({
+          transactions: state.transactions.map((tx) =>
+            tx.id === params.id
+              ? {
+                  ...tx,
+                  amountCents: params.amountCents ?? tx.amountCents,
+                  categoryId: params.categoryId ?? tx.categoryId,
+                  note: params.note !== undefined ? params.note?.trim() || undefined : tx.note,
+                  type: params.type ?? tx.type,
+                }
+              : tx
+          ),
+        }));
       },
       undoTransaction: (transactionId) => {
         set((state) => ({
