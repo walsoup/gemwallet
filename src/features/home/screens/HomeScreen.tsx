@@ -258,7 +258,7 @@ export default function HomeScreen() {
               </View>
             </View>
           </View>
-        </Animated.View>
+        </View>
 
         {/* Recent Transactions */}
         <Animated.View entering={FadeInUp.delay(300).springify()} style={styles.transactionsSection}>
@@ -357,7 +357,7 @@ export default function HomeScreen() {
               </View>
             )}
           </View>
-        </View>
+        </Animated.View>
       </ScrollView>
     </ScreenLayout>
   );
