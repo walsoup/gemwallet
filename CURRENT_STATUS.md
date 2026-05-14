@@ -98,6 +98,12 @@ This document serves as the absolute ground truth for the GemWallet application.
     - Displays full details: Amount (colored by type), Category (Emoji + Name), exact Date/Time, and Notes.
     - Integrated "Delete" action with confirmation snackbar.
     - Integrated "Edit" action that repurposes the manual flow with pre-populated data.
+*   **Insights Screen (Analytics):**
+    - Dedicated full-screen route for financial data visualization.
+    - **Donut Chart:** Visual breakdown of spending by category using theme-accurate colors.
+    - **Weekly Trend:** Bar chart showing spending velocity over the last 7 days.
+    - **Top Expenses:** Ranked list of the most significant outflows.
+    - Accessible via the Quick Actions menu.
 *   **Quick Actions Modal:**
     - Portal-managed overlay.
     - Settings shortcut.

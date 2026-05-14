@@ -701,6 +701,17 @@ export default function HomeScreen() {
             <Text variant="titleLarge" style={{ fontWeight: 'bold' }}>Quick Actions</Text>
             <Button
               mode="contained-tonal"
+              icon="chart-donut"
+              onPress={() => {
+                setQuickActionsVisible(false);
+                router.push('/insights');
+              }}
+              style={{ borderRadius: 16 }}
+            >
+              View Insights
+            </Button>
+            <Button
+              mode="contained-tonal"
               icon="cog-outline"
               onPress={() => {
                 setQuickActionsVisible(false);
