@@ -204,7 +204,7 @@ export default function HomeScreen() {
               <Text style={[styles.actionButtonText, { color: theme.colors.onSurface }]}>Spend Funds</Text>
             </BouncyButton>
           </View>
-        </Animated.View>
+        </View>
 
         {/* Insights Bento Grid */}
         <View style={styles.bentoGrid}>
@@ -258,7 +258,7 @@ export default function HomeScreen() {
               </View>
             </View>
           </View>
-        </View>
+        </Animated.View>
 
         {/* Recent Transactions */}
         <Animated.View entering={FadeInUp.delay(300).springify()} style={styles.transactionsSection}>
