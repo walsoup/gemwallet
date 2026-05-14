@@ -182,7 +182,7 @@ export default function PlanningScreen() {
               </View>
             )}
           </View>
-        </View>
+        </Animated.View>
 
         {/* Recurring Events Section */}
         <Animated.View entering={FadeInUp.delay(200).springify()} style={styles.section}>
@@ -235,7 +235,7 @@ export default function PlanningScreen() {
                </View>
             )}
           </View>
-        </View>
+        </Animated.View>
 
       </ScrollView>
     </ScreenLayout>

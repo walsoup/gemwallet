@@ -6,6 +6,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppTheme } from '../../../../providers/AppThemeProvider';
 import { ScreenLayout } from '../../../components/Layout/ScreenLayout';
 import { formatAppCurrency } from '../../../../utils/currency';
+import * as Haptics from 'expo-haptics';
 import Animated from 'react-native-reanimated';
 import { useBouncyPress } from '../../../hooks/useBouncyPress';
 
