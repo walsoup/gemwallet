@@ -8,7 +8,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppTheme } from '../../../../providers/AppThemeProvider';
 import { ScreenLayout } from '../../../components/Layout/ScreenLayout';
 import { formatAppCurrency } from '../../../../utils/currency';
-import Animated from 'react-native-reanimated';
+import Animated, { FadeInUp } from 'react-native-reanimated';
 import { useBouncyPress } from '../../../hooks/useBouncyPress';
 
 type QuickActionMode = 'income' | 'expense';
