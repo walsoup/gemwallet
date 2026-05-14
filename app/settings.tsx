@@ -3,7 +3,7 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ScrollView, View, Alert } from 'react-native';
+import { ScrollView, View, Alert, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Button,
@@ -19,11 +19,14 @@ import {
   List,
   Surface,
   Portal,
-  Dialog
+  Dialog,
+  TouchableRipple
 } from 'react-native-paper';
 
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useTransactionStore } from '../store/useTransactionStore';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 function formatCurrency(cents: number) {
   return `$${(cents / 100).toFixed(2)}`;
@@ -52,6 +55,22 @@ export default function SettingsScreen() {
   const addCustomCategory = useTransactionStore((state) => state.addCustomCategory);
   const deleteCategory = useTransactionStore((state) => state.deleteCategory);
   const clearAllData = useTransactionStore((state) => state.clearAllData);
+
+  const [selectedHue, setSelectedHue] = useState<string>(theme.colors.primary);
+
+  const hues = [
+    '#FF5252', // Red
+    '#FF7043', // Orange
+    '#FFCA28', // Yellow
+    '#66BB6A', // Green
+    '#26A69A', // Teal
+    '#29B6F6', // Light Blue
+    '#42A5F5', // Blue
+    '#5C6BC0', // Indigo
+    '#7E57C2', // Deep Purple
+    '#AB47BC', // Purple
+    '#EC407A', // Pink
+  ];
 
   const exportCsv = async () => {
     setIsExporting(true);
@@ -106,11 +125,11 @@ export default function SettingsScreen() {
       </Appbar.Header>
 
       <ScrollView contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: 40 }}>
-        <Card mode="contained" style={{ borderRadius: 24 }}>
+        <Card mode="contained" style={{ borderRadius: 28 }}>
           <Card.Title title="Appearance" titleVariant="titleMedium" />
-          <Card.Content style={{ gap: 16 }}>
-            <View style={{ gap: 8 }}>
-              <Text variant="labelLarge">Theme Preference</Text>
+          <Card.Content style={{ gap: 20 }}>
+            <View style={{ gap: 12 }}>
+              <Text variant="labelLarge" style={{ color: theme.colors.onSurfaceVariant }}>Theme Preference</Text>
               <SegmentedButtons
                 value={themePreference}
                 onValueChange={(value) => setThemePreference(value as 'system' | 'light' | 'dark')}
@@ -119,6 +138,7 @@ export default function SettingsScreen() {
                   { label: 'Light', value: 'light' },
                   { label: 'Dark', value: 'dark' },
                 ]}
+                style={{ borderRadius: 16 }}
               />
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -132,7 +152,7 @@ export default function SettingsScreen() {
           </Card.Content>
         </Card>
 
-        <Card mode="contained" style={{ borderRadius: 24 }}>
+        <Card mode="contained" style={{ borderRadius: 28 }}>
           <Card.Title title="Security" titleVariant="titleMedium" />
           <Card.Content>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -142,76 +162,117 @@ export default function SettingsScreen() {
           </Card.Content>
         </Card>
 
-        <Card mode="contained" style={{ borderRadius: 24 }}>
+        <Card mode="contained" style={{ borderRadius: 28 }}>
           <Card.Title title="Categories" titleVariant="titleMedium" />
-          <Card.Content style={{ gap: 12 }}>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <TextInput
-                mode="outlined"
-                label="Name"
-                value={categoryName}
-                onChangeText={setCategoryName}
-                maxLength={14}
-                style={{ flex: 2 }}
-                outlineStyle={{ borderRadius: 12 }}
-              />
-              <TextInput
-                mode="outlined"
-                label="Emoji"
-                value={categoryEmoji}
-                onChangeText={setCategoryEmoji}
-                maxLength={2}
-                style={{ flex: 1 }}
-                outlineStyle={{ borderRadius: 12 }}
-              />
+          <Card.Content style={{ gap: 16 }}>
+            <View style={{ gap: 12 }}>
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <TextInput
+                  mode="outlined"
+                  label="Name"
+                  value={categoryName}
+                  onChangeText={setCategoryName}
+                  maxLength={14}
+                  style={{ flex: 2 }}
+                  outlineStyle={{ borderRadius: 16 }}
+                />
+                <TextInput
+                  mode="outlined"
+                  label="Emoji"
+                  value={categoryEmoji}
+                  onChangeText={setCategoryEmoji}
+                  maxLength={2}
+                  style={{ flex: 1, textAlign: 'center' }}
+                  outlineStyle={{ borderRadius: 16 }}
+                />
+              </View>
+
+              <View style={{ gap: 8 }}>
+                <Text variant="labelLarge" style={{ color: theme.colors.onSurfaceVariant }}>Tonal Tint</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingVertical: 4 }}>
+                  {hues.map((hue) => (
+                    <TouchableRipple
+                      key={hue}
+                      onPress={() => setSelectedHue(hue)}
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 20,
+                        backgroundColor: hue,
+                        borderWidth: selectedHue === hue ? 3 : 0,
+                        borderColor: theme.colors.outline,
+                        overflow: 'hidden'
+                      }}
+                    >
+                      <View style={{ flex: 1 }} />
+                    </TouchableRipple>
+                  ))}
+                </ScrollView>
+              </View>
+
+              <Button
+                mode="contained"
+                onPress={async () => {
+                  if (!categoryName.trim()) return;
+                  addCustomCategory({ name: categoryName, emoji: categoryEmoji });
+                  setCategoryName('');
+                  setCategoryEmoji('🧩');
+                  await Haptics.selectionAsync();
+                }}
+                style={{ borderRadius: 20, marginTop: 4 }}
+                contentStyle={{ height: 48 }}
+              >
+                Create Category
+              </Button>
             </View>
-            <Button
-              mode="contained-tonal"
-              onPress={async () => {
-                if (!categoryName.trim()) return;
-                addCustomCategory({ name: categoryName, emoji: categoryEmoji });
-                setCategoryName('');
-                setCategoryEmoji('🧩');
-                await Haptics.selectionAsync();
-              }}
-              style={{ borderRadius: 12 }}
-            >
-              Add Category
-            </Button>
             
             <Divider style={{ marginVertical: 8 }} />
             
-            <List.Section>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
               {categories
                 .filter((item) => item.kind === 'expense')
                 .map((item) => (
-                  <List.Item
+                  <Surface
                     key={item.id}
-                    title={item.name}
-                    left={props => <Text {...props} style={{ fontSize: 24, alignSelf: 'center', marginLeft: 8 }}>{item.emoji}</Text>}
-                    right={props => !item.isLocked ? (
-                      <IconButton {...props} icon="delete-outline" onPress={() => deleteCategory(item.id)} />
-                    ) : (
-                      <View {...props} style={{ justifyContent: 'center' }}>
-                        <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>LOCKED</Text>
-                      </View>
+                    style={{ 
+                      borderRadius: 20, 
+                      padding: 12, 
+                      width: (SCREEN_WIDTH - 60) / 2,
+                      backgroundColor: theme.colors.surfaceVariant,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between'
+                    }}
+                    elevation={0}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <Text style={{ fontSize: 20 }}>{item.emoji}</Text>
+                      <Text variant="labelLarge" numberOfLines={1} style={{ maxWidth: 80 }}>{item.name}</Text>
+                    </View>
+                    {!item.isLocked && (
+                      <IconButton 
+                        icon="close-circle-outline" 
+                        size={20} 
+                        onPress={() => deleteCategory(item.id)} 
+                        style={{ margin: -8 }}
+                      />
                     )}
-                    style={{ paddingHorizontal: 0 }}
-                  />
+                  </Surface>
                 ))}
-            </List.Section>
+            </View>
           </Card.Content>
         </Card>
 
-        <Card mode="contained" style={{ borderRadius: 24 }}>
+        <Card mode="contained" style={{ borderRadius: 28 }}>
           <Card.Title title="Data Management" titleVariant="titleMedium" />
           <Card.Content style={{ gap: 12 }}>
             <Button
-              mode="outlined"
+              mode="contained-tonal"
               icon="file-export-outline"
               loading={isExporting}
               onPress={exportCsv}
-              style={{ borderRadius: 12 }}
+              style={{ borderRadius: 16 }}
+              contentStyle={{ height: 48 }}
             >
               Export CSV File
             </Button>
@@ -221,7 +282,8 @@ export default function SettingsScreen() {
               buttonColor={theme.colors.error}
               textColor={theme.colors.onError}
               onPress={() => setResetDialogVisible(true)}
-              style={{ borderRadius: 12, marginTop: 8 }}
+              style={{ borderRadius: 16, marginTop: 4 }}
+              contentStyle={{ height: 48 }}
             >
               Reset All Wallet Data
             </Button>
