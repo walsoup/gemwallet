@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { View, StyleSheet, ScrollView, Dimensions, Pressable } from 'react-native';
-import { Text, Button, Surface, Switch, useTheme, IconButton } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, Dimensions } from 'react-native';
+import { Text, Button, Surface, Switch, useTheme } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTransactionStore } from '../../../../store/useTransactionStore';
 import { useSettingsStore } from '../../../../store/useSettingsStore';
@@ -10,11 +10,28 @@ import * as Haptics from 'expo-haptics';
 import Animated, { 
   useSharedValue, 
   useAnimatedStyle, 
-  withSpring, 
   interpolate, 
-  Extrapolate 
+  Extrapolate,
+  SharedValue,
 } from 'react-native-reanimated';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+
+type AnimatedDotProps = {
+  index: number;
+  scrollX: SharedValue<number>;
+  pageWidth: number;
+  color: string;
+};
+
+function AnimatedDot({ index, scrollX, pageWidth, color }: AnimatedDotProps) {
+  const dotStyle = useAnimatedStyle(() => {
+    const page = scrollX.value / pageWidth;
+    const opacity = interpolate(page, [index - 1, index, index + 1], [0.4, 1, 0.4], Extrapolate.CLAMP);
+    const scale = interpolate(page, [index - 1, index, index + 1], [1, 1.4, 1], Extrapolate.CLAMP);
+    return { opacity, transform: [{ scale }] };
+  });
+  return <Animated.View style={[styles.dot, dotStyle, { backgroundColor: color }]} />;
+}
 
 const { width } = Dimensions.get('window');
 
@@ -129,30 +146,15 @@ export default function OnboardingScreen() {
 
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 24) }]}>
         <View style={styles.pagination}>
-          {ONBOARDING_STEPS.map((_, i) => {
-            const dotStyle = useAnimatedStyle(() => {
-              const opacity = interpolate(
-                scrollX.value / width,
-                [i - 1, i, i + 1],
-                [0.4, 1, 0.4],
-                Extrapolate.CLAMP
-              );
-              const scale = interpolate(
-                scrollX.value / width,
-                [i - 1, i, i + 1],
-                [1, 1.4, 1],
-                Extrapolate.CLAMP
-              );
-              return { opacity, transform: [{ scale }] };
-            });
-
-            return (
-              <Animated.View 
-                key={i} 
-                style={[styles.dot, dotStyle, { backgroundColor: theme.colors.primary }]} 
-              />
-            );
-          })}
+          {ONBOARDING_STEPS.map((_, i) => (
+            <AnimatedDot
+              key={i}
+              index={i}
+              scrollX={scrollX}
+              pageWidth={width}
+              color={theme.colors.primary}
+            />
+          ))}
         </View>
 
         <Button
