@@ -44,7 +44,6 @@ jobs:
           chmod +x gradlew
           export NODE_BINARY=$(which node)
           export NODE_OPTIONS="--max-old-space-size=3072"
-          export GRADLE_OPTS="-Xmx2g -XX:MaxMetaspaceSize=512m -Dorg.gradle.jvmargs='-Xmx2g -XX:MaxMetaspaceSize=512m' -Dorg.gradle.parallel=false -Dorg.gradle.workers.max=1"
           ./gradlew :app:assembleRelease -PnewArchEnabled=true -x lintRelease --stacktrace --no-daemon --max-workers=1
 
       - name: Upload APK artifact (release)
