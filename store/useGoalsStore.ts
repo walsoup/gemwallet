@@ -17,6 +17,27 @@ type GoalState = {
   hydrateFromBackup: (data: { goals: Goal[]; goalsEnabled: boolean }) => void;
 };
 
+function normalizeGoal(raw: Goal): Goal {
+  const targetCents = Math.max(1, Number.isFinite(raw.targetCents) ? Math.round(raw.targetCents) : 1);
+  const savedCents = Math.min(
+    targetCents,
+    Math.max(0, Number.isFinite(raw.savedCents) ? Math.round(raw.savedCents) : 0)
+  );
+  return {
+    ...raw,
+    targetCents,
+    savedCents,
+    completed: savedCents >= targetCents,
+  };
+}
+
+function normalizeGoals(rawGoals: unknown): Goal[] {
+  if (!Array.isArray(rawGoals)) return [];
+  return rawGoals
+    .filter((goal): goal is Goal => !!goal && typeof goal === 'object')
+    .map((goal) => normalizeGoal(goal));
+}
+
 export const useGoalsStore = create<GoalState>()(
   persist(
     (set, get) => ({
@@ -62,11 +83,24 @@ export const useGoalsStore = create<GoalState>()(
       deleteGoal: (goalId) => set((state) => ({ goals: state.goals.filter((goal) => goal.id !== goalId) })),
       setGoalsEnabled: (enabled) => set({ goalsEnabled: enabled }),
       clearAllData: () => set({ goals: [], goalsEnabled: false }),
-      hydrateFromBackup: ({ goals, goalsEnabled }) => set({ goals: goals ?? [], goalsEnabled: !!goalsEnabled }),
+      hydrateFromBackup: ({ goals, goalsEnabled }) =>
+        set({ goals: normalizeGoals(goals), goalsEnabled: !!goalsEnabled }),
     }),
     {
       name: 'gemwallet-goals-v1',
       storage: createJSONStorage(() => AsyncStorage),
+      version: 2,
+      migrate: (persistedState: unknown) => {
+        if (!persistedState || typeof persistedState !== 'object') {
+          return { goals: [], goalsEnabled: false };
+        }
+        const state = persistedState as Partial<GoalState>;
+        return {
+          ...state,
+          goals: normalizeGoals(state.goals),
+          goalsEnabled: !!state.goalsEnabled,
+        };
+      },
     }
   )
 );
