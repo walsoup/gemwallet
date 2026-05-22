@@ -87,6 +87,13 @@ export default function HomeScreen() {
 
   // Vacation Fund
   const vacationGoal = goals.find(g => g.name.toLowerCase().includes('vacation')) || goals[0];
+  const vacationProgressPercent = useMemo(() => {
+    if (!vacationGoal) return 0;
+    const target = Number.isFinite(vacationGoal.targetCents) ? vacationGoal.targetCents : 0;
+    const saved = Number.isFinite(vacationGoal.savedCents) ? vacationGoal.savedCents : 0;
+    if (target <= 0) return 0;
+    return Math.min(100, Math.max(0, (saved / target) * 100));
+  }, [vacationGoal]);
 
   // Filtering
   const filteredTransactions = useMemo(() => {
@@ -252,7 +259,7 @@ export default function HomeScreen() {
                 <View
                   style={[
                     styles.progressBarFill,
-                    { backgroundColor: theme.colors.tertiary, width: vacationGoal ? `${Math.min(100, (vacationGoal.savedCents / vacationGoal.targetCents) * 100)}%` : '0%' }
+                    { backgroundColor: theme.colors.tertiary, width: `${vacationProgressPercent}%` }
                   ]}
                 />
               </View>
