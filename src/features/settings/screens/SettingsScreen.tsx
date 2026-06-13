@@ -11,6 +11,7 @@ import { AppTheme } from '../../../../providers/AppThemeProvider';
 import { ScreenLayout } from '../../../components/Layout/ScreenLayout';
 import { downloadLiteRtModel, getLiteRtModel, isLiteRtModelCached } from '../../../features/nlp/services/liteRtModels';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import * as LocalAuthentication from 'expo-local-authentication';
 import type { ThemePreference } from '../../../../types/finance';
 import { formatAppCurrency } from '../../../../utils/currency';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -273,8 +274,17 @@ export default function SettingsScreen() {
               </View>
               <Switch
                 value={biometricAuthEnabled}
-                onValueChange={(val) => {
+                onValueChange={async (val) => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  if (val) {
+                    const hasHardware = await LocalAuthentication.hasHardwareAsync();
+                    const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+                    if (!hasHardware || !isEnrolled) {
+                      Alert.alert('Biometrics Unavailable', 'This device does not have biometric hardware or it is not configured.');
+                      setBiometricAuthEnabled(false);
+                      return;
+                    }
+                  }
                   setBiometricAuthEnabled(val);
                 }}
                 trackColor={{ false: theme.colors.surfaceContainerHighest, true: theme.colors.primary }}
@@ -291,12 +301,31 @@ export default function SettingsScreen() {
               <View style={styles.settingRowLeft}>
                 <MaterialCommunityIcons name="lock-outline" size={24} color={theme.colors.onSurfaceVariant} />
                 <View>
-                  <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>Change Passcode</Text>
-                  <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>Update your 6-digit pin</Text>
+                  <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>{useSettingsStore().passcodePin ? 'Change Passcode' : 'Set Passcode'}</Text>
+                  <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>{useSettingsStore().passcodePin ? 'Update your 6-digit pin' : 'Require a pin to open'}</Text>
                 </View>
               </View>
               <MaterialCommunityIcons name="chevron-right" size={24} color={theme.colors.onSurfaceVariant} />
             </Pressable>
+
+            {!!useSettingsStore().passcodePin && (
+              <Pressable
+                style={({pressed}) => [styles.settingRow, { backgroundColor: pressed ? theme.colors.surfaceContainerHigh : theme.colors.surfaceContainer }]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  useSettingsStore.getState().setPasscodePin('');
+                  useSettingsStore.getState().setPasscodeEnabled(false);
+                }}
+              >
+                <View style={styles.settingRowLeft}>
+                  <MaterialCommunityIcons name="lock-off-outline" size={24} color={theme.colors.onSurfaceVariant} />
+                  <View>
+                    <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>Remove Passcode</Text>
+                    <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>Disable pin authentication</Text>
+                  </View>
+                </View>
+              </Pressable>
+            )}
           </View>
         </View>
 

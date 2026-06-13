@@ -21,6 +21,7 @@ export function BiometricGate({ children }: PropsWithChildren) {
   const [passcodeError, setPasscodeError] = useState<string | null>(null);
 
   const appState = useRef(AppState.currentState);
+  const lastActiveTimestamp = useRef<number>(Date.now());
 
   const runBiometrics = async () => {
     try {
@@ -87,14 +88,19 @@ export function BiometricGate({ children }: PropsWithChildren) {
 
   useEffect(() => {
     const handleAppStateChange = (nextAppState: AppStateStatus) => {
-      if (
-        appState.current.match(/inactive|background/) &&
-        nextAppState === 'active'
-      ) {
-        if (biometricAuthEnabled || passcodeEnabled) {
-          setIsAuthed(false);
-          authenticate();
+      if (nextAppState === 'active') {
+        const timeInBackground = Date.now() - lastActiveTimestamp.current;
+        if (
+          appState.current.match(/inactive|background/) &&
+          timeInBackground > 30000 // 30 seconds timeout
+        ) {
+          if (biometricAuthEnabled || passcodeEnabled) {
+            setIsAuthed(false);
+            authenticate();
+          }
         }
+      } else if (nextAppState === 'background' || nextAppState === 'inactive') {
+        lastActiveTimestamp.current = Date.now();
       }
       appState.current = nextAppState;
     };
