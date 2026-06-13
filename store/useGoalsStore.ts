@@ -3,7 +3,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 import type { Goal } from '../types/finance';
-import { generateId } from '../utils/generateId';
+import { generateId } from '../utils/generateId.ts';
 
 type GoalState = {
   goals: Goal[];

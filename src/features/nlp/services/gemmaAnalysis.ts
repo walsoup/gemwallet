@@ -355,6 +355,18 @@ export async function* streamFinancialAnalysis(
       return;
     }
 
+    if (options.aiProvider === 'local') {
+      for await (const chunk of streamLocalFinancialAnalysis(
+        transactions,
+        options,
+        callbacks,
+        userQuestion
+      )) {
+        yield chunk;
+      }
+      return;
+    }
+
   } catch (error) {
     console.warn(`AI analysis failed (${options.aiProvider})`, error);
     yield 'AI had an issue processing this request. Check your settings and try again.';

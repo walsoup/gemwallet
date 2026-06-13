@@ -2,11 +2,11 @@ import { useSettingsStore } from '../store/useSettingsStore';
 import type { CurrencyCode, RegionCode } from '../types/finance';
 import { formatCurrency } from './formatCurrency';
 
-export const SUPPORTED_CURRENCIES: ReadonlyArray<{
+export const SUPPORTED_CURRENCIES: readonly {
   code: CurrencyCode;
   label: string;
   locales: string[];
-}> = [
+}[] = [
   { code: 'USD', label: 'US Dollar', locales: ['en-US'] },
   { code: 'EUR', label: 'Euro', locales: ['fr-FR', 'de-DE', 'en-IE'] },
   { code: 'GBP', label: 'British Pound', locales: ['en-GB'] },

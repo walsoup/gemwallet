@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ScrollView, StyleSheet, View, TextInput, Pressable, Modal } from 'react-native';
+import { ScrollView, StyleSheet, View, TextInput, Pressable, Modal, Animated as RNAnimated } from 'react-native';
 import { Button, Text, useTheme } from 'react-native-paper';
 import { useTransactionStore, selectBalanceCents } from '../../../../store/useTransactionStore';
 import { useGoalsStore } from '../../../../store/useGoalsStore';
@@ -10,6 +10,12 @@ import { ScreenLayout } from '../../../components/Layout/ScreenLayout';
 import { formatAppCurrency } from '../../../../utils/currency';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { useBouncyPress } from '../../../hooks/useBouncyPress';
+import { TransactionDetailModal } from '../components/TransactionDetailModal';
+import { AddTransactionModal } from '../components/AddTransactionModal';
+import { Transaction } from '../../../../types/finance';
+import Swipeable from 'react-native-gesture-handler/Swipeable';
+import { ProgressRing } from '../../../components/UI/ProgressRing';
+import { AnimatedBalance } from '../../../components/UI/AnimatedBalance';
 
 type QuickActionMode = 'income' | 'expense';
 
@@ -38,41 +44,41 @@ export default function HomeScreen() {
   const addIncome = useTransactionStore((state) => state.addIncome);
   const addExpense = useTransactionStore((state) => state.addExpense);
   const goals = useGoalsStore((state) => state.goals);
+  const undoTransaction = useTransactionStore((state) => state.undoTransaction);
+
+  const handleDeleteTransaction = (txId: string) => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    undoTransaction(txId);
+  };
+
+  const currentMonthSpentByCategory = useMemo(() => {
+    const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
+    const map: Record<string, number> = {};
+    transactions.forEach(tx => {
+      if (tx.type === 'expense' && tx.timestamp >= startOfMonth) {
+        map[tx.categoryId] = (map[tx.categoryId] || 0) + tx.amountCents;
+      }
+    });
+    return map;
+  }, [transactions]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('All');
 
   const [quickActionMode, setQuickActionMode] = useState<QuickActionMode>('income');
   const [quickActionVisible, setQuickActionVisible] = useState(false);
-  const [quickActionAmount, setQuickActionAmount] = useState('');
-  const [quickActionLabel, setQuickActionLabel] = useState('');
+
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+  const [detailModalVisible, setDetailModalVisible] = useState(false);
 
   const openQuickAction = (mode: QuickActionMode) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setQuickActionMode(mode);
-    setQuickActionAmount('');
-    setQuickActionLabel('');
     setQuickActionVisible(true);
   };
 
   const closeQuickAction = () => {
     setQuickActionVisible(false);
-  };
-
-  const submitQuickAction = () => {
-    const parsedAmount = Number(quickActionAmount.replace(/[^0-9.]/g, ''));
-    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) return;
-
-    const amountCents = Math.round(parsedAmount * 100);
-    const note = quickActionLabel.trim() || (quickActionMode === 'income' ? 'Added funds' : 'Spent funds');
-
-    if (quickActionMode === 'income') {
-      addIncome({ amountCents, categoryId: 'income-custom', note });
-    } else {
-      addExpense({ amountCents, categoryId: 'expense-misc', note });
-    }
-
-    closeQuickAction();
   };
 
   const now = new Date();
@@ -118,71 +124,17 @@ export default function HomeScreen() {
   return (
     <ScreenLayout title="Good afternoon" backgroundColor={theme.colors.background}>
 
-      <Modal
-        visible={quickActionVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={closeQuickAction}
-      >
-        <Pressable 
-          style={[
-            styles.modalBackdrop, 
-            { backgroundColor: theme.dark ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.3)' }
-          ]} 
-          onPress={closeQuickAction}
-        >
-          <Pressable
-            style={[styles.modalCard, { backgroundColor: theme.colors.surfaceContainerHigh }]}
-            onPress={() => undefined}
-          >
-            <Text variant="titleMedium" style={{ color: theme.colors.onSurface, marginBottom: 16 }}>
-              {quickActionMode === 'income' ? 'Add Funds' : 'Spend Funds'}
-            </Text>
+      <AddTransactionModal 
+        visible={quickActionVisible} 
+        initialType={quickActionMode} 
+        onClose={closeQuickAction} 
+      />
 
-            <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8 }}>Amount</Text>
-            <TextInput
-              style={[
-                styles.modalInput,
-                {
-                  backgroundColor: theme.colors.surfaceContainerLowest,
-                  color: theme.colors.onSurface,
-                  borderColor: theme.colors.outlineVariant + '4D',
-                },
-              ]}
-              keyboardType="decimal-pad"
-              placeholder="$0.00"
-              placeholderTextColor={theme.colors.onSurfaceVariant}
-              value={quickActionAmount}
-              onChangeText={setQuickActionAmount}
-            />
-
-            <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8, marginTop: 12 }}>Label</Text>
-            <TextInput
-              style={[
-                styles.modalInput,
-                {
-                  backgroundColor: theme.colors.surfaceContainerLowest,
-                  color: theme.colors.onSurface,
-                  borderColor: theme.colors.outlineVariant + '4D',
-                },
-              ]}
-              placeholder={quickActionMode === 'income' ? 'Paycheck, refund…' : 'Rent, groceries…'}
-              placeholderTextColor={theme.colors.onSurfaceVariant}
-              value={quickActionLabel}
-              onChangeText={setQuickActionLabel}
-            />
-
-            <View style={styles.modalActions}>
-              <Button mode="text" onPress={closeQuickAction} textColor={theme.colors.onSurfaceVariant}>
-                Cancel
-              </Button>
-              <Button mode="contained" onPress={submitQuickAction}>
-                Confirm
-              </Button>
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
+      <TransactionDetailModal 
+        transaction={selectedTransaction}
+        visible={detailModalVisible}
+        onClose={() => setDetailModalVisible(false)}
+      />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Hero Balance Section */}
@@ -190,9 +142,10 @@ export default function HomeScreen() {
           <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8, fontFamily: 'BeVietnamPro_500Medium' }}>
             Available Cash
           </Text>
-          <Text variant="displayLarge" style={{ color: theme.colors.onSurface }}>
-            {formatAppCurrency(balanceCents)}
-          </Text>
+          <AnimatedBalance 
+            valueCents={balanceCents} 
+            textStyle={{ fontSize: 56, lineHeight: 64 }} 
+          />
 
           {/* Quick Actions */}
           <View style={styles.quickActions}>
@@ -313,49 +266,107 @@ export default function HomeScreen() {
               const isIncome = tx.type === 'income';
               const isLast = index === Math.min(filteredTransactions.length, 10) - 1;
 
+              const budgetLimit = category?.maxBudgetLimitCents;
+              const spent = category ? currentMonthSpentByCategory[category.id] || 0 : 0;
+              const isWarning = budgetLimit && budgetLimit > 0 && spent >= 0.8 * budgetLimit;
+
               let iconName = 'help';
               if (category?.name === 'Food') iconName = 'silverware-fork-knife';
               else if (category?.name === 'Transport') iconName = 'train';
               else if (isIncome) iconName = 'cash';
               else if (category?.name === 'Entertainment') iconName = 'movie';
 
+              const itemBg = isWarning ? theme.colors.errorContainer : undefined;
+              const textColor = isWarning ? theme.colors.onErrorContainer : theme.colors.onSurface;
+              const textSubColor = isWarning ? theme.colors.onErrorContainer + 'CC' : theme.colors.onSurfaceVariant;
+
               return (
-                <Pressable
+                <Swipeable
                   key={tx.id}
-                  style={({pressed}) => [
-                    styles.txItem,
-                    !isLast && { borderBottomWidth: 1, borderBottomColor: theme.colors.outlineVariant + '26' },
-                    pressed && { backgroundColor: theme.colors.surfaceContainer }
-                  ]}
+                  onSwipeableOpen={(direction) => {
+                    if (direction === 'right') {
+                      handleDeleteTransaction(tx.id);
+                    }
+                  }}
+                  renderRightActions={(progress, dragX) => {
+                    const scale = dragX.interpolate({
+                      inputRange: [-80, 0],
+                      outputRange: [1, 0],
+                      extrapolate: 'clamp',
+                    });
+                    return (
+                      <Pressable
+                        onPress={() => handleDeleteTransaction(tx.id)}
+                        style={{
+                          backgroundColor: theme.colors.errorContainer,
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          width: 80,
+                          height: '100%',
+                          borderRadius: 16,
+                        }}
+                      >
+                        <RNAnimated.View style={{ transform: [{ scale }] }}>
+                          <MaterialCommunityIcons name="delete" size={24} color={theme.colors.onErrorContainer} />
+                        </RNAnimated.View>
+                      </Pressable>
+                    );
+                  }}
                 >
-                  <View style={styles.txItemLeft}>
-                    <View style={[
-                      styles.txIconContainer,
-                      { backgroundColor: isIncome ? theme.colors.tertiary + '1A' : theme.colors.surfaceContainerHighest }
-                    ]}>
-                      <MaterialCommunityIcons
-                        name={iconName as any}
-                        size={24}
-                        color={isIncome ? theme.colors.tertiary : theme.colors.onSurfaceVariant}
-                      />
+                  <Pressable
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      setSelectedTransaction(tx);
+                      setDetailModalVisible(true);
+                    }}
+                    style={({pressed}) => [
+                      styles.txItem,
+                      { backgroundColor: itemBg || (pressed ? theme.colors.surfaceContainer : 'transparent') },
+                      !isLast && { borderBottomWidth: 1, borderBottomColor: isWarning ? theme.colors.onErrorContainer + '26' : theme.colors.outlineVariant + '26' }
+                    ]}
+                  >
+                    <View style={styles.txItemLeft}>
+                      <View style={{ width: 48, height: 48, justifyContent: 'center', alignItems: 'center' }}>
+                        {budgetLimit && budgetLimit > 0 && (
+                          <View style={{ position: 'absolute', left: 0, top: 0, zIndex: 1 }}>
+                            <ProgressRing
+                              size={48}
+                              strokeWidth={3}
+                              progress={spent / budgetLimit}
+                              color={isWarning ? theme.colors.error : theme.colors.primary}
+                              trackColor={isWarning ? theme.colors.errorContainer : theme.colors.surfaceContainerHighest}
+                            />
+                          </View>
+                        )}
+                        <View style={[
+                          styles.txIconContainer,
+                          { backgroundColor: isIncome ? theme.colors.tertiary + '1A' : (isWarning ? theme.colors.onErrorContainer + '1A' : theme.colors.surfaceContainerHighest) }
+                        ]}>
+                          <MaterialCommunityIcons
+                            name={iconName as any}
+                            size={24}
+                            color={isIncome ? theme.colors.tertiary : (isWarning ? theme.colors.onErrorContainer : theme.colors.onSurfaceVariant)}
+                          />
+                        </View>
+                      </View>
+                      <View style={{ marginLeft: 4 }}>
+                        <Text style={{ color: textColor, fontFamily: 'BeVietnamPro_500Medium', fontSize: 16 }}>
+                          {tx.note || category?.name || 'Transaction'}
+                        </Text>
+                        <Text style={{ color: textSubColor, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>
+                          {category?.name || 'Misc'}
+                        </Text>
+                      </View>
                     </View>
-                    <View>
-                      <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_500Medium', fontSize: 16 }}>
-                        {tx.note || category?.name || 'Transaction'}
-                      </Text>
-                      <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>
-                        {category?.name || 'Misc'}
-                      </Text>
-                    </View>
-                  </View>
-                  <Text style={{
-                    color: isIncome ? theme.colors.tertiary : theme.colors.onSurface,
-                    fontFamily: 'BeVietnamPro_500Medium',
-                    fontSize: 16
-                  }}>
-                    {isIncome ? '+' : '-'}{formatAppCurrency(tx.amountCents)}
-                  </Text>
-                </Pressable>
+                    <Text style={{
+                      color: isIncome ? theme.colors.tertiary : textColor,
+                      fontFamily: 'BeVietnamPro_500Medium',
+                      fontSize: 16
+                    }}>
+                      {isIncome ? '+' : '-'}{formatAppCurrency(tx.amountCents)}
+                    </Text>
+                  </Pressable>
+                </Swipeable>
               );
             })}
             {filteredTransactions.length === 0 && (

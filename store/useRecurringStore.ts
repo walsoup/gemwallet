@@ -68,8 +68,14 @@ export const useRecurringStore = create<RecurringState>()(
             if (!state.recurringEnabled || !event.enabled || event.nextRun > now) return event;
             const normalizedAmount = Math.round(event.amountCents);
             if (!Number.isFinite(normalizedAmount) || normalizedAmount <= 0) return event;
-            apply(event);
-            return { ...event, nextRun: addInterval(event.nextRun, event.interval) };
+            
+            let currentNextRun = event.nextRun;
+            while (currentNextRun <= now) {
+              apply(event);
+              currentNextRun = addInterval(currentNextRun, event.interval);
+            }
+            // nextRun: addInterval(event.nextRun, event.interval)
+            return { ...event, nextRun: currentNextRun };
           });
           return { events };
         });

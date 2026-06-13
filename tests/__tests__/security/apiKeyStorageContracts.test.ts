@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { readFileSync } from 'node:fs';
 
-const root = '/home/runner/work/gemwallet/gemwallet';
+const root = process.cwd();
 
 const read = (p: string) => readFileSync(`${root}/${p}`, 'utf8');
 

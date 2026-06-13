@@ -3,6 +3,8 @@ import { ScrollView, StyleSheet, View, Pressable, Switch, Modal, TextInput } fro
 import { Button, Text, useTheme } from 'react-native-paper';
 import { useGoalsStore } from '../../../../store/useGoalsStore';
 import { useRecurringStore } from '../../../../store/useRecurringStore';
+import { useTransactionStore } from '../../../../store/useTransactionStore';
+import { ProgressRing } from '../../../components/UI/ProgressRing';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppTheme } from '../../../../providers/AppThemeProvider';
 import { ScreenLayout } from '../../../components/Layout/ScreenLayout';
@@ -63,6 +65,65 @@ export default function PlanningScreen() {
     closeNewGoal();
   };
 
+  const categories = useTransactionStore((state) => state.categories);
+  const transactions = useTransactionStore((state) => state.transactions);
+  const addEvent = useRecurringStore((state) => state.addEvent);
+
+  const [recModalVisible, setRecModalVisible] = useState(false);
+  const [recName, setRecName] = useState('');
+  const [recAmount, setRecAmount] = useState('');
+  const [recType, setRecType] = useState<'income' | 'expense'>('expense');
+  const [recCategoryId, setRecCategoryId] = useState('');
+  const [recInterval, setRecInterval] = useState<'weekly' | 'monthly'>('monthly');
+  const [recStartDateText, setRecStartDateText] = useState(new Date().toISOString().split('T')[0]);
+
+  const currentMonthSpentByCategory = React.useMemo(() => {
+    const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
+    const map: Record<string, number> = {};
+    transactions.forEach(tx => {
+      if (tx.type === 'expense' && tx.timestamp >= startOfMonth) {
+        map[tx.categoryId] = (map[tx.categoryId] || 0) + tx.amountCents;
+      }
+    });
+    return map;
+  }, [transactions]);
+
+  const openNewRecurring = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setRecName('');
+    setRecAmount('');
+    setRecType('expense');
+    const defaultCat = categories.find(c => c.kind === 'expense') || categories[0];
+    setRecCategoryId(defaultCat?.id || '');
+    setRecInterval('monthly');
+    setRecStartDateText(new Date().toISOString().split('T')[0]);
+    setRecModalVisible(true);
+  };
+
+  const closeNewRecurring = () => {
+    setRecModalVisible(false);
+  };
+
+  const submitNewRecurring = () => {
+    const parsedAmount = Number(recAmount.replace(/[^0-9.]/g, ''));
+    if (!recName.trim() || !Number.isFinite(parsedAmount) || parsedAmount <= 0 || !recCategoryId) return;
+
+    const parsedDate = new Date(recStartDateText).getTime();
+    const startDate = isNaN(parsedDate) ? Date.now() : parsedDate;
+
+    addEvent({
+      name: recName.trim(),
+      amountCents: Math.round(parsedAmount * 100),
+      type: recType,
+      categoryId: recCategoryId,
+      interval: recInterval,
+      startDate
+    });
+
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    closeNewRecurring();
+  };
+
   return (
     <ScreenLayout title="Planning" backgroundColor={theme.colors.background}>
 
@@ -114,6 +175,220 @@ export default function PlanningScreen() {
                 Cancel
               </Button>
               <Button mode="contained" onPress={submitNewGoal}>
+                Create
+              </Button>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal visible={recModalVisible} transparent animationType="fade" onRequestClose={closeNewRecurring}>
+        <Pressable style={styles.modalBackdrop} onPress={closeNewRecurring}>
+          <Pressable
+            style={[styles.modalCard, { backgroundColor: theme.colors.surfaceContainerHigh }]}
+            onPress={() => undefined}
+          >
+            <Text variant="titleMedium" style={{ color: theme.colors.onSurface, marginBottom: 16 }}>
+              New Recurring Event
+            </Text>
+
+            <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8 }}>Name</Text>
+            <TextInput
+              style={[
+                styles.modalInput,
+                {
+                  backgroundColor: theme.colors.surfaceContainerLowest,
+                  color: theme.colors.onSurface,
+                  borderColor: theme.colors.outlineVariant + '4D',
+                },
+              ]}
+              placeholder="e.g. Rent, Gym membership..."
+              placeholderTextColor={theme.colors.onSurfaceVariant}
+              value={recName}
+              onChangeText={setRecName}
+            />
+
+            <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8, marginTop: 12 }}>Amount</Text>
+            <TextInput
+              style={[
+                styles.modalInput,
+                {
+                  backgroundColor: theme.colors.surfaceContainerLowest,
+                  color: theme.colors.onSurface,
+                  borderColor: theme.colors.outlineVariant + '4D',
+                },
+              ]}
+              keyboardType="decimal-pad"
+              placeholder="$0.00"
+              placeholderTextColor={theme.colors.onSurfaceVariant}
+              value={recAmount}
+              onChangeText={setRecAmount}
+            />
+
+            <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8, marginTop: 12 }}>Type</Text>
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+              <Pressable
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setRecType('expense');
+                  const targetCats = categories.filter(c => c.kind === 'expense' || c.kind === 'system');
+                  if (!targetCats.some(c => c.id === recCategoryId)) {
+                    setRecCategoryId(targetCats[0]?.id || '');
+                  }
+                }}
+                style={[
+                  styles.typeToggleBtn,
+                  recType === 'expense'
+                    ? { backgroundColor: theme.colors.errorContainer, borderColor: theme.colors.error }
+                    : { backgroundColor: theme.colors.surfaceContainerLowest, borderColor: theme.colors.outlineVariant + '4D' }
+                ]}
+              >
+                <Text style={{
+                  color: recType === 'expense' ? theme.colors.onErrorContainer : theme.colors.onSurface,
+                  fontFamily: 'BeVietnamPro_500Medium'
+                }}>
+                  Expense
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setRecType('income');
+                  const targetCats = categories.filter(c => c.kind === 'income');
+                  if (!targetCats.some(c => c.id === recCategoryId)) {
+                    setRecCategoryId(targetCats[0]?.id || '');
+                  }
+                }}
+                style={[
+                  styles.typeToggleBtn,
+                  recType === 'income'
+                    ? { backgroundColor: theme.colors.tertiary + '1A', borderColor: theme.colors.tertiary }
+                    : { backgroundColor: theme.colors.surfaceContainerLowest, borderColor: theme.colors.outlineVariant + '4D' }
+                ]}
+              >
+                <Text style={{
+                  color: recType === 'income' ? theme.colors.tertiary : theme.colors.onSurface,
+                  fontFamily: 'BeVietnamPro_500Medium'
+                }}>
+                  Income
+                </Text>
+              </Pressable>
+            </View>
+
+            <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8, marginTop: 12 }}>Category</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }} contentContainerStyle={{ gap: 8 }}>
+              {categories
+                .filter(c => recType === 'income' ? c.kind === 'income' : (c.kind === 'expense' || c.kind === 'system'))
+                .map(c => {
+                  const isSelected = c.id === recCategoryId;
+                  const budgetLimit = c.maxBudgetLimitCents;
+                  const spent = currentMonthSpentByCategory[c.id] || 0;
+                  const isWarning = budgetLimit && budgetLimit > 0 && spent >= 0.8 * budgetLimit;
+
+                  return (
+                    <Pressable
+                      key={c.id}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setRecCategoryId(c.id);
+                      }}
+                      style={[
+                        styles.categoryChip,
+                        isSelected
+                          ? { backgroundColor: theme.colors.primaryContainer, borderColor: theme.colors.primary }
+                          : { backgroundColor: theme.colors.surfaceContainerLowest, borderColor: theme.colors.outlineVariant + '4D' }
+                      ]}
+                    >
+                      <View style={{ width: 32, height: 32, justifyContent: 'center', alignItems: 'center' }}>
+                        {budgetLimit && budgetLimit > 0 && (
+                          <View style={{ position: 'absolute', left: 0, top: 0, zIndex: 1 }}>
+                            <ProgressRing
+                              size={32}
+                              strokeWidth={2}
+                              progress={spent / budgetLimit}
+                              color={isWarning ? theme.colors.error : theme.colors.primary}
+                              trackColor={isWarning ? theme.colors.errorContainer : theme.colors.surfaceContainerHighest}
+                            />
+                          </View>
+                        )}
+                        <Text style={{ fontSize: 16 }}>{c.emoji}</Text>
+                      </View>
+                      <Text style={{
+                        color: isSelected ? theme.colors.onPrimaryContainer : theme.colors.onSurface,
+                        fontFamily: 'BeVietnamPro_500Medium',
+                        fontSize: 14,
+                        marginLeft: 4
+                      }}>
+                        {c.name}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+            </ScrollView>
+
+            <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8, marginTop: 12 }}>Interval</Text>
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+              <Pressable
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setRecInterval('weekly');
+                }}
+                style={[
+                  styles.typeToggleBtn,
+                  recInterval === 'weekly'
+                    ? { backgroundColor: theme.colors.primaryContainer, borderColor: theme.colors.primary }
+                    : { backgroundColor: theme.colors.surfaceContainerLowest, borderColor: theme.colors.outlineVariant + '4D' }
+                ]}
+              >
+                <Text style={{
+                  color: recInterval === 'weekly' ? theme.colors.onPrimaryContainer : theme.colors.onSurface,
+                  fontFamily: 'BeVietnamPro_500Medium'
+                }}>
+                  Weekly
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setRecInterval('monthly');
+                }}
+                style={[
+                  styles.typeToggleBtn,
+                  recInterval === 'monthly'
+                    ? { backgroundColor: theme.colors.primaryContainer, borderColor: theme.colors.primary }
+                    : { backgroundColor: theme.colors.surfaceContainerLowest, borderColor: theme.colors.outlineVariant + '4D' }
+                ]}
+              >
+                <Text style={{
+                  color: recInterval === 'monthly' ? theme.colors.onPrimaryContainer : theme.colors.onSurface,
+                  fontFamily: 'BeVietnamPro_500Medium'
+                }}>
+                  Monthly
+                </Text>
+              </Pressable>
+            </View>
+
+            <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8, marginTop: 12 }}>Start Date (YYYY-MM-DD)</Text>
+            <TextInput
+              style={[
+                styles.modalInput,
+                {
+                  backgroundColor: theme.colors.surfaceContainerLowest,
+                  color: theme.colors.onSurface,
+                  borderColor: theme.colors.outlineVariant + '4D',
+                },
+              ]}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor={theme.colors.onSurfaceVariant}
+              value={recStartDateText}
+              onChangeText={setRecStartDateText}
+            />
+
+            <View style={styles.modalActions}>
+              <Button mode="text" onPress={closeNewRecurring} textColor={theme.colors.onSurfaceVariant}>
+                Cancel
+              </Button>
+              <Button mode="contained" onPress={submitNewRecurring}>
                 Create
               </Button>
             </View>
@@ -186,7 +461,16 @@ export default function PlanningScreen() {
 
         {/* Recurring Events Section */}
         <Animated.View entering={FadeInUp.delay(200).springify()} style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.onBackground, marginBottom: 24 }]}>Recurring Events</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Recurring Events</Text>
+            <BouncyButton
+              style={[styles.addButton, { backgroundColor: theme.colors.surfaceContainerHighest }]}
+              onPress={openNewRecurring}
+            >
+              <MaterialCommunityIcons name="plus" size={16} color={theme.colors.primary} />
+              <Text style={{ color: theme.colors.primary, fontFamily: 'BeVietnamPro_500Medium', fontSize: 14 }}>NEW</Text>
+            </BouncyButton>
+          </View>
           <View style={[styles.eventsContainer, { backgroundColor: theme.colors.surfaceContainerLow }]}>
             {events.length > 0 ? events.map(event => {
               const isIncome = event.type === 'income';
@@ -349,5 +633,21 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  categoryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  typeToggleBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 16,
+    borderWidth: 1,
   },
 });

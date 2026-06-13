@@ -4,8 +4,10 @@
     "jsx": "react-native",
     "strict": true,
     "types": [
-      "node"
-    ]
+      "node",
+      "jest"
+    ],
+    "allowImportingTsExtensions": true
   },
   "include": [
     "**/*.ts",

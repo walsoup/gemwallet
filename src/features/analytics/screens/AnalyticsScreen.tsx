@@ -9,6 +9,7 @@ import { formatAppCurrency } from '../../../../utils/currency';
 import * as Haptics from 'expo-haptics';
 import Animated from 'react-native-reanimated';
 import { useBouncyPress } from '../../../hooks/useBouncyPress';
+import { BarChart, PieChart, LineChart } from 'react-native-gifted-charts';
 
 const BouncyButton = ({ onPress, style, children, disabled, ...props }: any) => {
   const { animatedStyle, onPressIn, onPressOut } = useBouncyPress(0.95, disabled);
@@ -54,40 +55,110 @@ export default function AnalyticsScreen() {
   const savedCents = Math.max(0, totalIncome - totalExpense);
   const savedPercentage = totalIncome > 0 ? ((savedCents / totalIncome) * 100).toFixed(1) : '0.0';
 
-  // Daily Velocity Logic (Past 7 days)
-  const dailyVelocity = useMemo(() => {
-    const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-    const past7Days = Array.from({ length: 7 }).map((_, i) => {
-      const d = new Date();
-      d.setDate(now.getDate() - (6 - i));
-      return {
-        date: d,
-        dayStr: days[d.getDay()],
-        totalCents: 0
-      };
+  // Donut Chart data (group expenses by category for current month)
+  const donutData = useMemo(() => {
+    const map: Record<string, number> = {};
+    transactions.forEach(tx => {
+      if (tx.type === 'expense' && tx.timestamp >= startOfMonth) {
+        map[tx.categoryId] = (map[tx.categoryId] || 0) + tx.amountCents;
+      }
     });
+
+    const colors = [
+      theme.colors.primary,
+      theme.colors.secondary,
+      theme.colors.tertiary,
+      theme.colors.error,
+      '#FF9800',
+      '#9C27B0',
+      '#00BCD4',
+      '#4CAF50',
+      '#E91E63'
+    ];
+
+    return Object.keys(map).map((catId, idx) => {
+      const cat = categories.find(c => c.id === catId);
+      return {
+        value: map[catId] / 100,
+        color: colors[idx % colors.length],
+        text: cat?.emoji || '🧩',
+        label: cat?.name || 'Misc'
+      };
+    }).sort((a, b) => b.value - a.value);
+  }, [transactions, categories, startOfMonth, theme.colors]);
+
+  // Monthly Bar Chart data (last 6 months trend)
+  const monthlyBarData = useMemo(() => {
+    const monthsData: { year: number; month: number; label: string; value: number }[] = [];
+    const nowTemp = new Date();
+
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(nowTemp.getFullYear(), nowTemp.getMonth() - i, 1);
+      monthsData.push({
+        year: d.getFullYear(),
+        month: d.getMonth(),
+        label: d.toLocaleString('default', { month: 'short' }),
+        value: 0
+      });
+    }
 
     transactions.forEach(tx => {
       if (tx.type === 'expense') {
         const txDate = new Date(tx.timestamp);
-        const dayMatch = past7Days.find(d =>
-          d.date.getDate() === txDate.getDate() &&
-          d.date.getMonth() === txDate.getMonth() &&
-          d.date.getFullYear() === txDate.getFullYear()
-        );
-        if (dayMatch) {
-          dayMatch.totalCents += tx.amountCents;
+        const match = monthsData.find(m => m.year === txDate.getFullYear() && m.month === txDate.getMonth());
+        if (match) {
+          match.value += tx.amountCents;
         }
       }
     });
 
-    const maxSpend = Math.max(...past7Days.map(d => d.totalCents), 1);
-
-    return past7Days.map(d => ({
-      ...d,
-      heightPercentage: Math.max(10, (d.totalCents / maxSpend) * 100) // min 10% height for visual
+    return monthsData.map(m => ({
+      value: m.value / 100,
+      label: m.label,
+      frontColor: theme.colors.primary
     }));
-  }, [now, transactions]);
+  }, [transactions, theme.colors.primary]);
+
+  // Line Chart data (Income vs Expense comparison for last 6 months)
+  const lineChartData = useMemo(() => {
+    const monthsData: { year: number; month: number; label: string; incomeValue: number; expenseValue: number }[] = [];
+    const nowTemp = new Date();
+
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(nowTemp.getFullYear(), nowTemp.getMonth() - i, 1);
+      monthsData.push({
+        year: d.getFullYear(),
+        month: d.getMonth(),
+        label: d.toLocaleString('default', { month: 'short' }),
+        incomeValue: 0,
+        expenseValue: 0
+      });
+    }
+
+    transactions.forEach(tx => {
+      const txDate = new Date(tx.timestamp);
+      const match = monthsData.find(m => m.year === txDate.getFullYear() && m.month === txDate.getMonth());
+      if (match) {
+        if (tx.type === 'income') {
+          match.incomeValue += tx.amountCents;
+        } else if (tx.type === 'expense') {
+          match.expenseValue += tx.amountCents;
+        }
+      }
+    });
+
+    const incomeLine = monthsData.map(m => ({
+      value: m.incomeValue / 100,
+      label: m.label
+    }));
+
+    const expenseLine = monthsData.map(m => ({
+      value: m.expenseValue / 100,
+      label: m.label
+    }));
+
+    return { incomeLine, expenseLine };
+  }, [transactions]);
 
   // Top Movers Logic
   const topMovers = useMemo(() => {
@@ -180,30 +251,76 @@ export default function AnalyticsScreen() {
           </View>
         </View>
 
-        {/* Daily Velocity */}
+        {/* Monthly Spending */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.onSurfaceVariant }]}>Daily Velocity</Text>
-          <View style={[styles.velocityCard, { backgroundColor: theme.colors.surfaceContainerLow }]}>
-            <View style={styles.chartContainer}>
-              {dailyVelocity.map((day, idx) => (
-                <View key={idx} style={styles.barColumn}>
-                  <View style={[styles.barTrack, { backgroundColor: theme.colors.surfaceContainerHighest }]}>
-                    <View style={[
-                      styles.barFill,
-                      { backgroundColor: theme.colors.primaryContainer, height: `${day.heightPercentage}%`, opacity: 0.8 }
-                    ]} />
-                  </View>
-                  <Text style={{
-                    color: idx === 6 ? theme.colors.onSurface : theme.colors.onSurfaceVariant,
-                    fontFamily: idx === 6 ? 'BeVietnamPro_500Medium' : 'BeVietnamPro_400Regular',
-                    fontSize: 12,
-                    marginTop: 8
-                  }}>
-                    {day.dayStr}
-                  </Text>
+          <Text style={[styles.sectionTitle, { color: theme.colors.onSurfaceVariant }]}>Monthly Spending</Text>
+          <View style={[styles.velocityCard, { backgroundColor: theme.colors.surfaceContainerLow, padding: 16 }]}>
+            <BarChart
+              data={monthlyBarData}
+              barWidth={22}
+              spacing={15}
+              barBorderRadius={4}
+              yAxisThickness={0}
+              xAxisThickness={0}
+              noOfSections={4}
+              yAxisTextStyle={{ color: theme.colors.onSurfaceVariant }}
+              xAxisLabelTextStyle={{ color: theme.colors.onSurfaceVariant }}
+              hideRules
+            />
+          </View>
+        </View>
+
+        {/* Category Breakdown */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.onSurfaceVariant }]}>Category Breakdown</Text>
+          <View style={[styles.velocityCard, { backgroundColor: theme.colors.surfaceContainerLow, padding: 16, alignItems: 'center' }]}>
+            {donutData.length > 0 ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                <PieChart
+                  donut
+                  radius={70}
+                  innerRadius={40}
+                  data={donutData}
+                  centerLabelComponent={() => (
+                    <Text style={{ textAlign: 'center', fontWeight: 'bold', color: theme.colors.onSurface }}>Expenses</Text>
+                  )}
+                />
+                <View style={{ gap: 4 }}>
+                  {donutData.slice(0, 4).map((d, i) => (
+                    <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: d.color }} />
+                      <Text style={{ color: theme.colors.onSurface, fontSize: 12 }}>
+                        {d.text} {d.label} ({formatAppCurrency(d.value * 100)})
+                      </Text>
+                    </View>
+                  ))}
                 </View>
-              ))}
-            </View>
+              </View>
+            ) : (
+              <Text style={{ color: theme.colors.onSurfaceVariant }}>No expense data for this month yet.</Text>
+            )}
+          </View>
+        </View>
+
+        {/* Income vs. Expense */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.onSurfaceVariant }]}>Income vs. Expense</Text>
+          <View style={[styles.velocityCard, { backgroundColor: theme.colors.surfaceContainerLow, padding: 16 }]}>
+            <LineChart
+              data={lineChartData.incomeLine}
+              data2={lineChartData.expenseLine}
+              color1={theme.colors.tertiary}
+              color2={theme.colors.error}
+              thickness={3}
+              dataPointsColor1={theme.colors.tertiary}
+              dataPointsColor2={theme.colors.error}
+              yAxisThickness={0}
+              xAxisThickness={0}
+              noOfSections={4}
+              yAxisTextStyle={{ color: theme.colors.onSurfaceVariant }}
+              xAxisLabelTextStyle={{ color: theme.colors.onSurfaceVariant }}
+              hideRules
+            />
           </View>
         </View>
 
@@ -212,12 +329,9 @@ export default function AnalyticsScreen() {
           <Text style={[styles.sectionTitle, { color: theme.colors.onSurfaceVariant }]}>Top Movers</Text>
           <View style={[styles.moversCard, { backgroundColor: theme.colors.surfaceContainerLow }]}>
             {topMovers.length > 0 ? topMovers.map((mover, idx) => (
-              <BouncyButton
+              <View
                 key={idx}
                 style={styles.moverItem}
-                onPress={() => {
-                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                }}
               >
                 <View style={styles.moverLeft}>
                   <View style={[styles.moverIcon, { backgroundColor: theme.colors.surfaceContainer }]}>
@@ -249,7 +363,7 @@ export default function AnalyticsScreen() {
                     })()}
                   </View>
                 </View>
-              </BouncyButton>
+              </View>
             )) : (
               <View style={{ padding: 24, alignItems: 'center' }}>
                 <Text style={{ color: theme.colors.onSurfaceVariant }}>No expense data for this month yet.</Text>

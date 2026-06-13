@@ -38,7 +38,7 @@ describe('UI fidelity and integrity contracts', () => {
   it('keeps theme provider dark palette and true-black override path', () => {
     const themeProvider = readWorkspaceFile('providers/AppThemeProvider.tsx');
 
-    assert.match(themeProvider, /VELVET_DARK_COLORS/);
+    assert.match(themeProvider, /oledTrueBlackEnabled/);
     assert.match(themeProvider, /isTrueBlack/);
     assert.match(themeProvider, /surfaceContainerLowest/);
   });

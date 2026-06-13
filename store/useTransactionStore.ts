@@ -3,7 +3,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 import type { Category, Transaction, WalletMeta } from '../types/finance';
-import { generateId } from '../utils/generateId';
+import { generateId } from '../utils/generateId.ts';
 
 const DEFAULT_CATEGORIES: Category[] = [
   { id: 'expense-food', name: 'Food', emoji: '🍔', kind: 'expense' },
@@ -61,8 +61,24 @@ type TransactionState = {
   undoTransaction: (transactionId: string) => void;
   addCustomCategory: (params: { name: string; emoji: string }) => void;
   deleteCategory: (categoryId: string) => void;
+  setCategoryBudget: (categoryId: string, limitCents: number | undefined) => void;
   clearAllData: () => void;
   hydrateFromBackup: (data: { transactions: Transaction[]; categories: Category[]; walletMeta: WalletMeta }) => void;
+};
+
+const triggerBudgetHaptics = (spentAfter: number, budgetLimit: number) => {
+  try {
+    const Haptics = require('expo-haptics');
+    if (Haptics && Haptics.notificationAsync && Haptics.NotificationFeedbackType) {
+      if (spentAfter >= budgetLimit) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      } else if (spentAfter >= 0.8 * budgetLimit) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      }
+    }
+  } catch (e) {
+    // Fail silently in node test/non-expo environment
+  }
 };
 
 export const useTransactionStore = create<TransactionState>()(
@@ -111,6 +127,19 @@ export const useTransactionStore = create<TransactionState>()(
           categoryId,
           note: note?.trim() || undefined,
         };
+
+        const state = get();
+        const category = state.categories.find(c => c.id === categoryId);
+        if (category && category.maxBudgetLimitCents && category.maxBudgetLimitCents > 0) {
+          const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
+          const currentSpent = state.transactions
+            .filter(tx => tx.type === 'expense' && tx.categoryId === categoryId && tx.timestamp >= startOfMonth)
+            .reduce((sum, tx) => sum + tx.amountCents, 0);
+          
+          const spentAfterTx = currentSpent + transaction.amountCents;
+          triggerBudgetHaptics(spentAfterTx, category.maxBudgetLimitCents);
+        }
+
         set((state) => ({ transactions: [transaction, ...state.transactions] }));
         return transaction;
       },
@@ -127,6 +156,29 @@ export const useTransactionStore = create<TransactionState>()(
         return transaction;
       },
       updateTransaction: (params) => {
+        const state = get();
+        const tx = state.transactions.find((item) => item.id === params.id);
+        if (tx) {
+          const newType = params.type ?? tx.type;
+          const newCategoryId = params.categoryId ?? tx.categoryId;
+          const newAmountCents = params.amountCents ?? tx.amountCents;
+          
+          if (newType === 'expense') {
+            const category = state.categories.find((c) => c.id === newCategoryId);
+            if (category && category.maxBudgetLimitCents && category.maxBudgetLimitCents > 0) {
+              const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
+              const currentSpent = state.transactions
+                .filter(item => item.type === 'expense' && item.categoryId === newCategoryId && item.timestamp >= startOfMonth)
+                .reduce((sum, item) => sum + item.amountCents, 0);
+              
+              const oldAmountCents = (tx.type === 'expense' && tx.categoryId === newCategoryId) ? tx.amountCents : 0;
+              const spentAfterTx = currentSpent - oldAmountCents + newAmountCents;
+              
+              triggerBudgetHaptics(spentAfterTx, category.maxBudgetLimitCents);
+            }
+          }
+        }
+
         set((state) => ({
           transactions: state.transactions.map((tx) =>
             tx.id === params.id
@@ -175,6 +227,15 @@ export const useTransactionStore = create<TransactionState>()(
           categories: state.categories.filter((item) => item.id !== categoryId),
           transactions: state.transactions.map((item) =>
             item.categoryId === categoryId ? { ...item, categoryId: 'expense-misc' } : item
+          ),
+        }));
+      },
+      setCategoryBudget: (categoryId, limitCents) => {
+        set((state) => ({
+          categories: state.categories.map((c) =>
+            c.id === categoryId
+              ? { ...c, maxBudgetLimitCents: limitCents !== undefined ? Math.max(0, limitCents) : undefined }
+              : c
           ),
         }));
       },

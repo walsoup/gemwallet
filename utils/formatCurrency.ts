@@ -14,7 +14,7 @@ export function formatCurrency(amountCents: number, { currencyCode, locale }: Cu
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(amount);
-  } catch (error) {
+  } catch {
     return `${currencyCode} ${amount.toFixed(2)}`;
   }
 }

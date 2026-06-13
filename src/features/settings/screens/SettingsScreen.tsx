@@ -12,7 +12,7 @@ import { ScreenLayout } from '../../../components/Layout/ScreenLayout';
 import { downloadLiteRtModel, getLiteRtModel, isLiteRtModelCached } from '../../../features/nlp/services/liteRtModels';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import type { ThemePreference } from '../../../../types/finance';
-import { formatAppCurrency, SUPPORTED_CURRENCIES } from '../../../../utils/currency';
+import { formatAppCurrency } from '../../../../utils/currency';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import * as Linking from 'expo-linking';

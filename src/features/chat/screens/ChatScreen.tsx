@@ -1,14 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text, TextInput, IconButton, useTheme, Surface } from 'react-native-paper';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTransactionStore } from '../../../../store/useTransactionStore';
 import { useSettingsStore } from '../../../../store/useSettingsStore';
 import { useRecurringStore } from '../../../../store/useRecurringStore';
 import { useGoalsStore } from '../../../../store/useGoalsStore';
-import { streamGeminiFinancialAnalysis, streamLocalFinancialAnalysis } from '../../nlp/services/gemmaAnalysis';
+import { streamFinancialAnalysis } from '../../nlp/services/gemmaAnalysis';
 import { getGeminiApiKey } from '../../../../services/secureGeminiKey';
 import { downloadLiteRtModel, getLiteRtModel, isLiteRtModelCached } from '../../nlp/services/liteRtModels';
 import { formatCurrency } from '../../../../utils/formatCurrency';
@@ -23,7 +22,6 @@ type ChatMessage = {
 
 export default function ChatScreen() {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
   const router = useRouter();
 
   const transactions = useTransactionStore((s) => s.transactions);
@@ -200,9 +198,7 @@ export default function ChatScreen() {
 
     try {
       let assembled = '';
-      const runner = settings.aiProvider === 'local'
-        ? streamLocalFinancialAnalysis
-        : streamGeminiFinancialAnalysis;
+      const runner = streamFinancialAnalysis;
       const runtimeOptions = settings.aiProvider === 'google'
         ? { ...settings, geminiApiKey: geminiApiKey ?? undefined }
         : settings;

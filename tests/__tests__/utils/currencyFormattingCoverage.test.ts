@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 
 import { formatCurrency } from '../../../utils/formatCurrency';
 
-const root = '/home/runner/work/gemwallet/gemwallet';
+const root = process.cwd();
 
 describe('currency formatting coverage', () => {
   it('formats every declared supported currency with a non-empty result', () => {

@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { readFileSync } from 'node:fs';
+import { join } from 'path';
 
-const root = '/home/runner/work/gemwallet/gemwallet';
+const root = process.cwd();
 
-const read = (p: string) => readFileSync(`${root}/${p}`, 'utf8');
+const read = (p: string) => readFileSync(join(root, p), 'utf8');
 
 describe('recurring wiring contracts', () => {
   it('layout invokes applyDueEvents and posts ledger entries', () => {

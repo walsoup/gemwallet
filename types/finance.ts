@@ -69,6 +69,7 @@ export type Category = {
   kind: CategoryKind;
   tint?: string;
   isLocked?: boolean;
+  maxBudgetLimitCents?: number;
 };
 
 export type Transaction = {

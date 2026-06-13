@@ -187,7 +187,7 @@ export function AppThemeProvider({ children }: PropsWithChildren) {
         },
       },
     };
-  }, [highContrastEnabled, isDark, oledTrueBlackEnabled, m3Theme]);
+  }, [highContrastEnabled, isDark, oledTrueBlackEnabled, m3Theme, themePrimary, themeSecondary]);
 
   return (
     <PaperProvider theme={theme}>

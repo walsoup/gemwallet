@@ -1,14 +1,17 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { readFileSync } from 'node:fs';
+import { join } from 'path';
 
-const root = '/home/runner/work/gemwallet/gemwallet';
+const root = process.cwd();
 
-const read = (p: string) => readFileSync(`${root}/${p}`, 'utf8');
+const read = (p: string) => readFileSync(join(root, p), 'utf8');
 
 describe('screen wiring contracts', () => {
   it('home quick actions call addIncome/addExpense and render transaction list from store', () => {
     const src = read('src/features/home/screens/HomeScreen.tsx');
+    assert.match(src, /openQuickAction\('income'\)/);
+    assert.match(src, /openQuickAction\('expense'\)/);
     assert.match(src, /addIncome\(\{ amountCents, categoryId: 'income-custom', note \}\)/);
     assert.match(src, /addExpense\(\{ amountCents, categoryId: 'expense-misc', note \}\)/);
     assert.match(src, /filteredTransactions\.slice\(0, 10\)\.map/);
@@ -28,7 +31,7 @@ describe('screen wiring contracts', () => {
 
   it('chat uses provider-aware runner, command callbacks, and inline provider errors', () => {
     const src = read('src/features/chat/screens/ChatScreen.tsx');
-    assert.match(src, /const runner = settings\.aiProvider === 'local'\s*\? streamLocalFinancialAnalysis\s*:\s*streamGeminiFinancialAnalysis/);
+    assert.match(src, /const runner = streamFinancialAnalysis/);
     assert.match(src, /onCommand:/);
     assert.match(src, /onIncome:/);
     assert.match(src, /onRecurring:/);

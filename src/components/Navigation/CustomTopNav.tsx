@@ -36,6 +36,10 @@ export function CustomTopNav({ title }: CustomTopNavProps) {
 
 const styles = StyleSheet.create({
   positionContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     zIndex: 40,
     backgroundColor: 'transparent',
   },
