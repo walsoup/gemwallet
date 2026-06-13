@@ -1,3 +1,4 @@
+import 'react-native-gesture-handler';
 import { Tabs, useRouter, useSegments, SplashScreen } from 'expo-router';
 import React, { useEffect } from 'react';
 
