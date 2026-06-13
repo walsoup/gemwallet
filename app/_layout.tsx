@@ -1,6 +1,8 @@
 import 'react-native-gesture-handler';
 import { Tabs, useRouter, useSegments, SplashScreen } from 'expo-router';
 import React, { useEffect } from 'react';
+import { View, Pressable } from 'react-native';
+import { Text as PaperText } from 'react-native-paper';
 
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,7 +20,25 @@ import { BeVietnamPro_300Light, BeVietnamPro_400Regular, BeVietnamPro_500Medium,
 
 SplashScreen.preventAutoHideAsync();
 
-
+export function ErrorBoundary(props: any) {
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: '#1C1B1F' }}>
+      <MaterialCommunityIcons name="alert-circle-outline" size={64} color="#FFB4AB" style={{ marginBottom: 16 }} />
+      <PaperText variant="headlineSmall" style={{ color: '#FFB4AB', fontWeight: 'bold', marginBottom: 16 }}>
+        Something went wrong
+      </PaperText>
+      <PaperText style={{ color: '#E6E1E5', textAlign: 'center', marginBottom: 32, opacity: 0.8 }}>
+        {props.error.message || 'An unexpected error occurred.'}
+      </PaperText>
+      <Pressable 
+        onPress={props.retry} 
+        style={{ paddingHorizontal: 24, paddingVertical: 12, backgroundColor: '#FFB4AB', borderRadius: 24 }}
+      >
+        <PaperText style={{ color: '#690005', fontWeight: 'bold' }}>Try Again</PaperText>
+      </Pressable>
+    </View>
+  );
+}
 
 function TabLayout() {
   const router = useRouter();

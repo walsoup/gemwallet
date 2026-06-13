@@ -28,18 +28,22 @@ export function CustomBottomNav({ state, descriptors, navigation }: BottomTabBar
     return true;
   });
 
+  const INDICATOR_HEIGHT = 44;
+  const INDICATOR_MARGIN = 6;
   const tabWidth = (width - 32) / routes.length;
+  const indicatorWidth = tabWidth - (INDICATOR_MARGIN * 2);
+
   // Calculate active index relative to the FILTERED routes
   const activeIndex = routes.findIndex(r => state.routes[state.index].name === r.name);
-  const translateX = useSharedValue(activeIndex * tabWidth);
+  const translateX = useSharedValue(activeIndex * tabWidth + INDICATOR_MARGIN);
 
   useEffect(() => {
-    translateX.value = withSpring(activeIndex * tabWidth, {
+    translateX.value = withSpring(activeIndex * tabWidth + INDICATOR_MARGIN, {
       damping: 20,
       stiffness: 150,
       mass: 1
     });
-  }, [activeIndex, tabWidth, translateX]);
+  }, [activeIndex, tabWidth, translateX, INDICATOR_MARGIN]);
 
   const indicatorStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],
@@ -63,7 +67,7 @@ export function CustomBottomNav({ state, descriptors, navigation }: BottomTabBar
           style={[
             styles.indicator, 
             indicatorStyle, 
-            { width: tabWidth, backgroundColor: theme.colors.primaryContainer + '4D' }
+            { width: indicatorWidth, height: INDICATOR_HEIGHT, borderRadius: INDICATOR_HEIGHT / 2, backgroundColor: theme.colors.primaryContainer + '4D' }
           ]} 
         />
         
@@ -146,9 +150,7 @@ const styles = StyleSheet.create({
   },
   indicator: {
     position: 'absolute',
-    top: 8,
-    height: 52,
-    borderRadius: 26,
+    top: 10,
     left: 16,
     zIndex: -1,
   },
