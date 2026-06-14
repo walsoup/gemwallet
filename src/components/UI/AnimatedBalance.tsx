@@ -32,7 +32,11 @@ export function AnimatedBalance({ valueCents, textStyle }: AnimatedBalanceProps)
 
   return (
     <View style={styles.container}>
-      <Text style={[styles.text, { color: theme.colors.onSurface }, textStyle]}>
+      <Text 
+        style={[styles.text, { color: theme.colors.onSurface }, textStyle]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+      >
         {formatAppCurrency(Math.round(displayValue))}
       </Text>
     </View>

@@ -26,7 +26,12 @@ export function CustomTopNav({ title }: CustomTopNavProps) {
           }
         ]}
       >
-        <Text variant="headlineSmall" style={[styles.title, { color: theme.colors.onSurface }]}>
+        <Text 
+          variant="headlineSmall" 
+          style={[styles.title, { color: theme.colors.onSurface, flex: 1 }]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+        >
           {title}
         </Text>
       </BlurView>
