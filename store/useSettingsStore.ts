@@ -70,7 +70,9 @@ export type SettingsState = {
   resetSettings: () => void;
 };
 
-const defaultState = defaultSettingsState;
+const DEFAULT_CLOUD_MODEL = 'gemini-1.5-flash';
+
+const defaultState = { ...defaultSettingsState, gemmaModel: DEFAULT_CLOUD_MODEL };
 
 export const useSettingsStore = create<SettingsState>()(
   persist(

@@ -3,8 +3,8 @@ import type { Transaction } from '../../../../types/finance';
 import { formatCurrency } from '../../../../utils/formatCurrency';
 import type { AiProvider } from '../../../../store/useSettingsStore';
 
-const DEFAULT_MODEL = 'gemma-4-31b-it';
-const FALLBACK_MODEL = 'gemini-3.1-flash-lite-preview';
+const DEFAULT_MODEL = 'gemini-1.5-flash';
+const FALLBACK_MODEL = 'gemini-1.5-flash';
 const HUGGINGFACE_API_URL = 'https://api-inference.huggingface.co/models';
 const STREAM_CHUNK_SIZE = 80;
 const MIN_CHUNK_DELAY_MS = 4;
@@ -398,7 +398,7 @@ export async function* streamGeminiFinancialAnalysis(
 
   for (const modelName of modelsToTry) {
     let streamedAny = false;
-    const prefix = modelName === FALLBACK_MODEL ? 'Using fallback Gemini 3.1 Flash Lite model.\n\n' : '';
+    const prefix = '';
     let raw = prefix;
 
     try {

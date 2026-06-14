@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import * as Haptics from 'expo-haptics';
 import { BlurView } from 'expo-blur';
+import { useKeyboard } from '../../utils/useKeyboard';
 import { AppTheme } from '../../../providers/AppThemeProvider';
 import { useSettingsStore } from '../../../store/useSettingsStore';
 import Animated, { 
@@ -19,7 +20,12 @@ const { width } = Dimensions.get('window');
 export function CustomBottomNav({ state, descriptors, navigation }: BottomTabBarProps) {
   const theme = useTheme<AppTheme>();
   const insets = useSafeAreaInsets();
+  const { isKeyboardVisible } = useKeyboard();
   const aiFeaturesEnabled = useSettingsStore((s) => s.aiFeaturesEnabled);
+
+  if (isKeyboardVisible) {
+    return null;
+  }
 
   const allowedTabs = ['index', 'analytics', 'chat', 'planning', 'settings'];
   const routes = state.routes.filter((r: any) => {
