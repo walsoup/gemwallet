@@ -128,9 +128,9 @@ export default function PlanningScreen() {
     <ScreenLayout title="Planning" backgroundColor={theme.colors.background}>
 
       <Modal visible={goalModalVisible} transparent animationType="fade" onRequestClose={closeNewGoal}>
-        <Pressable style={styles.modalBackdrop} onPress={closeNewGoal}>
+        <Pressable style={[styles.modalBackdrop, { backgroundColor: theme.colors.backdrop }]} onPress={closeNewGoal}>
           <Pressable
-            style={[styles.modalCard, { backgroundColor: theme.colors.surfaceContainerHigh }]}
+            style={[styles.modalCard, { backgroundColor: theme.colors.surfaceContainerHigh, borderColor: theme.colors.outlineVariant }]}
             onPress={() => undefined}
           >
             <Text variant="titleMedium" style={{ color: theme.colors.onSurface, marginBottom: 16 }}>
@@ -183,9 +183,9 @@ export default function PlanningScreen() {
       </Modal>
 
       <Modal visible={recModalVisible} transparent animationType="fade" onRequestClose={closeNewRecurring}>
-        <Pressable style={styles.modalBackdrop} onPress={closeNewRecurring}>
+        <Pressable style={[styles.modalBackdrop, { backgroundColor: theme.colors.backdrop }]} onPress={closeNewRecurring}>
           <Pressable
-            style={[styles.modalCard, { backgroundColor: theme.colors.surfaceContainerHigh }]}
+            style={[styles.modalCard, { backgroundColor: theme.colors.surfaceContainerHigh, borderColor: theme.colors.outlineVariant }]}
             onPress={() => undefined}
           >
             <Text variant="titleMedium" style={{ color: theme.colors.onSurface, marginBottom: 16 }}>
@@ -556,7 +556,6 @@ const styles = StyleSheet.create({
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'center',
     padding: 24,
   },
@@ -564,7 +563,6 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
   },
   modalInput: {
     width: '100%',

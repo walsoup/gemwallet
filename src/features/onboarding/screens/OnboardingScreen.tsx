@@ -35,32 +35,32 @@ function AnimatedDot({ index, scrollX, pageWidth, color }: AnimatedDotProps) {
 
 const { width } = Dimensions.get('window');
 
-const ONBOARDING_STEPS = [
-  {
-    id: 'welcome',
-    title: 'Your Private Vault',
-    description: 'Gemwallet keeps your financial data secure and 100% on your device. No cloud, no tracking.',
-    icon: 'shield-lock',
-    color: '#ff6b6b',
-  },
-  {
-    id: 'ai',
-    title: 'Intelligence Built-in',
-    description: 'Chat with your wallet to log expenses, set goals, and analyze your spending patterns automatically.',
-    icon: 'robot',
-    color: '#52dea2',
-  },
-  {
-    id: 'setup',
-    title: 'Getting Started',
-    description: 'Enable AI features and personalize your experience to take control of your money today.',
-    icon: 'sparkles',
-    color: '#ae2f34',
-  }
-];
-
 export default function OnboardingScreen() {
   const theme = useTheme<AppTheme>();
+
+  const ONBOARDING_STEPS = [
+    {
+      id: 'welcome',
+      title: 'Your Private Vault',
+      description: 'Gemwallet keeps your financial data secure and 100% on your device. No cloud, no tracking.',
+      icon: 'shield-lock',
+      color: theme.colors.primary,
+    },
+    {
+      id: 'ai',
+      title: 'Intelligence Built-in',
+      description: 'Chat with your wallet to log expenses, set goals, and analyze your spending patterns automatically.',
+      icon: 'robot',
+      color: theme.colors.secondary,
+    },
+    {
+      id: 'setup',
+      title: 'Getting Started',
+      description: 'Enable AI features and personalize your experience to take control of your money today.',
+      icon: 'sparkles',
+      color: theme.colors.tertiary,
+    }
+  ];
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
   const scrollX = useSharedValue(0);

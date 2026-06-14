@@ -159,10 +159,10 @@ export default function ChatScreen() {
       }
       setLocalModelDownloaded(true);
       setLocalModelReady(true);
-    } catch {
+    } catch (error: any) {
       setLocalModelDownloaded(false);
       setLocalModelReady(false);
-      pushSystemMessage('Local model download failed. Please try again from AI Settings.');
+      pushSystemMessage(`Local model download failed: ${error?.message || 'Unknown error'}. Please try again from AI Settings.`);
     } finally {
       setIsDownloadingLocalModel(false);
     }
@@ -222,51 +222,53 @@ export default function ChatScreen() {
         ? { ...settings, geminiApiKey: geminiApiKey ?? undefined }
         : settings;
 
+      const callbacks = {
+        onCommand: ({ amountCents, categoryHint, note }: any) => {
+          addExpense({
+            amountCents,
+            categoryId: resolveCategoryId(categoryHint, 'expense'),
+            note,
+          });
+          pushSystemMessage(
+            `Logged expense: ${formatCurrency(amountCents, { currencyCode, locale })} - ${note?.trim() || categoryHint}`
+          );
+        },
+        onIncome: ({ amountCents, categoryHint, note }: any) => {
+          addIncome({
+            amountCents,
+            categoryId: resolveCategoryId(categoryHint, 'income'),
+            note,
+          });
+          pushSystemMessage(
+            `Logged income: ${formatCurrency(amountCents, { currencyCode, locale })} - ${note?.trim() || categoryHint}`
+          );
+        },
+        onRecurring: ({ name, amountCents, type, interval, categoryHint, startDate }: any) => {
+          addRecurringEvent({
+            name,
+            amountCents,
+            type,
+            interval,
+            categoryId: resolveCategoryId(categoryHint ?? (type === 'income' ? 'Custom' : 'Misc'), type),
+            startDate,
+          });
+          setRecurringEnabled(true);
+          pushSystemMessage(
+            `Added recurring ${type}: ${formatCurrency(amountCents, { currencyCode, locale })} - ${name} (${interval})`
+          );
+        },
+        onGoal: ({ name, targetCents, dueDate }: any) => {
+          addGoal({ name, targetCents, dueDate });
+          pushSystemMessage(
+            `Added goal: ${name} - ${formatCurrency(targetCents, { currencyCode, locale })}`
+          );
+        },
+      };
+
       for await (const chunk of runner(
         transactions,
         runtimeOptions,
-        {
-          onCommand: ({ amountCents, categoryHint, note }) => {
-            addExpense({
-              amountCents,
-              categoryId: resolveCategoryId(categoryHint, 'expense'),
-              note,
-            });
-            pushSystemMessage(
-              `Logged expense: ${formatCurrency(amountCents, { currencyCode, locale })} - ${note?.trim() || categoryHint}`
-            );
-          },
-          onIncome: ({ amountCents, categoryHint, note }) => {
-            addIncome({
-              amountCents,
-              categoryId: resolveCategoryId(categoryHint, 'income'),
-              note,
-            });
-            pushSystemMessage(
-              `Logged income: ${formatCurrency(amountCents, { currencyCode, locale })} - ${note?.trim() || categoryHint}`
-            );
-          },
-          onRecurring: ({ name, amountCents, type, interval, categoryHint, startDate }) => {
-            addRecurringEvent({
-              name,
-              amountCents,
-              type,
-              interval,
-              categoryId: resolveCategoryId(categoryHint ?? (type === 'income' ? 'Custom' : 'Misc'), type),
-              startDate,
-            });
-            setRecurringEnabled(true);
-            pushSystemMessage(
-              `Added recurring ${type}: ${formatCurrency(amountCents, { currencyCode, locale })} - ${name} (${interval})`
-            );
-          },
-          onGoal: ({ name, targetCents, dueDate }) => {
-            addGoal({ name, targetCents, dueDate });
-            pushSystemMessage(
-              `Added goal: ${name} - ${formatCurrency(targetCents, { currencyCode, locale })}`
-            );
-          },
-        },
+        callbacks,
         question
       )) {
         assembled += chunk;

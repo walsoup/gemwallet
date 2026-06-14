@@ -8,25 +8,7 @@ import { ScreenLayout } from '../../../components/Layout/ScreenLayout';
 import { formatAppCurrency } from '../../../../utils/currency';
 import * as Haptics from 'expo-haptics';
 import Animated from 'react-native-reanimated';
-import { useBouncyPress } from '../../../hooks/useBouncyPress';
 import { BarChart, PieChart, LineChart } from 'react-native-gifted-charts';
-
-const BouncyButton = ({ onPress, style, children, disabled, ...props }: any) => {
-  const { animatedStyle, onPressIn, onPressOut } = useBouncyPress(0.95, disabled);
-  return (
-    <Pressable
-      onPressIn={onPressIn}
-      onPressOut={onPressOut}
-      onPress={onPress}
-      disabled={disabled}
-      {...props}
-    >
-      <Animated.View style={[style, animatedStyle]}>
-        {children}
-      </Animated.View>
-    </Pressable>
-  );
-};
 
 export default function AnalyticsScreen() {
   const theme = useTheme<AppTheme>();
@@ -69,11 +51,11 @@ export default function AnalyticsScreen() {
       theme.colors.secondary,
       theme.colors.tertiary,
       theme.colors.error,
-      '#FF9800',
-      '#9C27B0',
-      '#00BCD4',
-      '#4CAF50',
-      '#E91E63'
+      theme.colors.primaryContainer,
+      theme.colors.secondaryContainer,
+      theme.colors.tertiaryContainer,
+      theme.colors.errorContainer,
+      theme.colors.inversePrimary
     ];
 
     return Object.keys(map).map((catId, idx) => {

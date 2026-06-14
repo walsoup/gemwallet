@@ -25,8 +25,6 @@ export default function HomeScreen() {
   const transactions = useTransactionStore((state) => state.transactions);
   const categories = useTransactionStore((state) => state.categories);
   const balanceCents = useTransactionStore(selectBalanceCents);
-  const addIncome = useTransactionStore((state) => state.addIncome);
-  const addExpense = useTransactionStore((state) => state.addExpense);
   const goals = useGoalsStore((state) => state.goals);
   const undoTransaction = useTransactionStore((state) => state.undoTransaction);
 
@@ -382,32 +380,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 24,
   },
-  modalBackdrop: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: 24,
-  },
-  modalCard: {
-    borderRadius: 24,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-  },
-  modalInput: {
-    width: '100%',
-    borderWidth: 1,
-    borderRadius: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    fontFamily: 'BeVietnamPro_400Regular',
-    fontSize: 16,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 12,
-    marginTop: 16,
-  },
+
   heroSection: {
     alignItems: 'center',
     justifyContent: 'center',

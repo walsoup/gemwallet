@@ -86,11 +86,11 @@ export function AddTransactionModal({ visible, initialType = 'expense', onClose 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable 
-        style={[styles.modalBackdrop, { backgroundColor: theme.dark ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.3)' }]} 
+        style={[styles.modalBackdrop, { backgroundColor: theme.colors.backdrop }]} 
         onPress={onClose}
       >
         <Pressable
-          style={[styles.modalCard, { backgroundColor: theme.colors.surfaceContainerHigh }]}
+          style={[styles.modalCard, { backgroundColor: theme.colors.surfaceContainerHigh, borderColor: theme.colors.outlineVariant }]}
           onPress={() => undefined}
         >
           <View style={styles.header}>
@@ -267,7 +267,6 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingBottom: 48,
     borderTopWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
   },
   header: {
     flexDirection: 'row',

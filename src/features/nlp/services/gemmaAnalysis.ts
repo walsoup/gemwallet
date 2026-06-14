@@ -367,9 +367,9 @@ export async function* streamFinancialAnalysis(
       return;
     }
 
-  } catch (error) {
+  } catch (error: any) {
     console.warn(`AI analysis failed (${options.aiProvider})`, error);
-    yield 'AI had an issue processing this request. Check your settings and try again.';
+    yield `AI had an issue processing this request: ${error?.message || 'Unknown error'}`;
     for (const chunk of chunkText(fallback)) yield chunk;
   }
 }
