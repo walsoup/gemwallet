@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Pressable } from 'react-native';
 import { Text, TextInput, IconButton, useTheme, Surface } from 'react-native-paper';
 import { useRouter } from 'expo-router';
@@ -52,6 +52,16 @@ export default function ChatScreen() {
   const [isSending, setIsSending] = useState(false);
   const [isDownloadingLocalModel, setIsDownloadingLocalModel] = useState(false);
   const [geminiKeyExists, setGeminiKeyExists] = useState<boolean | null>(null);
+  
+  const scrollViewRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    // Small delay ensures the layout has finished shifting before we scroll
+    const timer = setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [messages]);
   const [huggingFaceToken, setHuggingFaceToken] = useState<string | null>(null);
   const [localModelReady, setLocalModelReady] = useState(localModelDownloaded);
   const [messages, setMessages] = useState<ChatMessage[]>(() => [
@@ -285,9 +295,11 @@ export default function ChatScreen() {
         </View>
 
         <ScrollView
+          ref={scrollViewRef}
           style={styles.chatArea}
           contentContainerStyle={styles.chatContent}
           keyboardShouldPersistTaps="handled"
+          onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
         >
           {aiProvider === 'google' && geminiKeyExists === false && (
             <Animated.View entering={FadeInUp.springify()}>
