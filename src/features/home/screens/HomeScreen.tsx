@@ -84,6 +84,16 @@ export default function HomeScreen() {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
 
+  const customGreeting = useSettingsStore(state => state.customGreetingName);
+  const hour = now.getHours();
+  let greetingBase = 'Good morning';
+  if (hour >= 12 && hour < 17) greetingBase = 'Good afternoon';
+  else if (hour >= 17) greetingBase = 'Good evening';
+  
+  const greeting = customGreeting && customGreeting.trim() !== '' 
+    ? `${greetingBase}, ${customGreeting.trim()}`
+    : greetingBase;
+
   // Monthly Spend
   const monthlySpendCents = useMemo(() => {
     return transactions
@@ -122,7 +132,7 @@ export default function HomeScreen() {
   const filters = ['All', 'Food', 'Income', 'Transport'];
 
   return (
-    <ScreenLayout title="Good afternoon" backgroundColor={theme.colors.background}>
+    <ScreenLayout title={greeting} backgroundColor={theme.colors.background}>
 
       <AddTransactionModal 
         visible={quickActionVisible} 

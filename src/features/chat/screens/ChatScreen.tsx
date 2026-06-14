@@ -11,8 +11,11 @@ import { streamFinancialAnalysis } from '../../nlp/services/gemmaAnalysis';
 import { getGeminiApiKey } from '../../../../services/secureGeminiKey';
 import { downloadLiteRtModel, getLiteRtModel, isLiteRtModelCached } from '../../nlp/services/liteRtModels';
 import { formatCurrency } from '../../../../utils/formatCurrency';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ScreenLayout } from '../../../components/Layout/ScreenLayout';
-import Animated, { FadeInLeft, FadeInRight, Layout } from 'react-native-reanimated';
+import Animated, { FadeInLeft, FadeInRight, FadeInUp, Layout } from 'react-native-reanimated';
 
 type ChatMessage = {
   id: string;
@@ -267,14 +270,12 @@ export default function ChatScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View style={styles.providerHeader}>
-          <Surface
-            style={[styles.providerBadge, { backgroundColor: theme.colors.surfaceVariant }]}
-            elevation={0}
-          >
-            <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>
+          <View style={[styles.providerBadge, { backgroundColor: theme.colors.surfaceContainerHighest }]}>
+            <MaterialCommunityIcons name={aiProvider === 'local' ? 'cpu-64-bit' : 'cloud'} size={14} color={theme.colors.onSurfaceVariant} style={{ marginRight: 6 }} />
+            <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_500Medium', fontSize: 12 }}>
               {activeModelLabel}
             </Text>
-          </Surface>
+          </View>
         </View>
 
         <ScrollView
@@ -283,33 +284,41 @@ export default function ChatScreen() {
           keyboardShouldPersistTaps="handled"
         >
           {aiProvider === 'google' && geminiKeyExists === false && (
-            <Surface style={[styles.inlineNotice, { backgroundColor: theme.colors.errorContainer }]} elevation={0}>
-              <Text variant="bodySmall" style={{ color: theme.colors.onErrorContainer }}>
-                Cloud API is selected but no Gemini key is saved.
-              </Text>
-              <Text
-                variant="labelMedium"
-                style={{ color: theme.colors.onErrorContainer, textDecorationLine: 'underline', marginTop: 6 }}
-                onPress={() => router.push('/settings?section=ai')}
-              >
-                Open AI settings
-              </Text>
-            </Surface>
+            <Animated.View entering={FadeInUp.springify()}>
+              <Surface style={[styles.inlineNotice, { backgroundColor: theme.colors.errorContainer, borderColor: theme.colors.error + '40', borderWidth: 1 }]} elevation={0}>
+                <MaterialCommunityIcons name="alert-circle" size={20} color={theme.colors.onErrorContainer} style={{ marginRight: 8 }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: theme.colors.onErrorContainer, fontFamily: 'BeVietnamPro_500Medium', fontSize: 14 }}>
+                    No Gemini key saved.
+                  </Text>
+                  <Text
+                    style={{ color: theme.colors.onErrorContainer, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 14, textDecorationLine: 'underline', marginTop: 4 }}
+                    onPress={() => router.push('/settings?section=ai')}
+                  >
+                    Open AI settings
+                  </Text>
+                </View>
+              </Surface>
+            </Animated.View>
           )}
 
           {aiProvider === 'local' && !localModelReady && (
-            <Surface style={[styles.inlineNotice, { backgroundColor: theme.colors.tertiaryContainer }]} elevation={0}>
-              <Text variant="bodySmall" style={{ color: theme.colors.onTertiaryContainer }}>
-                Local model is not downloaded yet.
-              </Text>
-              <Text
-                variant="labelMedium"
-                style={{ color: theme.colors.onTertiaryContainer, textDecorationLine: 'underline', marginTop: 6 }}
-                onPress={downloadLocalModel}
-              >
-                {isDownloadingLocalModel ? 'Downloading…' : 'Download model'}
-              </Text>
-            </Surface>
+            <Animated.View entering={FadeInUp.springify()}>
+              <Surface style={[styles.inlineNotice, { backgroundColor: theme.colors.tertiaryContainer, borderColor: theme.colors.tertiary + '40', borderWidth: 1 }]} elevation={0}>
+                <MaterialCommunityIcons name="download" size={20} color={theme.colors.onTertiaryContainer} style={{ marginRight: 8 }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: theme.colors.onTertiaryContainer, fontFamily: 'BeVietnamPro_500Medium', fontSize: 14 }}>
+                    Local model is not downloaded yet.
+                  </Text>
+                  <Text
+                    style={{ color: theme.colors.onTertiaryContainer, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 14, textDecorationLine: 'underline', marginTop: 4 }}
+                    onPress={downloadLocalModel}
+                  >
+                    {isDownloadingLocalModel ? 'Downloading…' : 'Download model'}
+                  </Text>
+                </View>
+              </Surface>
+            </Animated.View>
           )}
 
           {messages.map((message) => {
@@ -325,59 +334,68 @@ export default function ChatScreen() {
                   isUser ? styles.userBubbleContainer : styles.assistantBubbleContainer
                 ]}
               >
-                <Surface
-                  style={[
-                    styles.messageBubble,
-                    isSystem ? styles.systemBubble : isUser ? styles.userBubble : styles.assistantBubble,
-                    {
-                      backgroundColor: isSystem
-                        ? theme.colors.tertiaryContainer
-                        : isUser
-                          ? theme.colors.primaryContainer
-                          : theme.colors.secondaryContainer,
-                    },
-                  ]}
-                  elevation={0}
-                >
-                  <Text
-                    variant="bodyMedium"
-                    style={{
-                      color: isSystem
-                        ? theme.colors.onTertiaryContainer
-                        : isUser
-                          ? theme.colors.onPrimaryContainer
-                          : theme.colors.onSecondaryContainer,
-                    }}
+                {isUser ? (
+                  <LinearGradient
+                    colors={[theme.colors.primary, theme.colors.tertiary]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={[styles.messageBubble, styles.userBubble]}
                   >
-                    {isSystem ? 'System • ' : ''}
-                    {message.text || (message.role === 'assistant' && isSending ? '…' : '')}
-                  </Text>
-                </Surface>
+                    <Text style={{ color: theme.colors.onPrimary, fontFamily: 'BeVietnamPro_400Regular', fontSize: 15, lineHeight: 22 }}>
+                      {message.text}
+                    </Text>
+                  </LinearGradient>
+                ) : isSystem ? (
+                  <View style={[styles.messageBubble, styles.systemBubble, { backgroundColor: theme.colors.surfaceContainerHighest }]}>
+                    <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_500Medium', fontSize: 13, textAlign: 'center' }}>
+                      {message.text}
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={[styles.messageBubble, styles.assistantBubble, { backgroundColor: theme.colors.surfaceContainerLow, borderColor: theme.colors.outlineVariant + '30', borderWidth: 1 }]}>
+                    <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_400Regular', fontSize: 15, lineHeight: 24 }}>
+                      {message.text || (isSending ? 'Thinking…' : '')}
+                    </Text>
+                  </View>
+                )}
               </Animated.View>
             );
           })}
         </ScrollView>
 
-        <View style={[styles.inputArea, { paddingBottom: 16, backgroundColor: theme.colors.surface }]}>
-          <TextInput
-            mode="outlined"
-            placeholder="Ask me anything..."
-            style={styles.input}
-            outlineStyle={{ borderRadius: 24 }}
-            value={inputText}
-            onChangeText={setInputText}
-            multiline
-          />
-          <IconButton
-            icon="send"
-            mode="contained"
-            containerColor={theme.colors.primary}
-            iconColor={theme.colors.onPrimary}
-            disabled={isSending || !inputText.trim()}
-            onPress={onSend}
-            accessibilityLabel="Send message"
-          />
-        </View>
+        <BlurView intensity={80} tint="dark" style={styles.floatingInputWrapper}>
+          <View style={[styles.floatingInputContainer, { backgroundColor: theme.colors.surfaceContainerHigh + 'E6', borderColor: theme.colors.outlineVariant + '40', borderWidth: 1 }]}>
+            <TextInput
+              placeholder="Ask me anything..."
+              placeholderTextColor={theme.colors.onSurfaceVariant}
+              style={[styles.customInput, { color: theme.colors.onSurface }]}
+              value={inputText}
+              onChangeText={setInputText}
+              multiline
+              underlineColor="transparent"
+              activeUnderlineColor="transparent"
+              theme={{ colors: { primary: 'transparent', background: 'transparent' } }}
+            />
+            <Pressable 
+              disabled={isSending || !inputText.trim()} 
+              onPress={onSend}
+              style={({ pressed }) => [
+                styles.sendButton,
+                { transform: [{ scale: pressed ? 0.9 : 1 }] },
+                (isSending || !inputText.trim()) && { opacity: 0.5 }
+              ]}
+            >
+              <LinearGradient
+                colors={[theme.colors.primary, theme.colors.tertiary]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.sendButtonGradient}
+              >
+                <MaterialCommunityIcons name="send" size={20} color={theme.colors.onPrimary} />
+              </LinearGradient>
+            </Pressable>
+          </View>
+        </BlurView>
       </KeyboardAvoidingView>
     </ScreenLayout>
   );
@@ -386,15 +404,19 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    position: 'relative',
   },
   providerHeader: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
+    zIndex: 10,
   },
   providerBadge: {
-    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
     borderRadius: 999,
-    paddingHorizontal: 10,
+    paddingHorizontal: 14,
     paddingVertical: 6,
   },
   chatArea: {
@@ -403,7 +425,8 @@ const styles = StyleSheet.create({
   },
   chatContent: {
     paddingVertical: 16,
-    gap: 12,
+    paddingBottom: 120, // space for floating input
+    gap: 16,
   },
   messageBubbleContainer: {
     width: '100%',
@@ -416,12 +439,13 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
   },
   messageBubble: {
-    padding: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
     borderRadius: 24,
-    maxWidth: '80%',
+    maxWidth: '85%',
   },
   assistantBubble: {
-    borderBottomLeftRadius: 4,
+    borderTopLeftRadius: 4,
   },
   userBubble: {
     borderBottomRightRadius: 4,
@@ -430,21 +454,48 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     borderRadius: 14,
     maxWidth: '92%',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
   },
   inlineNotice: {
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 12,
-  },
-  inputArea: {
     flexDirection: 'row',
-    padding: 16,
     alignItems: 'center',
-    elevation: 4,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 16,
   },
-  input: {
+  floatingInputWrapper: {
+    position: 'absolute',
+    bottom: 24,
+    left: 16,
+    right: 16,
+    borderRadius: 32,
+    overflow: 'hidden',
+  },
+  floatingInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 32,
+    minHeight: 64,
+  },
+  customInput: {
     flex: 1,
-    marginRight: 8,
+    fontFamily: 'BeVietnamPro_400Regular',
+    fontSize: 16,
+    maxHeight: 100,
+    backgroundColor: 'transparent',
+  },
+  sendButton: {
+    marginLeft: 12,
+  },
+  sendButtonGradient: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

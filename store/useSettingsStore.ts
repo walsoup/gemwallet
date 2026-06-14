@@ -39,6 +39,7 @@ export type SettingsState = {
   includeNotesInExport: boolean;
   setupCoachDismissed: boolean;
   backupConfigured: boolean;
+  customGreetingName: string;
   setThemePreference: (preference: ThemePreference) => void;
   setOledTrueBlackEnabled: (enabled: boolean) => void;
   setHighContrastEnabled: (enabled: boolean) => void;
@@ -66,6 +67,7 @@ export type SettingsState = {
   setIncludeNotesInExport: (enabled: boolean) => void;
   setSetupCoachDismissed: (dismissed: boolean) => void;
   setBackupConfigured: (configured: boolean) => void;
+  setCustomGreetingName: (name: string) => void;
   hydrateFromBackup: (incoming: Partial<SettingsState>) => void;
   resetSettings: () => void;
 };
@@ -106,6 +108,7 @@ export const useSettingsStore = create<SettingsState>()(
       setIncludeNotesInExport: (includeNotesInExport) => set({ includeNotesInExport }),
       setSetupCoachDismissed: (setupCoachDismissed) => set({ setupCoachDismissed }),
       setBackupConfigured: (backupConfigured) => set({ backupConfigured }),
+      setCustomGreetingName: (customGreetingName) => set({ customGreetingName }),
       hydrateFromBackup: (incoming) =>
         set(() => ({
           ...defaultState,

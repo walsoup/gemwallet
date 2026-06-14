@@ -67,6 +67,10 @@ export default function SettingsScreen() {
   const [localModelStatus, setLocalModelStatus] = React.useState<'checking' | 'ready' | 'missing'>('checking');
   const [localModelDownloadInFlight, setLocalModelDownloadInFlight] = React.useState(false);
 
+  const customGreetingName = useSettingsStore((state) => state.customGreetingName);
+  const setCustomGreetingName = useSettingsStore((state) => state.setCustomGreetingName);
+  const [greetingDraft, setGreetingDraft] = React.useState(customGreetingName);
+
   React.useEffect(() => {
     return () => {
       setGeminiKeyDraft('');
@@ -204,59 +208,6 @@ export default function SettingsScreen() {
           </Text>
         </View>
 
-        {/* On-device AI Section */}
-        <View style={[styles.section, { backgroundColor: theme.colors.surfaceContainerLow }]}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: theme.colors.primary }]}>On-device AI (Gemma)</Text>
-            <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>Manage local intelligence features.</Text>
-          </View>
-          <View style={[styles.sectionContent, { backgroundColor: theme.colors.surfaceContainer }]}>
-            <View style={[styles.settingRow, { backgroundColor: theme.colors.surfaceContainer }]}>
-              <View style={styles.settingRowLeft}>
-                <MaterialCommunityIcons name="robot" size={24} color={theme.colors.onSurfaceVariant} />
-                <View>
-                  <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>Gemma Model Status</Text>
-                  <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>
-                    {localModelStatusText}
-                  </Text>
-                </View>
-              </View>
-              {!localModelDownloaded && (
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.downloadButton,
-                    { backgroundColor: pressed ? theme.colors.surfaceContainerHighest : theme.colors.surfaceContainerHigh },
-                  ]}
-                  disabled={localModelDownloadInFlight}
-                  onPress={handleDownloadLocalModel}
-                >
-                  <Text style={{ color: theme.colors.primary, fontFamily: 'BeVietnamPro_600SemiBold' }}>
-                    {localModelDownloadInFlight ? 'Downloading…' : 'Download'}
-                  </Text>
-                </Pressable>
-              )}
-            </View>
-            <View style={[styles.settingRow, { backgroundColor: theme.colors.surfaceContainer }]}>
-              <View style={styles.settingRowLeft}>
-                <MaterialCommunityIcons name="auto-fix" size={24} color={theme.colors.onSurfaceVariant} />
-                <View>
-                  <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>Smart Categorization</Text>
-                  <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>Auto-tag local transactions</Text>
-                </View>
-              </View>
-              <Switch
-                value={smartCategorizationEnabled}
-                onValueChange={(val) => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setSmartCategorizationEnabled(val);
-                }}
-                trackColor={{ false: theme.colors.surfaceContainerHighest, true: theme.colors.primary }}
-                thumbColor={theme.colors.surface}
-              />
-            </View>
-          </View>
-        </View>
-
         {/* Security Section */}
         <View style={[styles.section, { backgroundColor: theme.colors.surfaceContainerLow }]}>
           <View style={styles.sectionHeader}>
@@ -336,6 +287,40 @@ export default function SettingsScreen() {
             <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>Personalize your interface.</Text>
           </View>
           <View style={[styles.sectionContent, { backgroundColor: theme.colors.surfaceContainer }]}>
+            <View style={[styles.settingRow, { backgroundColor: theme.colors.surfaceContainer, flexDirection: 'column', alignItems: 'flex-start' }]}>
+              <View style={[styles.settingRowLeft, { marginBottom: 12 }]}>
+                <MaterialCommunityIcons name="account-edit" size={24} color={theme.colors.onSurfaceVariant} />
+                <View>
+                  <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>Greeting Name</Text>
+                  <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>Custom name for the Home tab</Text>
+                </View>
+              </View>
+              <View style={{ width: '100%', flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <TextInput
+                  style={{ flex: 1, backgroundColor: theme.colors.surfaceContainerLowest }}
+                  mode="outlined"
+                  dense
+                  placeholder="e.g. John"
+                  value={greetingDraft}
+                  onChangeText={setGreetingDraft}
+                />
+                <Pressable
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setCustomGreetingName(greetingDraft);
+                  }}
+                  style={({ pressed }) => ({
+                    paddingHorizontal: 16,
+                    paddingVertical: 10,
+                    borderRadius: 12,
+                    backgroundColor: pressed ? theme.colors.primaryContainer : theme.colors.primary,
+                  })}
+                >
+                  <Text style={{ color: theme.colors.onPrimary, fontFamily: 'BeVietnamPro_600SemiBold' }}>Save</Text>
+                </Pressable>
+              </View>
+            </View>
+
             <View style={[styles.settingRow, { backgroundColor: theme.colors.surfaceContainer, flexDirection: 'column', alignItems: 'flex-start' }]}>
               <View style={[styles.settingRowLeft, { marginBottom: 16 }]}>
                 <MaterialCommunityIcons name="theme-light-dark" size={24} color={theme.colors.onSurfaceVariant} />
@@ -564,6 +549,25 @@ export default function SettingsScreen() {
                 trackColor={{ false: theme.colors.surfaceVariant, true: theme.colors.primaryContainer }}
                 thumbColor={theme.colors.onSurface}
                 accessibilityLabel={aiFeaturesEnabled ? 'Disable AI assistant' : 'Enable AI assistant'}
+              />
+            </View>
+
+            <View style={[styles.settingRow, { backgroundColor: theme.colors.surfaceContainer }]}>
+              <View style={styles.settingRowLeft}>
+                <MaterialCommunityIcons name="auto-fix" size={24} color={theme.colors.onSurfaceVariant} />
+                <View>
+                  <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 16 }}>Smart Categorization</Text>
+                  <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>Auto-tag local transactions</Text>
+                </View>
+              </View>
+              <Switch
+                value={smartCategorizationEnabled}
+                onValueChange={(val) => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setSmartCategorizationEnabled(val);
+                }}
+                trackColor={{ false: theme.colors.surfaceContainerHighest, true: theme.colors.primary }}
+                thumbColor={theme.colors.surface}
               />
             </View>
 
@@ -1108,7 +1112,7 @@ export default function SettingsScreen() {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 const subject = encodeURIComponent('GemWallet Feedback');
                 const body = encodeURIComponent('');
-                Linking.openURL(`mailto:support@gemwallet.app?subject=${subject}&body=${body}`);
+                Linking.openURL(`mailto:me@itswal.me?subject=${subject}&body=${body}`);
               }}
             >
               <View style={styles.settingRowLeft}>

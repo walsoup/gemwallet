@@ -30,6 +30,7 @@ export type SettingsPersistedShape = {
   includeNotesInExport: boolean;
   setupCoachDismissed: boolean;
   backupConfigured: boolean;
+  customGreetingName: string;
 };
 
 export const defaultSettingsState: SettingsPersistedShape = {
@@ -60,6 +61,7 @@ export const defaultSettingsState: SettingsPersistedShape = {
   includeNotesInExport: true,
   setupCoachDismissed: false,
   backupConfigured: false,
+  customGreetingName: '',
 };
 
 export function migrateSettingsState(persistedState: unknown): SettingsPersistedShape {
@@ -111,5 +113,6 @@ export function migrateSettingsState(persistedState: unknown): SettingsPersisted
     includeNotesInExport: legacy.includeNotesInExport ?? defaultSettingsState.includeNotesInExport,
     setupCoachDismissed: legacy.setupCoachDismissed ?? defaultSettingsState.setupCoachDismissed,
     backupConfigured: legacy.backupConfigured ?? defaultSettingsState.backupConfigured,
+    customGreetingName: legacy.customGreetingName ?? defaultSettingsState.customGreetingName,
   };
 }
