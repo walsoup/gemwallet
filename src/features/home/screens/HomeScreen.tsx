@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, View, TextInput, Pressable, Modal, Animated as 
 import { Button, Text, useTheme } from 'react-native-paper';
 import { useTransactionStore, selectBalanceCents } from '../../../../store/useTransactionStore';
 import { useGoalsStore } from '../../../../store/useGoalsStore';
+import { useSettingsStore } from '../../../../store/useSettingsStore';
 import * as Haptics from 'expo-haptics';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppTheme } from '../../../../providers/AppThemeProvider';
