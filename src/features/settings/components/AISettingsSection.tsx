@@ -6,7 +6,7 @@ import * as Haptics from 'expo-haptics';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppTheme } from '../../../../providers/AppThemeProvider';
 import { styles } from './SettingsStyles';
-import { downloadLiteRtModel, getLiteRtModel, isLiteRtModelCached } from '../../../nlp/services/liteRtModels';
+import { downloadLiteRtModel, getLiteRtModel, isLiteRtModelCached } from '../../nlp/services/liteRtModels';
 import { getHuggingFaceToken } from '../../../../services/secureHuggingFaceToken';
 import { deleteGeminiApiKey, getGeminiApiKey, setGeminiApiKey } from '../../../../services/secureGeminiKey';
 import { GoogleGenerativeAI } from '@google/generative-ai';
