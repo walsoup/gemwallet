@@ -10,32 +10,15 @@ import { AppTheme } from '../../../../providers/AppThemeProvider';
 import { ScreenLayout } from '../../../components/Layout/ScreenLayout';
 import { formatAppCurrency } from '../../../../utils/currency';
 import Animated, { FadeInUp } from 'react-native-reanimated';
-import { useBouncyPress } from '../../../hooks/useBouncyPress';
 import { TransactionDetailModal } from '../components/TransactionDetailModal';
 import { AddTransactionModal } from '../components/AddTransactionModal';
 import { Transaction } from '../../../../types/finance';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { ProgressRing } from '../../../components/UI/ProgressRing';
 import { AnimatedBalance } from '../../../components/UI/AnimatedBalance';
+import { BouncyButton } from '../../../components/UI/BouncyButton';
 
 type QuickActionMode = 'income' | 'expense';
-
-const BouncyButton = ({ onPress, style, children, disabled, ...props }: any) => {
-  const { animatedStyle, onPressIn, onPressOut } = useBouncyPress(0.95, disabled);
-  return (
-    <Pressable
-      onPressIn={onPressIn}
-      onPressOut={onPressOut}
-      onPress={onPress}
-      disabled={disabled}
-      {...props}
-    >
-      <Animated.View style={[style, animatedStyle]}>
-        {children}
-      </Animated.View>
-    </Pressable>
-  );
-};
 
 export default function HomeScreen() {
   const theme = useTheme<AppTheme>();
@@ -133,7 +116,7 @@ export default function HomeScreen() {
   const filters = ['All', 'Food', 'Income', 'Transport'];
 
   return (
-    <ScreenLayout title={greeting} backgroundColor={theme.colors.background}>
+    <ScreenLayout title={greeting} backgroundColor={theme.colors.background} contentContainerStyle={{ flex: 1 }}>
 
       <AddTransactionModal 
         visible={quickActionVisible} 
@@ -436,9 +419,11 @@ const styles = StyleSheet.create({
     marginTop: 32,
   },
   actionButton: {
+    flex: 1,
+    justifyContent: 'center',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 32,
+    paddingHorizontal: 16,
     paddingVertical: 16,
     borderRadius: 32,
     gap: 8,

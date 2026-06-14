@@ -91,6 +91,11 @@ export async function downloadLiteRtModel(
     throw new Error('LiteRT download did not produce a file.');
   }
 
+  if (result.status !== 200) {
+    await FileSystem.deleteAsync(result.uri, { idempotent: true });
+    throw new Error(`Download failed with status ${result.status}`);
+  }
+
   onProgress?.(1);
   return result.uri;
 }

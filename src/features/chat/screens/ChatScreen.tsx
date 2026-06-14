@@ -16,6 +16,7 @@ import { BlurView } from 'expo-blur';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ScreenLayout } from '../../../components/Layout/ScreenLayout';
 import Animated, { FadeInLeft, FadeInRight, FadeInUp, Layout } from 'react-native-reanimated';
+import { BouncyButton } from '../../../components/UI/BouncyButton';
 
 type ChatMessage = {
   id: string;
@@ -264,7 +265,7 @@ export default function ChatScreen() {
   };
 
   return (
-    <ScreenLayout title="AI Assistant" backgroundColor={theme.colors.background}>
+    <ScreenLayout title="AI Assistant" backgroundColor={theme.colors.background} contentContainerStyle={{ flex: 1 }}>
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -376,12 +377,11 @@ export default function ChatScreen() {
               activeUnderlineColor="transparent"
               theme={{ colors: { primary: 'transparent', background: 'transparent' } }}
             />
-            <Pressable 
+            <BouncyButton 
               disabled={isSending || !inputText.trim()} 
               onPress={onSend}
-              style={({ pressed }) => [
+              style={[
                 styles.sendButton,
-                { transform: [{ scale: pressed ? 0.9 : 1 }] },
                 (isSending || !inputText.trim()) && { opacity: 0.5 }
               ]}
             >
@@ -393,7 +393,7 @@ export default function ChatScreen() {
               >
                 <MaterialCommunityIcons name="send" size={20} color={theme.colors.onPrimary} />
               </LinearGradient>
-            </Pressable>
+            </BouncyButton>
           </View>
         </BlurView>
       </KeyboardAvoidingView>
@@ -425,7 +425,7 @@ const styles = StyleSheet.create({
   },
   chatContent: {
     paddingVertical: 16,
-    paddingBottom: 120, // space for floating input
+    paddingBottom: 160, // space for floating input
     gap: 16,
   },
   messageBubbleContainer: {
@@ -467,7 +467,7 @@ const styles = StyleSheet.create({
   },
   floatingInputWrapper: {
     position: 'absolute',
-    bottom: 24,
+    bottom: 12,
     left: 16,
     right: 16,
     borderRadius: 32,

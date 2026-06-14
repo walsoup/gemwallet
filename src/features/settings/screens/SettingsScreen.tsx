@@ -196,7 +196,7 @@ export default function SettingsScreen() {
   }, [params.section, aiSectionY]);
 
   return (
-    <ScreenLayout title="Good morning" backgroundColor={theme.colors.background}>
+    <ScreenLayout title="Settings" backgroundColor={theme.colors.background} contentContainerStyle={{ flex: 1 }}>
       <ScrollView ref={scrollRef} contentContainerStyle={styles.scrollContent}>
 
         <View style={styles.header}>
@@ -1138,6 +1138,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 24,
+    paddingBottom: 120,
   },
   header: {
     marginBottom: 48,

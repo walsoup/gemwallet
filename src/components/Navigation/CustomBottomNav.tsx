@@ -28,8 +28,8 @@ export function CustomBottomNav({ state, descriptors, navigation }: BottomTabBar
     return true;
   });
 
-  const INDICATOR_HEIGHT = 44;
-  const INDICATOR_MARGIN = 6;
+  const INDICATOR_HEIGHT = 56;
+  const INDICATOR_MARGIN = 2;
   const tabWidth = (width - 32) / routes.length;
   const indicatorWidth = tabWidth - (INDICATOR_MARGIN * 2);
 
@@ -67,7 +67,7 @@ export function CustomBottomNav({ state, descriptors, navigation }: BottomTabBar
           style={[
             styles.indicator, 
             indicatorStyle, 
-            { width: indicatorWidth, height: INDICATOR_HEIGHT, borderRadius: INDICATOR_HEIGHT / 2, backgroundColor: theme.colors.primaryContainer + '4D' }
+            { height: INDICATOR_HEIGHT, width: indicatorWidth, backgroundColor: theme.colors.primaryContainer, borderRadius: 28 },
           ]} 
         />
         
@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
   },
   indicator: {
     position: 'absolute',
-    top: 10,
+    top: 16,
     left: 16,
     zIndex: -1,
   },
