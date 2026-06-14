@@ -52,7 +52,6 @@ export default function SettingsScreen() {
   const localModelId = useSettingsStore((state) => state.localModelId);
   const localModelDownloaded = useSettingsStore((state) => state.localModelDownloaded);
   const setLocalModelDownloaded = useSettingsStore((state) => state.setLocalModelDownloaded);
-  const customGreetingName = useSettingsStore((state) => state.customGreetingName);
   const aiProvider = useSettingsStore((state) => state.aiProvider);
   const setAiProvider = useSettingsStore((state) => state.setAiProvider);
   const aiFeaturesEnabled = useSettingsStore((state) => state.aiFeaturesEnabled);
