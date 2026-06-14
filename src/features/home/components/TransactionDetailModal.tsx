@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { BlurView } from 'expo-blur';
+import { BouncyButton } from '../../../components/UI/BouncyButton';
 import { Modal, Pressable, StyleSheet, TextInput, View, ScrollView } from 'react-native';
 import { Button, Text, useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -99,9 +101,14 @@ export function TransactionDetailModal({ transaction, visible, onClose }: Props)
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <BlurView
+        intensity={20}
+        tint={theme.dark ? "dark" : "light"}
+        style={StyleSheet.absoluteFill}
+      />
       <Pressable 
-        style={[styles.modalBackdrop, { backgroundColor: theme.colors.backdrop }]} 
+        style={[styles.modalBackdrop, { backgroundColor: theme.dark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.3)' }]} 
         onPress={onClose}
       >
         <Pressable
@@ -112,13 +119,13 @@ export function TransactionDetailModal({ transaction, visible, onClose }: Props)
             <Text variant="titleMedium" style={{ color: theme.colors.onSurface }}>
               Transaction Details
             </Text>
-            <Pressable onPress={() => setIsEditing(!isEditing)} style={styles.editBtn}>
+            <BouncyButton onPress={() => setIsEditing(!isEditing)} style={styles.editBtn}>
               <MaterialCommunityIcons 
                 name={isEditing ? "close" : "pencil"} 
                 size={20} 
                 color={theme.colors.onSurfaceVariant} 
               />
-            </Pressable>
+            </BouncyButton>
           </View>
 
           {isEditing ? (

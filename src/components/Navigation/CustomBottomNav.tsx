@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, StyleSheet, Pressable, Dimensions } from 'react-native';
+import { View, StyleSheet, Dimensions } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,6 +9,7 @@ import { BlurView } from 'expo-blur';
 import { useKeyboard } from '../../utils/useKeyboard';
 import { AppTheme } from '../../../providers/AppThemeProvider';
 import { useSettingsStore } from '../../../store/useSettingsStore';
+import { BouncyButton } from '../ui/BouncyButton';
 import Animated, { 
   useAnimatedStyle, 
   useSharedValue, 
@@ -30,22 +31,29 @@ export function CustomBottomNav({ state, descriptors, navigation }: BottomTabBar
     return true;
   });
 
-  const INDICATOR_HEIGHT = 56;
-  const INDICATOR_MARGIN = 2;
-  const tabWidth = (width - 32) / routes.length;
+  const CONTAINER_PADDING_H = 12; // inside container
+  const POSITION_PADDING_H = 16; // outside container
+  const totalNavWidth = width - (POSITION_PADDING_H * 2);
+  const usableNavWidth = totalNavWidth - (CONTAINER_PADDING_H * 2);
+
+  const INDICATOR_HEIGHT = 44;
+  const INDICATOR_MARGIN = 4;
+  
+  const tabWidth = usableNavWidth / routes.length;
   const indicatorWidth = tabWidth - (INDICATOR_MARGIN * 2);
 
   // Calculate active index relative to the FILTERED routes
   const activeIndex = routes.findIndex(r => state.routes[state.index].name === r.name);
-  const translateX = useSharedValue(activeIndex * tabWidth + INDICATOR_MARGIN);
+  // Base offset is the padding inside the container, plus the indicator margin, plus the active index tab width
+  const translateX = useSharedValue(CONTAINER_PADDING_H + activeIndex * tabWidth + INDICATOR_MARGIN);
 
   useEffect(() => {
-    translateX.value = withSpring(activeIndex * tabWidth + INDICATOR_MARGIN, {
+    translateX.value = withSpring(CONTAINER_PADDING_H + activeIndex * tabWidth + INDICATOR_MARGIN, {
       damping: 20,
       stiffness: 150,
       mass: 1
     });
-  }, [activeIndex, tabWidth, translateX, INDICATOR_MARGIN]);
+  }, [activeIndex, tabWidth, translateX, INDICATOR_MARGIN, CONTAINER_PADDING_H]);
 
   const indicatorStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],
@@ -63,9 +71,9 @@ export function CustomBottomNav({ state, descriptors, navigation }: BottomTabBar
         style={[
           styles.container, 
           { 
-            paddingBottom: Math.max(insets.bottom, 16),
-            backgroundColor: theme.dark ? 'rgba(21, 19, 19, 0.4)' : 'rgba(255, 255, 255, 0.4)',
-            borderColor: theme.colors.outlineVariant + '33'
+            marginBottom: Math.max(insets.bottom, 16),
+            backgroundColor: theme.dark ? 'rgba(21, 19, 19, 0.65)' : 'rgba(255, 255, 255, 0.65)',
+            borderColor: theme.colors.outlineVariant + '40'
           }
         ]}
       >
@@ -109,9 +117,10 @@ export function CustomBottomNav({ state, descriptors, navigation }: BottomTabBar
           if (route.name === 'settings') iconName = isFocused ? 'cog' : 'cog-outline';
 
           return (
-            <Pressable
+            <BouncyButton
               key={route.key}
               onPress={onPress}
+              scaleTo={0.85}
               style={styles.tabItem}
             >
               <MaterialCommunityIcons
@@ -129,7 +138,7 @@ export function CustomBottomNav({ state, descriptors, navigation }: BottomTabBar
               >
                 {label as string}
               </Text>
-            </Pressable>
+            </BouncyButton>
           );
         })}
       </BlurView>
@@ -144,20 +153,20 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 50,
+    paddingHorizontal: 16,
   },
   container: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: 36,
     overflow: 'hidden',
-    borderTopWidth: 1,
+    borderWidth: 1,
   },
   indicator: {
     position: 'absolute',
-    top: 16,
-    left: 16,
+    top: 12,
+    left: 0,
     zIndex: -1,
   },
   tabItem: {

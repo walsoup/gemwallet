@@ -16,13 +16,15 @@ export function CustomTopNav({ title }: CustomTopNavProps) {
   return (
     <View style={styles.positionContainer}>
       <BlurView
-        intensity={80}
+        intensity={90}
         tint={theme.dark ? "dark" : "light"}
         style={[
           styles.container, 
           { 
             paddingTop: Math.max(insets.top, 16),
-            backgroundColor: theme.dark ? 'rgba(21, 19, 19, 0.8)' : 'rgba(255, 255, 255, 0.8)'
+            backgroundColor: theme.dark ? 'rgba(21, 19, 19, 0.65)' : 'rgba(255, 255, 255, 0.65)',
+            borderBottomWidth: StyleSheet.hairlineWidth,
+            borderBottomColor: theme.colors.outlineVariant + '40',
           }
         ]}
       >

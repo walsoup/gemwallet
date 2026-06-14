@@ -1,28 +1,57 @@
-import React from 'react';
+import React, { ReactNode } from 'react';
 import { Pressable, PressableProps, StyleProp, ViewStyle } from 'react-native';
-import Animated from 'react-native-reanimated';
-import { useBouncyPress } from '../../hooks/useBouncyPress';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 
-interface BouncyButtonProps extends Omit<PressableProps, 'style'> {
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+interface BouncyButtonProps extends PressableProps {
+  children: ReactNode;
   style?: StyleProp<ViewStyle>;
-  children: React.ReactNode;
-  scaleDown?: number;
+  scaleTo?: number;
+  contentContainerStyle?: StyleProp<ViewStyle>;
 }
 
-export const BouncyButton = ({ onPress, style, children, disabled, scaleDown = 0.95, ...props }: BouncyButtonProps) => {
-  const { animatedStyle, onPressIn, onPressOut } = useBouncyPress(scaleDown, disabled || false);
-  
+export function BouncyButton({
+  children,
+  style,
+  scaleTo = 0.95,
+  contentContainerStyle,
+  onPressIn,
+  onPressOut,
+  ...rest
+}: BouncyButtonProps) {
+  const scale = useSharedValue(1);
+  const opacity = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: scale.value }],
+      opacity: opacity.value,
+    };
+  });
+
   return (
-    <Pressable
-      onPressIn={onPressIn}
-      onPressOut={onPressOut}
-      onPress={onPress}
-      disabled={disabled}
-      {...props}
+    <AnimatedPressable
+      style={[style, animatedStyle]}
+      onPressIn={(e) => {
+        scale.value = withSpring(scaleTo, { damping: 15, stiffness: 300, mass: 0.5 });
+        opacity.value = withSpring(0.8, { damping: 15, stiffness: 300 });
+        onPressIn?.(e);
+      }}
+      onPressOut={(e) => {
+        scale.value = withSpring(1, { damping: 15, stiffness: 300, mass: 0.5 });
+        opacity.value = withSpring(1, { damping: 15, stiffness: 300 });
+        onPressOut?.(e);
+      }}
+      {...rest}
     >
-      <Animated.View style={[style, animatedStyle]}>
+      <Animated.View style={contentContainerStyle}>
         {children}
       </Animated.View>
-    </Pressable>
+    </AnimatedPressable>
   );
-};
+}

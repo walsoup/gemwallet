@@ -230,8 +230,9 @@ export default function HomeScreen() {
               {filters.map(filter => {
                 const isActive = selectedFilter === filter;
                 return (
-                  <Pressable
+                  <BouncyButton
                     key={filter}
+                    scaleTo={0.9}
                     style={[
                       styles.filterChip,
                       isActive ? { backgroundColor: theme.colors.primaryContainer, borderWidth: 0 }
@@ -246,7 +247,7 @@ export default function HomeScreen() {
                     }}>
                       {filter}
                     </Text>
-                  </Pressable>
+                  </BouncyButton>
                 );
               })}
             </ScrollView>
@@ -305,15 +306,16 @@ export default function HomeScreen() {
                     );
                   }}
                 >
-                  <Pressable
+                  <BouncyButton
                     onPress={() => {
                       Haptics.selectionAsync();
                       setSelectedTransaction(tx);
                       setDetailModalVisible(true);
                     }}
-                    style={({pressed}) => [
+                    scaleTo={0.96}
+                    style={[
                       styles.txItem,
-                      { backgroundColor: itemBg || (pressed ? theme.colors.surfaceContainer : 'transparent') },
+                      { backgroundColor: itemBg || 'transparent' },
                       !isLast && { borderBottomWidth: 1, borderBottomColor: isWarning ? theme.colors.onErrorContainer + '26' : theme.colors.outlineVariant + '26' }
                     ]}
                   >
@@ -357,7 +359,7 @@ export default function HomeScreen() {
                     }}>
                       {isIncome ? '+' : '-'}{formatAppCurrency(tx.amountCents)}
                     </Text>
-                  </Pressable>
+                  </BouncyButton>
                 </Swipeable>
               );
             })}
