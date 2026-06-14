@@ -27,7 +27,6 @@ describe('settings migration', () => {
     assert.equal(result.region, 'FR');
     assert.equal(result.advancedSummariesEnabled, true);
     assert.equal(result.aiProvider, 'google');
-    assert.equal(result.huggingFaceToken, '');
     assert.equal(result.localModelId, defaultSettingsState.localModelId);
     assert.equal(result.localModelDownloaded, false);
     assert.equal(result.smartCategorizationEnabled, true);
@@ -35,8 +34,7 @@ describe('settings migration', () => {
 
   it('preserves modern AI fields when present', () => {
     const modern = {
-      aiProvider: 'huggingface',
-      huggingFaceToken: 'hf_test',
+      themeSecondary: '#fff',
       gemmaModel: 'google/gemma-2-2b-it',
       localModelId: 'gemma-4-e2b-it',
       localModelDownloaded: true,
@@ -45,8 +43,7 @@ describe('settings migration', () => {
 
     const result = migrateSettingsState(modern);
 
-    assert.equal(result.aiProvider, 'huggingface');
-    assert.equal(result.huggingFaceToken, 'hf_test');
+    assert.equal(result.themeSecondary, '#fff');
     assert.equal(result.gemmaModel, 'google/gemma-2-2b-it');
     assert.equal(result.localModelId, 'gemma-4-e2b-it');
     assert.equal(result.localModelDownloaded, true);

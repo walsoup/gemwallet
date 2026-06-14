@@ -1,4 +1,5 @@
 import type { CurrencyCode, LanguageCode, RegionCode, ThemePreference } from '../types/finance';
+import SHA256 from 'crypto-js/sha256';
 
 export type AiProvider = 'local' | 'google' | 'huggingface';
 
@@ -21,7 +22,6 @@ export type SettingsPersistedShape = {
   region: RegionCode;
   aiProvider: AiProvider;
   aiFeaturesEnabled: boolean;
-  huggingFaceToken: string;
   gemmaModel: string;
   localModelId: string;
   localModelDownloaded: boolean;
@@ -52,7 +52,6 @@ export const defaultSettingsState: SettingsPersistedShape = {
   themePrimary: '#ff6b6b',
   themeSecondary: '#52dea2',
   aiFeaturesEnabled: false,
-  huggingFaceToken: '',
   gemmaModel: 'gemma-4-31b-it',
   localModelId: 'gemma-4-e2b-it',
   localModelDownloaded: false,
@@ -84,7 +83,6 @@ export function migrateSettingsState(persistedState: unknown): SettingsPersisted
     aiProvider,
     themePrimary: legacy.themePrimary ?? defaultSettingsState.themePrimary,
     themeSecondary: legacy.themeSecondary ?? defaultSettingsState.themeSecondary,
-    huggingFaceToken: legacy.huggingFaceToken ?? '',
     gemmaModel: legacy.gemmaModel ?? defaultSettingsState.gemmaModel,
     localModelId: legacy.localModelId ?? defaultSettingsState.localModelId,
     localModelDownloaded: legacy.localModelDownloaded ?? defaultSettingsState.localModelDownloaded,
@@ -94,7 +92,9 @@ export function migrateSettingsState(persistedState: unknown): SettingsPersisted
     language: legacy.language ?? defaultSettingsState.language,
     region: legacy.region ?? defaultSettingsState.region,
     passcodeEnabled: legacy.passcodeEnabled ?? defaultSettingsState.passcodeEnabled,
-    passcodePin: legacy.passcodePin ?? defaultSettingsState.passcodePin,
+    passcodePin: legacy.passcodePin && legacy.passcodePin.length === 6 && /^\d+$/.test(legacy.passcodePin)
+      ? SHA256(legacy.passcodePin).toString()
+      : legacy.passcodePin ?? defaultSettingsState.passcodePin,
     biometricAuthEnabled: (legacy as Partial<SettingsPersistedShape>).biometricAuthEnabled ?? defaultSettingsState.biometricAuthEnabled,
     notificationsTransactionAlerts:
       (legacy as Partial<SettingsPersistedShape>).notificationsTransactionAlerts ??

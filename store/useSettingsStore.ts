@@ -30,7 +30,6 @@ export type SettingsState = {
   region: RegionCode;
   aiProvider: AiProvider;
   aiFeaturesEnabled: boolean;
-  huggingFaceToken: string;
   gemmaModel: string; // Used for cloud
   localModelId: string; // LiteRT model selection
   localModelDownloaded: boolean; // Indicates if local model is downloaded
@@ -58,7 +57,6 @@ export type SettingsState = {
   setRegion: (region: RegionCode) => void;
   setAiProvider: (provider: AiProvider) => void;
   setAiFeaturesEnabled: (enabled: boolean) => void;
-  setHuggingFaceToken: (token: string) => void;
   setGemmaModel: (model: string) => void;
   setLocalModelId: (modelId: string) => void;
   setLocalModelDownloaded: (downloaded: boolean) => void;
@@ -99,7 +97,6 @@ export const useSettingsStore = create<SettingsState>()(
       setRegion: (region) => set({ region }),
       setAiProvider: (aiProvider) => set({ aiProvider }),
       setAiFeaturesEnabled: (aiFeaturesEnabled) => set({ aiFeaturesEnabled }),
-      setHuggingFaceToken: (huggingFaceToken) => set({ huggingFaceToken: huggingFaceToken.trim() }),
       setGemmaModel: (gemmaModel) => set({ gemmaModel }),
       setLocalModelId: (localModelId) => set({ localModelId }),
       setLocalModelDownloaded: (localModelDownloaded) => set({ localModelDownloaded }),

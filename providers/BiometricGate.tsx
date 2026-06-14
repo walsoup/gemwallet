@@ -3,6 +3,7 @@ import { View, StyleSheet, AppState, AppStateStatus } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { Text, Button, useTheme } from 'react-native-paper';
 import * as Haptics from 'expo-haptics';
+import SHA256 from 'crypto-js/sha256';
 
 import { useSettingsStore } from '../store/useSettingsStore';
 import type { AppTheme } from './AppThemeProvider';
@@ -120,7 +121,7 @@ export function BiometricGate({ children }: PropsWithChildren) {
 
     if (next.length === 6) {
       setTimeout(() => {
-        if (next === passcodePin) {
+        if (SHA256(next).toString() === passcodePin) {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           setIsAuthed(true);
           setShowPasscodeFallback(false);

@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { Text, useTheme, Button } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import SHA256 from 'crypto-js/sha256';
 
 import { AppTheme } from '../../../../providers/AppThemeProvider';
 import { ScreenLayout } from '../../../components/Layout/ScreenLayout';
@@ -60,7 +61,7 @@ export default function ChangePasscodeScreen() {
     if (next.length === 6) {
       setTimeout(() => {
         if (step === 'verify') {
-          if (next !== existingPin) {
+          if (SHA256(next).toString() !== existingPin) {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
             setError('Incorrect passcode. Try again.');
             setValue('');
@@ -88,7 +89,7 @@ export default function ChangePasscodeScreen() {
             return;
           }
 
-          setPasscodePin(next);
+          setPasscodePin(SHA256(next).toString());
           setPasscodeEnabled(true);
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           setStep('done');

@@ -9,6 +9,7 @@ import { useRecurringStore } from '../../../../store/useRecurringStore';
 import { useGoalsStore } from '../../../../store/useGoalsStore';
 import { streamFinancialAnalysis } from '../../nlp/services/gemmaAnalysis';
 import { getGeminiApiKey } from '../../../../services/secureGeminiKey';
+import { getHuggingFaceToken } from '../../../../services/secureHuggingFaceToken';
 import { downloadLiteRtModel, getLiteRtModel, isLiteRtModelCached } from '../../nlp/services/liteRtModels';
 import { formatCurrency } from '../../../../utils/formatCurrency';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -38,7 +39,6 @@ export default function ChatScreen() {
   const addGoal = useGoalsStore((s) => s.addGoal);
 
   const aiProvider = useSettingsStore((s) => s.aiProvider);
-  const huggingFaceToken = useSettingsStore((s) => s.huggingFaceToken);
   const setLocalModelDownloaded = useSettingsStore((s) => s.setLocalModelDownloaded);
   const currencyCode = useSettingsStore((s) => s.currencyCode);
   const locale = useSettingsStore((s) => s.language);
@@ -52,6 +52,7 @@ export default function ChatScreen() {
   const [isSending, setIsSending] = useState(false);
   const [isDownloadingLocalModel, setIsDownloadingLocalModel] = useState(false);
   const [geminiKeyExists, setGeminiKeyExists] = useState<boolean | null>(null);
+  const [huggingFaceToken, setHuggingFaceToken] = useState<string | null>(null);
   const [localModelReady, setLocalModelReady] = useState(localModelDownloaded);
   const [messages, setMessages] = useState<ChatMessage[]>(() => [
     {
@@ -91,6 +92,10 @@ export default function ChatScreen() {
       let active = true;
 
       const refresh = async () => {
+        const hfToken = await getHuggingFaceToken();
+        if (!active) return;
+        setHuggingFaceToken(hfToken);
+
         if (aiProvider === 'google') {
           const key = await getGeminiApiKey();
           if (!active) return;

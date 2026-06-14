@@ -10,6 +10,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppTheme } from '../../../../providers/AppThemeProvider';
 import { ScreenLayout } from '../../../components/Layout/ScreenLayout';
 import { downloadLiteRtModel, getLiteRtModel, isLiteRtModelCached } from '../../../features/nlp/services/liteRtModels';
+import { getHuggingFaceToken } from '../../../../services/secureHuggingFaceToken';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as LocalAuthentication from 'expo-local-authentication';
 import type { ThemePreference } from '../../../../types/finance';
@@ -51,8 +52,7 @@ export default function SettingsScreen() {
   const localModelId = useSettingsStore((state) => state.localModelId);
   const localModelDownloaded = useSettingsStore((state) => state.localModelDownloaded);
   const setLocalModelDownloaded = useSettingsStore((state) => state.setLocalModelDownloaded);
-  const huggingFaceToken = useSettingsStore((state) => state.huggingFaceToken);
-
+  const customGreetingName = useSettingsStore((state) => state.customGreetingName);
   const aiProvider = useSettingsStore((state) => state.aiProvider);
   const setAiProvider = useSettingsStore((state) => state.setAiProvider);
   const aiFeaturesEnabled = useSettingsStore((state) => state.aiFeaturesEnabled);
@@ -117,9 +117,10 @@ export default function SettingsScreen() {
     setLocalModelStatus('checking');
     try {
       const cached = await isLiteRtModelCached(selectedLocalModel.id);
+      const hfToken = await getHuggingFaceToken();
       if (!cached) {
-        await downloadLiteRtModel(selectedLocalModel.id, undefined, huggingFaceToken?.trim()
-          ? { Authorization: `Bearer ${huggingFaceToken.trim()}` }
+        await downloadLiteRtModel(selectedLocalModel.id, undefined, hfToken?.trim()
+          ? { Authorization: `Bearer ${hfToken.trim()}` }
           : undefined);
       }
       setLocalModelDownloaded(true);
