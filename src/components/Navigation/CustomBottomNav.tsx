@@ -23,10 +23,6 @@ export function CustomBottomNav({ state, descriptors, navigation }: BottomTabBar
   const { isKeyboardVisible } = useKeyboard();
   const aiFeaturesEnabled = useSettingsStore((s) => s.aiFeaturesEnabled);
 
-  if (isKeyboardVisible) {
-    return null;
-  }
-
   const allowedTabs = ['index', 'analytics', 'chat', 'planning', 'settings'];
   const routes = state.routes.filter((r: any) => {
     if (!allowedTabs.includes(r.name)) return false;
@@ -54,6 +50,10 @@ export function CustomBottomNav({ state, descriptors, navigation }: BottomTabBar
   const indicatorStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],
   }));
+
+  if (isKeyboardVisible) {
+    return null;
+  }
 
   return (
     <View style={styles.positionContainer}>
