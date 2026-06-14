@@ -14,6 +14,8 @@ type Props = {
 
 const DIGITS: (string | null)[] = ['1', '2', '3', '4', '5', '6', '7', '8', '9', null, '0', 'back'];
 
+import { BouncyButton } from '../../../components/UI/BouncyButton';
+
 export function PasscodeKeypad({ theme, value, onDigit, onBackspace }: Props) {
   return (
     <View style={styles.keypad}>
@@ -25,16 +27,12 @@ export function PasscodeKeypad({ theme, value, onDigit, onBackspace }: Props) {
         if (digit === 'back') {
           return (
             <View key={`back-${idx}`} style={styles.keypadCell}>
-              <Pressable
+              <BouncyButton
                 accessibilityRole="button"
                 accessibilityLabel="Delete digit"
-                style={({ pressed }) => [
+                style={[
                   styles.keyButton,
-                  {
-                    backgroundColor: pressed
-                      ? theme.colors.surfaceContainerHigh
-                      : theme.colors.surfaceContainer,
-                  },
+                  { backgroundColor: theme.colors.surfaceContainer },
                 ]}
                 onPress={onBackspace}
                 disabled={value.length === 0}
@@ -44,30 +42,26 @@ export function PasscodeKeypad({ theme, value, onDigit, onBackspace }: Props) {
                   size={22}
                   color={value.length === 0 ? theme.colors.onSurfaceVariant : theme.colors.onSurface}
                 />
-              </Pressable>
+              </BouncyButton>
             </View>
           );
         }
 
         return (
           <View key={digit} style={styles.keypadCell}>
-            <Pressable
+            <BouncyButton
               accessibilityRole="button"
               accessibilityLabel={`Digit ${digit}`}
-              style={({ pressed }) => [
+              style={[
                 styles.keyButton,
-                {
-                  backgroundColor: pressed
-                    ? theme.colors.surfaceContainerHigh
-                    : theme.colors.surfaceContainer,
-                },
+                { backgroundColor: theme.colors.surfaceContainer },
               ]}
               onPress={() => onDigit(digit)}
             >
               <Text style={{ color: theme.colors.onSurface, fontFamily: 'SpaceGrotesk_500Medium', fontSize: 22 }}>
                 {digit}
               </Text>
-            </Pressable>
+            </BouncyButton>
           </View>
         );
       })}

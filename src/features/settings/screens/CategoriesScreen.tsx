@@ -3,6 +3,8 @@ import { ScrollView, StyleSheet, View, Pressable, Modal, TextInput } from 'react
 import { Text, useTheme, Button } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { BlurView } from 'expo-blur';
+import { BouncyButton } from '../../../components/UI/BouncyButton';
 
 import { AppTheme } from '../../../../providers/AppThemeProvider';
 import { ScreenLayout } from '../../../components/Layout/ScreenLayout';
@@ -74,7 +76,7 @@ export default function CategoriesScreen() {
               Manage spending categories.
             </Text>
           </View>
-          <Pressable
+          <BouncyButton
             accessibilityRole="button"
             accessibilityLabel="Add category"
             style={[styles.addButton, { backgroundColor: theme.colors.surfaceContainerHighest }]}
@@ -84,7 +86,7 @@ export default function CategoriesScreen() {
             <Text style={{ color: theme.colors.primary, fontFamily: 'BeVietnamPro_600SemiBold', fontSize: 12 }}>
               ADD
             </Text>
-          </Pressable>
+          </BouncyButton>
         </View>
 
         <View style={[styles.section, { backgroundColor: theme.colors.surfaceContainerLow }]}>
@@ -98,7 +100,7 @@ export default function CategoriesScreen() {
             {expenseCategories.length ? (
               expenseCategories.map((cat) => (
                 <View key={cat.id} style={[styles.row, { backgroundColor: theme.colors.surfaceContainer }]}>
-                  <Pressable
+                  <BouncyButton
                     style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 }}
                     onPress={() => {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -122,25 +124,21 @@ export default function CategoriesScreen() {
                         </Text>
                       )}
                     </View>
-                  </Pressable>
-                  <Pressable
+                  </BouncyButton>
+                  <BouncyButton
                     accessibilityRole="button"
                     accessibilityLabel={`Delete category ${cat.name}`}
                     onPress={() => {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                       deleteCategory(cat.id);
                     }}
-                    style={({ pressed }) => [
+                    style={[
                       styles.deleteButton,
-                      {
-                        backgroundColor: pressed
-                          ? theme.colors.surfaceContainerHighest
-                          : theme.colors.surfaceContainerHigh,
-                      },
+                      { backgroundColor: theme.colors.surfaceContainerHigh },
                     ]}
                   >
                     <MaterialCommunityIcons name="delete" size={18} color={theme.colors.error} />
-                  </Pressable>
+                  </BouncyButton>
                 </View>
               ))
             ) : (
@@ -153,8 +151,9 @@ export default function CategoriesScreen() {
       </ScrollView>
 
       <Modal visible={modalVisible} transparent animationType="fade" onRequestClose={close}>
-        <View style={styles.modalBackdrop}>
-          <View style={[styles.modalCard, { backgroundColor: theme.colors.surfaceContainerHigh }]}>
+        <BlurView intensity={20} tint={theme.dark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
+        <Pressable style={[styles.modalBackdrop, { backgroundColor: theme.dark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.3)' }]} onPress={close}>
+          <Pressable style={[styles.modalCard, { backgroundColor: theme.colors.surfaceContainerHigh }]} onPress={() => undefined}>
             <Text style={{ color: theme.colors.onSurface, fontFamily: 'SpaceGrotesk_700Bold', fontSize: 18 }}>
               New Category
             </Text>
@@ -187,13 +186,14 @@ export default function CategoriesScreen() {
                 Save
               </Button>
             </View>
-          </View>
-        </View>
+          </Pressable>
+        </Pressable>
       </Modal>
 
       <Modal visible={budgetModalVisible} transparent animationType="fade" onRequestClose={() => setBudgetModalVisible(false)}>
-        <View style={styles.modalBackdrop}>
-          <View style={[styles.modalCard, { backgroundColor: theme.colors.surfaceContainerHigh }]}>
+        <BlurView intensity={20} tint={theme.dark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
+        <Pressable style={[styles.modalBackdrop, { backgroundColor: theme.dark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.3)' }]} onPress={() => setBudgetModalVisible(false)}>
+          <Pressable style={[styles.modalCard, { backgroundColor: theme.colors.surfaceContainerHigh }]} onPress={() => undefined}>
             <Text style={{ color: theme.colors.onSurface, fontFamily: 'SpaceGrotesk_700Bold', fontSize: 18 }}>
               {selectedCategory?.name} Budget Limit
             </Text>
@@ -220,8 +220,8 @@ export default function CategoriesScreen() {
                 Save
               </Button>
             </View>
-          </View>
-        </View>
+          </Pressable>
+        </Pressable>
       </Modal>
     </ScreenLayout>
   );

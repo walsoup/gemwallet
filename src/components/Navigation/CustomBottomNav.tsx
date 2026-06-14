@@ -9,7 +9,7 @@ import { BlurView } from 'expo-blur';
 import { useKeyboard } from '../../utils/useKeyboard';
 import { AppTheme } from '../../../providers/AppThemeProvider';
 import { useSettingsStore } from '../../../store/useSettingsStore';
-import { BouncyButton } from '../ui/BouncyButton';
+import { BouncyButton } from '../UI/BouncyButton';
 import Animated, { 
   useAnimatedStyle, 
   useSharedValue, 

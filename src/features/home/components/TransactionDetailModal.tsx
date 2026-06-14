@@ -147,52 +147,52 @@ export function TransactionDetailModal({ transaction, visible, onClose }: Props)
               
               <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8, marginTop: 12 }}>Type</Text>
               <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
-                <Pressable
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    setEditType('expense');
-                    const targetCats = categories.filter(c => c.kind === 'expense' || c.kind === 'system');
-                    if (!targetCats.some(c => c.id === editCategoryId)) {
-                      setEditCategoryId(targetCats[0]?.id || '');
-                    }
-                  }}
-                  style={[
-                    styles.typeToggleBtn,
-                    editType === 'expense'
-                      ? { backgroundColor: theme.colors.errorContainer, borderColor: theme.colors.error }
-                      : { backgroundColor: theme.colors.surfaceContainerLowest, borderColor: theme.colors.outlineVariant + '4D' }
-                  ]}
-                >
-                  <Text style={{
-                    color: editType === 'expense' ? theme.colors.onErrorContainer : theme.colors.onSurface,
-                    fontFamily: 'BeVietnamPro_500Medium'
-                  }}>
-                    Expense
-                  </Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    setEditType('income');
-                    const targetCats = categories.filter(c => c.kind === 'income');
-                    if (!targetCats.some(c => c.id === editCategoryId)) {
-                      setEditCategoryId(targetCats[0]?.id || '');
-                    }
-                  }}
-                  style={[
-                    styles.typeToggleBtn,
-                    editType === 'income'
-                      ? { backgroundColor: theme.colors.tertiary + '1A', borderColor: theme.colors.tertiary }
-                      : { backgroundColor: theme.colors.surfaceContainerLowest, borderColor: theme.colors.outlineVariant + '4D' }
-                  ]}
-                >
-                  <Text style={{
-                    color: editType === 'income' ? theme.colors.tertiary : theme.colors.onSurface,
-                    fontFamily: 'BeVietnamPro_500Medium'
-                  }}>
-                    Income
-                  </Text>
-                </Pressable>
+                <BouncyButton
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setEditType('expense');
+                  const targetCats = categories.filter(c => c.kind === 'expense' || c.kind === 'system');
+                  if (!targetCats.some(c => c.id === editCategoryId)) {
+                    setEditCategoryId(targetCats[0]?.id || '');
+                  }
+                }}
+                style={[
+                  styles.typeToggleBtn,
+                  editType === 'expense'
+                    ? { backgroundColor: theme.colors.errorContainer, borderColor: theme.colors.error }
+                    : { backgroundColor: theme.colors.surfaceContainerLowest, borderColor: theme.colors.outlineVariant + '4D' }
+                ]}
+              >
+                <Text style={{
+                  color: editType === 'expense' ? theme.colors.onErrorContainer : theme.colors.onSurface,
+                  fontFamily: 'BeVietnamPro_500Medium'
+                }}>
+                  Expense
+                </Text>
+              </BouncyButton>
+                <BouncyButton
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setEditType('income');
+                  const targetCats = categories.filter(c => c.kind === 'income');
+                  if (!targetCats.some(c => c.id === editCategoryId)) {
+                    setEditCategoryId(targetCats[0]?.id || '');
+                  }
+                }}
+                style={[
+                  styles.typeToggleBtn,
+                  editType === 'income'
+                    ? { backgroundColor: theme.colors.tertiary + '1A', borderColor: theme.colors.tertiary }
+                    : { backgroundColor: theme.colors.surfaceContainerLowest, borderColor: theme.colors.outlineVariant + '4D' }
+                ]}
+              >
+                <Text style={{
+                  color: editType === 'income' ? theme.colors.tertiary : theme.colors.onSurface,
+                  fontFamily: 'BeVietnamPro_500Medium'
+                }}>
+                  Income
+                </Text>
+              </BouncyButton>
               </View>
 
               <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8, marginTop: 12 }}>Category</Text>
@@ -206,42 +206,42 @@ export function TransactionDetailModal({ transaction, visible, onClose }: Props)
                     const isWarning = budgetLimit && budgetLimit > 0 && spent >= 0.8 * budgetLimit;
 
                     return (
-                      <Pressable
-                        key={c.id}
-                        onPress={() => {
-                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                          setEditCategoryId(c.id);
-                        }}
-                        style={[
-                          styles.categoryChip,
-                          isSelected
-                            ? { backgroundColor: theme.colors.primaryContainer, borderColor: theme.colors.primary }
-                            : { backgroundColor: theme.colors.surfaceContainerLowest, borderColor: theme.colors.outlineVariant + '4D' }
-                        ]}
-                      >
-                        <View style={{ width: 32, height: 32, justifyContent: 'center', alignItems: 'center' }}>
-                          {budgetLimit && budgetLimit > 0 && (
-                            <View style={{ position: 'absolute', left: 0, top: 0, zIndex: 1 }}>
-                              <ProgressRing
-                                size={32}
-                                strokeWidth={2}
-                                progress={spent / budgetLimit}
-                                color={isWarning ? theme.colors.error : theme.colors.primary}
-                                trackColor={isWarning ? theme.colors.errorContainer : theme.colors.surfaceContainerHighest}
-                              />
-                            </View>
-                          )}
-                          <Text style={{ fontSize: 16 }}>{c.emoji}</Text>
-                        </View>
-                        <Text style={{
-                          color: isSelected ? theme.colors.onPrimaryContainer : theme.colors.onSurface,
-                          fontFamily: 'BeVietnamPro_500Medium',
-                          fontSize: 14,
-                          marginLeft: 4
-                        }}>
-                          {c.name}
-                        </Text>
-                      </Pressable>
+                      <BouncyButton
+                      key={c.id}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setEditCategoryId(c.id);
+                      }}
+                      style={[
+                        styles.categoryChip,
+                        isSelected
+                          ? { backgroundColor: theme.colors.primaryContainer, borderColor: theme.colors.primary }
+                          : { backgroundColor: theme.colors.surfaceContainerLowest, borderColor: theme.colors.outlineVariant + '4D' }
+                      ]}
+                    >
+                      <View style={{ width: 32, height: 32, justifyContent: 'center', alignItems: 'center' }}>
+                        {budgetLimit && budgetLimit > 0 && (
+                          <View style={{ position: 'absolute', left: 0, top: 0, zIndex: 1 }}>
+                            <ProgressRing
+                              size={32}
+                              strokeWidth={2}
+                              progress={spent / budgetLimit}
+                              color={isWarning ? theme.colors.error : theme.colors.primary}
+                              trackColor={isWarning ? theme.colors.errorContainer : theme.colors.surfaceContainerHighest}
+                            />
+                          </View>
+                        )}
+                        <Text style={{ fontSize: 16 }}>{c.emoji}</Text>
+                      </View>
+                      <Text style={{
+                        color: isSelected ? theme.colors.onPrimaryContainer : theme.colors.onSurface,
+                        fontFamily: 'BeVietnamPro_500Medium',
+                        fontSize: 14,
+                        marginLeft: 4
+                      }}>
+                        {c.name}
+                      </Text>
+                    </BouncyButton>
                     );
                   })}
               </ScrollView>

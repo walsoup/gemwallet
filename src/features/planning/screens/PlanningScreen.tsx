@@ -12,24 +12,8 @@ import * as Haptics from 'expo-haptics';
 import { formatAppCurrency } from '../../../../utils/currency';
 
 import Animated, { FadeInUp } from 'react-native-reanimated';
-import { useBouncyPress } from '../../../hooks/useBouncyPress';
-
-const BouncyButton = ({ onPress, style, children, disabled, ...props }: any) => {
-  const { animatedStyle, onPressIn, onPressOut } = useBouncyPress(0.95, disabled);
-  return (
-    <Pressable
-      onPressIn={onPressIn}
-      onPressOut={onPressOut}
-      onPress={onPress}
-      disabled={disabled}
-      {...props}
-    >
-      <Animated.View style={[style, animatedStyle]}>
-        {children}
-      </Animated.View>
-    </Pressable>
-  );
-};
+import { BlurView } from 'expo-blur';
+import { BouncyButton } from '../../../components/UI/BouncyButton';
 
 export default function PlanningScreen() {
   const theme = useTheme<AppTheme>();
@@ -128,7 +112,8 @@ export default function PlanningScreen() {
     <ScreenLayout title="Planning" backgroundColor={theme.colors.background}>
 
       <Modal visible={goalModalVisible} transparent animationType="fade" onRequestClose={closeNewGoal}>
-        <Pressable style={[styles.modalBackdrop, { backgroundColor: theme.colors.backdrop }]} onPress={closeNewGoal}>
+        <BlurView intensity={20} tint={theme.dark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
+        <Pressable style={[styles.modalBackdrop, { backgroundColor: theme.dark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.3)' }]} onPress={closeNewGoal}>
           <Pressable
             style={[styles.modalCard, { backgroundColor: theme.colors.surfaceContainerHigh, borderColor: theme.colors.outlineVariant }]}
             onPress={() => undefined}
@@ -183,7 +168,8 @@ export default function PlanningScreen() {
       </Modal>
 
       <Modal visible={recModalVisible} transparent animationType="fade" onRequestClose={closeNewRecurring}>
-        <Pressable style={[styles.modalBackdrop, { backgroundColor: theme.colors.backdrop }]} onPress={closeNewRecurring}>
+        <BlurView intensity={20} tint={theme.dark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
+        <Pressable style={[styles.modalBackdrop, { backgroundColor: theme.dark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.3)' }]} onPress={closeNewRecurring}>
           <Pressable
             style={[styles.modalCard, { backgroundColor: theme.colors.surfaceContainerHigh, borderColor: theme.colors.outlineVariant }]}
             onPress={() => undefined}
@@ -227,7 +213,7 @@ export default function PlanningScreen() {
 
             <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8, marginTop: 12 }}>Type</Text>
             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
-              <Pressable
+              <BouncyButton
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   setRecType('expense');
@@ -249,8 +235,8 @@ export default function PlanningScreen() {
                 }}>
                   Expense
                 </Text>
-              </Pressable>
-              <Pressable
+              </BouncyButton>
+              <BouncyButton
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   setRecType('income');
@@ -272,7 +258,7 @@ export default function PlanningScreen() {
                 }}>
                   Income
                 </Text>
-              </Pressable>
+              </BouncyButton>
             </View>
 
             <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8, marginTop: 12 }}>Category</Text>
@@ -286,7 +272,7 @@ export default function PlanningScreen() {
                   const isWarning = budgetLimit && budgetLimit > 0 && spent >= 0.8 * budgetLimit;
 
                   return (
-                    <Pressable
+                    <BouncyButton
                       key={c.id}
                       onPress={() => {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -321,14 +307,14 @@ export default function PlanningScreen() {
                       }}>
                         {c.name}
                       </Text>
-                    </Pressable>
+                    </BouncyButton>
                   );
                 })}
             </ScrollView>
 
             <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8, marginTop: 12 }}>Interval</Text>
             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
-              <Pressable
+              <BouncyButton
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   setRecInterval('weekly');
@@ -346,8 +332,8 @@ export default function PlanningScreen() {
                 }}>
                   Weekly
                 </Text>
-              </Pressable>
-              <Pressable
+              </BouncyButton>
+              <BouncyButton
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   setRecInterval('monthly');
@@ -365,7 +351,7 @@ export default function PlanningScreen() {
                 }}>
                   Monthly
                 </Text>
-              </Pressable>
+              </BouncyButton>
             </View>
 
             <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8, marginTop: 12 }}>Start Date (YYYY-MM-DD)</Text>

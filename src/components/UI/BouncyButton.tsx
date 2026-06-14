@@ -49,9 +49,7 @@ export function BouncyButton({
       }}
       {...rest}
     >
-      <Animated.View style={contentContainerStyle}>
-        {children}
-      </Animated.View>
+      {children}
     </AnimatedPressable>
   );
 }

@@ -134,7 +134,7 @@ export function AddTransactionModal({ visible, initialType = 'expense', onClose 
             
             <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8, marginTop: 12 }}>Type</Text>
             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
-              <Pressable
+              <BouncyButton
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   setEditType('expense');
@@ -156,8 +156,8 @@ export function AddTransactionModal({ visible, initialType = 'expense', onClose 
                 }}>
                   Expense
                 </Text>
-              </Pressable>
-              <Pressable
+              </BouncyButton>
+              <BouncyButton
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   setEditType('income');
@@ -179,7 +179,7 @@ export function AddTransactionModal({ visible, initialType = 'expense', onClose 
                 }}>
                   Income
                 </Text>
-              </Pressable>
+              </BouncyButton>
             </View>
 
             <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8, marginTop: 12 }}>Category</Text>
@@ -193,7 +193,7 @@ export function AddTransactionModal({ visible, initialType = 'expense', onClose 
                   const isWarning = budgetLimit && budgetLimit > 0 && spent >= 0.8 * budgetLimit;
 
                   return (
-                    <Pressable
+                    <BouncyButton
                       key={c.id}
                       onPress={() => {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -228,7 +228,7 @@ export function AddTransactionModal({ visible, initialType = 'expense', onClose 
                       }}>
                         {c.name}
                       </Text>
-                    </Pressable>
+                    </BouncyButton>
                   );
                 })}
             </ScrollView>

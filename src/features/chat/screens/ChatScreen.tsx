@@ -25,8 +25,10 @@ type ChatMessage = {
   text: string;
 };
 
+import { AppTheme } from '../../../../providers/AppThemeProvider';
+
 export default function ChatScreen() {
-  const theme = useTheme();
+  const theme = useTheme<AppTheme>();
   const router = useRouter();
 
   const transactions = useTransactionStore((s) => s.transactions);
@@ -55,6 +57,14 @@ export default function ChatScreen() {
   
   const scrollViewRef = useRef<ScrollView>(null);
 
+  const [messages, setMessages] = useState<ChatMessage[]>(() => [
+    {
+      id: 'welcome',
+      role: 'assistant',
+      text: 'Hello! I am your AI financial assistant. How can I help you today?',
+    },
+  ]);
+
   useEffect(() => {
     // Small delay ensures the layout has finished shifting before we scroll
     const timer = setTimeout(() => {
@@ -64,18 +74,12 @@ export default function ChatScreen() {
   }, [messages]);
   const [huggingFaceToken, setHuggingFaceToken] = useState<string | null>(null);
   const [localModelReady, setLocalModelReady] = useState(localModelDownloaded);
-  const [messages, setMessages] = useState<ChatMessage[]>(() => [
-    {
-      id: 'welcome',
-      role: 'assistant',
-      text: 'Hello! I am your AI financial assistant. How can I help you today?',
-    },
-  ]);
+
 
   const settings = useMemo(
     () => ({
       aiProvider,
-      huggingFaceToken,
+      huggingFaceToken: huggingFaceToken ?? undefined,
       currencyCode,
       locale,
       region,
