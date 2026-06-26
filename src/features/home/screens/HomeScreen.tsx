@@ -93,11 +93,25 @@ export default function HomeScreen() {
     return Math.min(100, Math.max(0, (saved / target) * 100));
   }, [vacationGoal]);
 
+  // ⚡ Bolt Optimization: Memoize category lookups to avoid O(n²) find operations in filter and map
+  const categoryMap = useMemo(() => {
+    return categories.reduce((acc, cat) => {
+      acc[cat.id] = cat;
+      return acc;
+    }, {} as Record<string, typeof categories[0]>);
+  }, [categories]);
+
   // Filtering
   const filteredTransactions = useMemo(() => {
+    // ⚡ Bolt Optimization: Cache toLowerCase outside loop and skip when empty
+    const normalizedSearch = searchQuery ? searchQuery.toLowerCase() : '';
+
     return transactions.filter(tx => {
-      const category = categories.find(c => c.id === tx.categoryId);
-      const matchesSearch = (tx.note || category?.name || '').toLowerCase().includes(searchQuery.toLowerCase());
+      const category = categoryMap[tx.categoryId];
+
+      const matchesSearch = normalizedSearch
+        ? (tx.note || category?.name || '').toLowerCase().includes(normalizedSearch)
+        : true;
 
       let matchesFilter = true;
       if (selectedFilter !== 'All') {
@@ -109,7 +123,7 @@ export default function HomeScreen() {
       }
       return matchesSearch && matchesFilter;
     });
-  }, [transactions, categories, searchQuery, selectedFilter]);
+  }, [transactions, categoryMap, searchQuery, selectedFilter]);
 
   const filters = ['All', 'Food', 'Income', 'Transport'];
 
@@ -255,7 +269,8 @@ export default function HomeScreen() {
 
           <View style={[styles.transactionsList, { backgroundColor: theme.colors.surfaceContainerLow }]}>
             {filteredTransactions.slice(0, 10).map((tx, index) => {
-              const category = categories.find(c => c.id === tx.categoryId);
+              // ⚡ Bolt Optimization: O(1) lookup instead of O(n) find
+              const category = categoryMap[tx.categoryId];
               const isIncome = tx.type === 'income';
               const isLast = index === Math.min(filteredTransactions.length, 10) - 1;
 
