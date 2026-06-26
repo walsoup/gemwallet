@@ -25,7 +25,7 @@ export function TransactionDetailModal({ transaction, visible, onClose }: Props)
   const [editNote, setEditNote] = useState('');
   const [editCategoryId, setEditCategoryId] = useState('');
   const [editType, setEditType] = useState<'income' | 'expense'>('expense');
-  
+
   const updateTransaction = useTransactionStore(state => state.updateTransaction);
   const undoTransaction = useTransactionStore(state => state.undoTransaction);
   const categories = useTransactionStore(state => state.categories);
@@ -89,7 +89,7 @@ export function TransactionDetailModal({ transaction, visible, onClose }: Props)
       categoryId: editCategoryId,
       type: editType,
     });
-    
+
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     onClose();
   };
@@ -107,8 +107,8 @@ export function TransactionDetailModal({ transaction, visible, onClose }: Props)
         tint={theme.dark ? "dark" : "light"}
         style={StyleSheet.absoluteFill}
       />
-      <Pressable 
-        style={[styles.modalBackdrop, { backgroundColor: theme.dark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.3)' }]} 
+      <Pressable
+        style={[styles.modalBackdrop, { backgroundColor: theme.dark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.3)' }]}
         onPress={onClose}
       >
         <Pressable
@@ -119,11 +119,16 @@ export function TransactionDetailModal({ transaction, visible, onClose }: Props)
             <Text variant="titleMedium" style={{ color: theme.colors.onSurface }}>
               Transaction Details
             </Text>
-            <BouncyButton onPress={() => setIsEditing(!isEditing)} style={styles.editBtn}>
-              <MaterialCommunityIcons 
-                name={isEditing ? "close" : "pencil"} 
-                size={20} 
-                color={theme.colors.onSurfaceVariant} 
+            <BouncyButton
+              onPress={() => setIsEditing(!isEditing)}
+              style={styles.editBtn}
+              accessibilityRole="button"
+              accessibilityLabel={isEditing ? "Cancel editing transaction" : "Edit transaction"}
+            >
+              <MaterialCommunityIcons
+                name={isEditing ? "close" : "pencil"}
+                size={20}
+                color={theme.colors.onSurfaceVariant}
               />
             </BouncyButton>
           </View>
@@ -144,7 +149,7 @@ export function TransactionDetailModal({ transaction, visible, onClose }: Props)
                 value={editAmount}
                 onChangeText={setEditAmount}
               />
-              
+
               <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8, marginTop: 12 }}>Type</Text>
               <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
                 <BouncyButton
@@ -323,10 +328,10 @@ export function TransactionDetailModal({ transaction, visible, onClose }: Props)
                   <Text style={{ color: theme.colors.onSurface }}>{transaction.note}</Text>
                 </View>
               )}
-              
-              <Button 
-                mode="outlined" 
-                textColor={theme.colors.error} 
+
+              <Button
+                mode="outlined"
+                textColor={theme.colors.error}
                 style={{ borderColor: theme.colors.error, marginTop: 24 }}
                 onPress={handleDelete}
               >

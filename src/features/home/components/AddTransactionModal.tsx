@@ -22,7 +22,7 @@ export function AddTransactionModal({ visible, initialType = 'expense', onClose 
   const [editNote, setEditNote] = useState('');
   const [editCategoryId, setEditCategoryId] = useState('');
   const [editType, setEditType] = useState<'income' | 'expense'>(initialType);
-  
+
   const addExpense = useTransactionStore(state => state.addExpense);
   const addIncome = useTransactionStore(state => state.addIncome);
   const categories = useTransactionStore(state => state.categories);
@@ -80,7 +80,7 @@ export function AddTransactionModal({ visible, initialType = 'expense', onClose 
         categoryId: editCategoryId,
       });
     }
-    
+
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     onClose();
   };
@@ -92,8 +92,8 @@ export function AddTransactionModal({ visible, initialType = 'expense', onClose 
         tint={theme.dark ? "dark" : "light"}
         style={StyleSheet.absoluteFill}
       />
-      <Pressable 
-        style={[styles.modalBackdrop, { backgroundColor: theme.dark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.3)' }]} 
+      <Pressable
+        style={[styles.modalBackdrop, { backgroundColor: theme.dark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.3)' }]}
         onPress={onClose}
       >
         <Pressable
@@ -104,11 +104,16 @@ export function AddTransactionModal({ visible, initialType = 'expense', onClose 
             <Text variant="titleMedium" style={{ color: theme.colors.onSurface }}>
               Add Transaction
             </Text>
-            <BouncyButton onPress={onClose} style={styles.editBtn}>
-              <MaterialCommunityIcons 
-                name="close" 
-                size={20} 
-                color={theme.colors.onSurfaceVariant} 
+            <BouncyButton
+              onPress={onClose}
+              style={styles.editBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Close add transaction modal"
+            >
+              <MaterialCommunityIcons
+                name="close"
+                size={20}
+                color={theme.colors.onSurfaceVariant}
               />
             </BouncyButton>
           </View>
@@ -131,7 +136,7 @@ export function AddTransactionModal({ visible, initialType = 'expense', onClose 
               placeholderTextColor={theme.colors.onSurfaceVariant}
               autoFocus
             />
-            
+
             <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8, marginTop: 12 }}>Type</Text>
             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
               <BouncyButton
