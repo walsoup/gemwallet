@@ -1,0 +1,3 @@
+## 2024-06-27 - Controlled Input Re-renders & O(N*C) Lookups
+**Learning:** In React Native, filtering transactions directly within a `useMemo` that is tied to a controlled `TextInput` value (`searchQuery`) runs on every keystroke. Using `.find()` for category lookup creates an O(N*C) operation, and `.toLowerCase()` inside the loop creates redundant string allocations. This causes noticeable input lag when searching through a large ledger.
+**Action:** Always build O(1) reference maps (using `new Map()`) and hoist invariant string manipulations outside the `.filter` loop when the search filter is bound to keystroke changes.
