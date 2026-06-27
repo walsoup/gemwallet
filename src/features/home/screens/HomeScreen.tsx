@@ -93,11 +93,21 @@ export default function HomeScreen() {
     return Math.min(100, Math.max(0, (saved / target) * 100));
   }, [vacationGoal]);
 
+  // ⚡ Bolt Optimization: Extract Map generation to separate useMemo to prevent rebuilds on keystrokes
+  const categoryMap = useMemo(() => new Map(categories.map(c => [c.id, c])), [categories]);
+
   // Filtering
   const filteredTransactions = useMemo(() => {
+    // ⚡ Bolt Optimization: Hoist string allocation outside the loop and early exit
+    const lowerQuery = searchQuery.toLowerCase();
+
     return transactions.filter(tx => {
-      const category = categories.find(c => c.id === tx.categoryId);
-      const matchesSearch = (tx.note || category?.name || '').toLowerCase().includes(searchQuery.toLowerCase());
+      const category = categoryMap.get(tx.categoryId);
+
+      let matchesSearch = true;
+      if (lowerQuery) {
+        matchesSearch = (tx.note || category?.name || '').toLowerCase().includes(lowerQuery);
+      }
 
       let matchesFilter = true;
       if (selectedFilter !== 'All') {
@@ -109,7 +119,7 @@ export default function HomeScreen() {
       }
       return matchesSearch && matchesFilter;
     });
-  }, [transactions, categories, searchQuery, selectedFilter]);
+  }, [transactions, categoryMap, searchQuery, selectedFilter]);
 
   const filters = ['All', 'Food', 'Income', 'Transport'];
 
