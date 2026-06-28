@@ -403,6 +403,9 @@ export default function ChatScreen() {
             <BouncyButton 
               disabled={isSending || !inputText.trim()} 
               onPress={onSend}
+              accessibilityRole="button"
+              accessibilityLabel="Send message"
+              accessibilityState={{ disabled: isSending || !inputText.trim() }}
               style={[
                 styles.sendButton,
                 (isSending || !inputText.trim()) && { opacity: 0.5 }
