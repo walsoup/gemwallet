@@ -1,24 +1,35 @@
-import React, { useState, useMemo } from 'react';
-import { ScrollView, StyleSheet, View, TextInput, Pressable, Modal, Animated as RNAnimated } from 'react-native';
-import { Button, Text, useTheme } from 'react-native-paper';
-import { useTransactionStore, selectBalanceCents } from '../../../../store/useTransactionStore';
-import { useGoalsStore } from '../../../../store/useGoalsStore';
-import { useSettingsStore } from '../../../../store/useSettingsStore';
-import * as Haptics from 'expo-haptics';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { AppTheme } from '../../../../providers/AppThemeProvider';
-import { ScreenLayout } from '../../../components/Layout/ScreenLayout';
-import { formatAppCurrency } from '../../../../utils/currency';
-import Animated, { FadeInUp } from 'react-native-reanimated';
-import { TransactionDetailModal } from '../components/TransactionDetailModal';
-import { AddTransactionModal } from '../components/AddTransactionModal';
-import { Transaction } from '../../../../types/finance';
-import Swipeable from 'react-native-gesture-handler/Swipeable';
-import { ProgressRing } from '../../../components/UI/ProgressRing';
-import { AnimatedBalance } from '../../../components/UI/AnimatedBalance';
-import { BouncyButton } from '../../../components/UI/BouncyButton';
+import React, { useState, useMemo } from "react";
+import {
+  ScrollView,
+  StyleSheet,
+  View,
+  TextInput,
+  Pressable,
+  Modal,
+  Animated as RNAnimated,
+} from "react-native";
+import { Button, Text, useTheme } from "react-native-paper";
+import {
+  useTransactionStore,
+  selectBalanceCents,
+} from "../../../../store/useTransactionStore";
+import { useGoalsStore } from "../../../../store/useGoalsStore";
+import { useSettingsStore } from "../../../../store/useSettingsStore";
+import * as Haptics from "expo-haptics";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { AppTheme } from "../../../../providers/AppThemeProvider";
+import { ScreenLayout } from "../../../components/Layout/ScreenLayout";
+import { formatAppCurrency } from "../../../../utils/currency";
+import Animated, { FadeInUp } from "react-native-reanimated";
+import { TransactionDetailModal } from "../components/TransactionDetailModal";
+import { AddTransactionModal } from "../components/AddTransactionModal";
+import { Transaction } from "../../../../types/finance";
+import Swipeable from "react-native-gesture-handler/Swipeable";
+import { ProgressRing } from "../../../components/UI/ProgressRing";
+import { AnimatedBalance } from "../../../components/UI/AnimatedBalance";
+import { BouncyButton } from "../../../components/UI/BouncyButton";
 
-type QuickActionMode = 'income' | 'expense';
+type QuickActionMode = "income" | "expense";
 
 export default function HomeScreen() {
   const theme = useTheme<AppTheme>();
@@ -34,23 +45,29 @@ export default function HomeScreen() {
   };
 
   const currentMonthSpentByCategory = useMemo(() => {
-    const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
+    const startOfMonth = new Date(
+      new Date().getFullYear(),
+      new Date().getMonth(),
+      1,
+    ).getTime();
     const map: Record<string, number> = {};
-    transactions.forEach(tx => {
-      if (tx.type === 'expense' && tx.timestamp >= startOfMonth) {
+    transactions.forEach((tx) => {
+      if (tx.type === "expense" && tx.timestamp >= startOfMonth) {
         map[tx.categoryId] = (map[tx.categoryId] || 0) + tx.amountCents;
       }
     });
     return map;
   }, [transactions]);
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedFilter, setSelectedFilter] = useState('All');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedFilter, setSelectedFilter] = useState("All");
 
-  const [quickActionMode, setQuickActionMode] = useState<QuickActionMode>('income');
+  const [quickActionMode, setQuickActionMode] =
+    useState<QuickActionMode>("income");
   const [quickActionVisible, setQuickActionVisible] = useState(false);
 
-  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+  const [selectedTransaction, setSelectedTransaction] =
+    useState<Transaction | null>(null);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
 
   const openQuickAction = (mode: QuickActionMode) => {
@@ -66,43 +83,51 @@ export default function HomeScreen() {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
 
-  const customGreeting = useSettingsStore(state => state.customGreetingName);
+  const customGreeting = useSettingsStore((state) => state.customGreetingName);
   const hour = now.getHours();
-  let greetingBase = 'Good morning';
-  if (hour >= 12 && hour < 17) greetingBase = 'Good afternoon';
-  else if (hour >= 17) greetingBase = 'Good evening';
-  
-  const greeting = customGreeting && customGreeting.trim() !== '' 
-    ? `${greetingBase}, ${customGreeting.trim()}`
-    : greetingBase;
+  let greetingBase = "Good morning";
+  if (hour >= 12 && hour < 17) greetingBase = "Good afternoon";
+  else if (hour >= 17) greetingBase = "Good evening";
+
+  const greeting =
+    customGreeting && customGreeting.trim() !== ""
+      ? `${greetingBase}, ${customGreeting.trim()}`
+      : greetingBase;
 
   // Monthly Spend
   const monthlySpendCents = useMemo(() => {
     return transactions
-      .filter(tx => tx.type === 'expense' && tx.timestamp >= startOfMonth)
+      .filter((tx) => tx.type === "expense" && tx.timestamp >= startOfMonth)
       .reduce((sum, tx) => sum + tx.amountCents, 0);
   }, [transactions, startOfMonth]);
 
   // Vacation Fund
-  const vacationGoal = goals.find(g => g.name.toLowerCase().includes('vacation')) || goals[0];
+  const vacationGoal =
+    goals.find((g) => g.name.toLowerCase().includes("vacation")) || goals[0];
   const vacationProgressPercent = useMemo(() => {
     if (!vacationGoal) return 0;
-    const target = Number.isFinite(vacationGoal.targetCents) ? vacationGoal.targetCents : 0;
-    const saved = Number.isFinite(vacationGoal.savedCents) ? vacationGoal.savedCents : 0;
+    const target = Number.isFinite(vacationGoal.targetCents)
+      ? vacationGoal.targetCents
+      : 0;
+    const saved = Number.isFinite(vacationGoal.savedCents)
+      ? vacationGoal.savedCents
+      : 0;
     if (target <= 0) return 0;
     return Math.min(100, Math.max(0, (saved / target) * 100));
   }, [vacationGoal]);
 
   // Filtering
   const filteredTransactions = useMemo(() => {
-    return transactions.filter(tx => {
-      const category = categories.find(c => c.id === tx.categoryId);
-      const matchesSearch = (tx.note || category?.name || '').toLowerCase().includes(searchQuery.toLowerCase());
+    return transactions.filter((tx) => {
+      const category = categories.find((c) => c.id === tx.categoryId);
+      const matchesSearch = (tx.note || category?.name || "")
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase());
 
       let matchesFilter = true;
-      if (selectedFilter !== 'All') {
-        if (selectedFilter === 'Income') {
-          matchesFilter = tx.type === 'income';
+      if (selectedFilter !== "All") {
+        if (selectedFilter === "Income") {
+          matchesFilter = tx.type === "income";
         } else {
           matchesFilter = category?.name === selectedFilter;
         }
@@ -111,18 +136,21 @@ export default function HomeScreen() {
     });
   }, [transactions, categories, searchQuery, selectedFilter]);
 
-  const filters = ['All', 'Food', 'Income', 'Transport'];
+  const filters = ["All", "Food", "Income", "Transport"];
 
   return (
-    <ScreenLayout title={greeting} backgroundColor={theme.colors.background} contentContainerStyle={{ flex: 1 }}>
-
-      <AddTransactionModal 
-        visible={quickActionVisible} 
-        initialType={quickActionMode} 
-        onClose={closeQuickAction} 
+    <ScreenLayout
+      title={greeting}
+      backgroundColor={theme.colors.background}
+      contentContainerStyle={{ flex: 1 }}
+    >
+      <AddTransactionModal
+        visible={quickActionVisible}
+        initialType={quickActionMode}
+        onClose={closeQuickAction}
       />
 
-      <TransactionDetailModal 
+      <TransactionDetailModal
         transaction={selectedTransaction}
         visible={detailModalVisible}
         onClose={() => setDetailModalVisible(false)}
@@ -131,29 +159,70 @@ export default function HomeScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Hero Balance Section */}
         <View style={styles.heroSection}>
-          <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8, fontFamily: 'BeVietnamPro_500Medium' }}>
+          <Text
+            variant="bodySmall"
+            style={{
+              color: theme.colors.onSurfaceVariant,
+              marginBottom: 8,
+              fontFamily: "BeVietnamPro_500Medium",
+            }}
+          >
             Available Cash
           </Text>
-          <AnimatedBalance 
-            valueCents={balanceCents} 
-            textStyle={{ fontSize: 56, lineHeight: 64 }} 
+          <AnimatedBalance
+            valueCents={balanceCents}
+            textStyle={{ fontSize: 56, lineHeight: 64 }}
           />
 
           {/* Quick Actions */}
           <View style={styles.quickActions}>
             <BouncyButton
-              style={[styles.actionButton, styles.primaryButton, { backgroundColor: theme.colors.primaryContainer }]}
-              onPress={() => openQuickAction('income')}
+              style={[
+                styles.actionButton,
+                styles.primaryButton,
+                { backgroundColor: theme.colors.primaryContainer },
+              ]}
+              onPress={() => openQuickAction("income")}
+              accessibilityRole="button"
+              accessibilityLabel="Add Funds"
             >
-              <MaterialCommunityIcons name="arrow-up" size={20} color={theme.colors.onPrimaryContainer} />
-              <Text style={[styles.actionButtonText, { color: theme.colors.onPrimaryContainer }]}>Add Funds</Text>
+              <MaterialCommunityIcons
+                name="arrow-up"
+                size={20}
+                color={theme.colors.onPrimaryContainer}
+              />
+              <Text
+                style={[
+                  styles.actionButtonText,
+                  { color: theme.colors.onPrimaryContainer },
+                ]}
+              >
+                Add Funds
+              </Text>
             </BouncyButton>
             <BouncyButton
-              style={[styles.actionButton, styles.secondaryButton, { backgroundColor: theme.colors.surfaceContainerHighest }]}
-              onPress={() => openQuickAction('expense')}
+              style={[
+                styles.actionButton,
+                styles.secondaryButton,
+                { backgroundColor: theme.colors.surfaceContainerHighest },
+              ]}
+              onPress={() => openQuickAction("expense")}
+              accessibilityRole="button"
+              accessibilityLabel="Spend Funds"
             >
-              <MaterialCommunityIcons name="arrow-down" size={20} color={theme.colors.onSurface} />
-              <Text style={[styles.actionButtonText, { color: theme.colors.onSurface }]}>Spend Funds</Text>
+              <MaterialCommunityIcons
+                name="arrow-down"
+                size={20}
+                color={theme.colors.onSurface}
+              />
+              <Text
+                style={[
+                  styles.actionButtonText,
+                  { color: theme.colors.onSurface },
+                ]}
+              >
+                Spend Funds
+              </Text>
             </BouncyButton>
           </View>
         </View>
@@ -161,50 +230,134 @@ export default function HomeScreen() {
         {/* Insights Bento Grid */}
         <View style={styles.bentoGrid}>
           {/* Monthly Spend */}
-          <View style={[styles.bentoCard, { backgroundColor: theme.colors.surfaceContainerLow }]}>
+          <View
+            style={[
+              styles.bentoCard,
+              { backgroundColor: theme.colors.surfaceContainerLow },
+            ]}
+          >
             <View style={styles.bentoHeader}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <MaterialCommunityIcons name="chart-line" size={20} color={theme.colors.onSurfaceVariant} />
-                <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_500Medium', fontSize: 14 }}>Monthly Spend</Text>
+              <View
+                style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+              >
+                <MaterialCommunityIcons
+                  name="chart-line"
+                  size={20}
+                  color={theme.colors.onSurfaceVariant}
+                />
+                <Text
+                  style={{
+                    color: theme.colors.onSurfaceVariant,
+                    fontFamily: "BeVietnamPro_500Medium",
+                    fontSize: 14,
+                  }}
+                >
+                  Monthly Spend
+                </Text>
               </View>
-              <View style={[styles.badge, { backgroundColor: theme.colors.tertiary + '1A' }]}>
-                <Text style={{ color: theme.colors.tertiary, fontSize: 12, fontFamily: 'BeVietnamPro_500Medium' }}>On track</Text>
+              <View
+                style={[
+                  styles.badge,
+                  { backgroundColor: theme.colors.tertiary + "1A" },
+                ]}
+              >
+                <Text
+                  style={{
+                    color: theme.colors.tertiary,
+                    fontSize: 12,
+                    fontFamily: "BeVietnamPro_500Medium",
+                  }}
+                >
+                  On track
+                </Text>
               </View>
             </View>
             <View style={{ marginTop: 16 }}>
-              <Text variant="headlineLarge" style={{ color: theme.colors.onSurface }}>
+              <Text
+                variant="headlineLarge"
+                style={{ color: theme.colors.onSurface }}
+              >
                 {formatAppCurrency(monthlySpendCents)}
               </Text>
-              <View style={[styles.progressBarBg, { backgroundColor: theme.colors.surfaceContainerHighest }]}>
-                <View style={[styles.progressBarFill, { backgroundColor: theme.colors.primaryContainer, width: '65%' }]} />
+              <View
+                style={[
+                  styles.progressBarBg,
+                  { backgroundColor: theme.colors.surfaceContainerHighest },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.progressBarFill,
+                    {
+                      backgroundColor: theme.colors.primaryContainer,
+                      width: "65%",
+                    },
+                  ]}
+                />
               </View>
             </View>
           </View>
 
           {/* Savings Goal */}
-          <View style={[styles.bentoCard, { backgroundColor: theme.colors.surfaceContainerLow }]}>
+          <View
+            style={[
+              styles.bentoCard,
+              { backgroundColor: theme.colors.surfaceContainerLow },
+            ]}
+          >
             <View style={styles.bentoHeader}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <MaterialCommunityIcons name="flag" size={20} color={theme.colors.onSurfaceVariant} />
-                <Text style={{ color: theme.colors.onSurfaceVariant, fontFamily: 'BeVietnamPro_500Medium', fontSize: 14 }}>
-                  {vacationGoal ? vacationGoal.name : 'Savings Goal'}
+              <View
+                style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+              >
+                <MaterialCommunityIcons
+                  name="flag"
+                  size={20}
+                  color={theme.colors.onSurfaceVariant}
+                />
+                <Text
+                  style={{
+                    color: theme.colors.onSurfaceVariant,
+                    fontFamily: "BeVietnamPro_500Medium",
+                    fontSize: 14,
+                  }}
+                >
+                  {vacationGoal ? vacationGoal.name : "Savings Goal"}
                 </Text>
               </View>
             </View>
             <View style={{ marginTop: 16 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
-                <Text variant="headlineLarge" style={{ color: theme.colors.onSurface }}>
+              <View
+                style={{ flexDirection: "row", alignItems: "baseline", gap: 4 }}
+              >
+                <Text
+                  variant="headlineLarge"
+                  style={{ color: theme.colors.onSurface }}
+                >
                   {formatAppCurrency(vacationGoal?.savedCents ?? 0)}
                 </Text>
-                <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 18, fontFamily: 'SpaceGrotesk_500Medium' }}>
+                <Text
+                  style={{
+                    color: theme.colors.onSurfaceVariant,
+                    fontSize: 18,
+                    fontFamily: "SpaceGrotesk_500Medium",
+                  }}
+                >
                   / {formatAppCurrency(vacationGoal?.targetCents ?? 0)}
                 </Text>
               </View>
-              <View style={[styles.progressBarBg, { backgroundColor: theme.colors.surfaceContainerHighest }]}>
+              <View
+                style={[
+                  styles.progressBarBg,
+                  { backgroundColor: theme.colors.surfaceContainerHighest },
+                ]}
+              >
                 <View
                   style={[
                     styles.progressBarFill,
-                    { backgroundColor: theme.colors.tertiary, width: `${vacationProgressPercent}%` }
+                    {
+                      backgroundColor: theme.colors.tertiary,
+                      width: `${vacationProgressPercent}%`,
+                    },
                   ]}
                 />
               </View>
@@ -213,12 +366,27 @@ export default function HomeScreen() {
         </View>
 
         {/* Recent Transactions */}
-        <Animated.View entering={FadeInUp.delay(300).springify()} style={styles.transactionsSection}>
+        <Animated.View
+          entering={FadeInUp.delay(300).springify()}
+          style={styles.transactionsSection}
+        >
           <View style={styles.searchSection}>
             <View style={styles.searchBarContainer}>
-              <MaterialCommunityIcons name="magnify" size={20} color={theme.colors.onSurfaceVariant} style={styles.searchIcon} />
+              <MaterialCommunityIcons
+                name="magnify"
+                size={20}
+                color={theme.colors.onSurfaceVariant}
+                style={styles.searchIcon}
+              />
               <TextInput
-                style={[styles.searchInput, { backgroundColor: theme.colors.surfaceContainerLow, color: theme.colors.onSurface, borderColor: theme.colors.outlineVariant + '4D' }]}
+                style={[
+                  styles.searchInput,
+                  {
+                    backgroundColor: theme.colors.surfaceContainerLow,
+                    color: theme.colors.onSurface,
+                    borderColor: theme.colors.outlineVariant + "4D",
+                  },
+                ]}
                 placeholder="Search transactions..."
                 placeholderTextColor={theme.colors.onSurfaceVariant}
                 value={searchQuery}
@@ -226,8 +394,13 @@ export default function HomeScreen() {
               />
             </View>
 
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterContent}>
-              {filters.map(filter => {
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.filterScroll}
+              contentContainerStyle={styles.filterContent}
+            >
+              {filters.map((filter) => {
                 const isActive = selectedFilter === filter;
                 return (
                   <BouncyButton
@@ -235,16 +408,31 @@ export default function HomeScreen() {
                     scaleTo={0.9}
                     style={[
                       styles.filterChip,
-                      isActive ? { backgroundColor: theme.colors.primaryContainer, borderWidth: 0 }
-                               : { backgroundColor: theme.colors.surfaceContainerLow, borderColor: theme.colors.outlineVariant + '33', borderWidth: 1 }
+                      isActive
+                        ? {
+                            backgroundColor: theme.colors.primaryContainer,
+                            borderWidth: 0,
+                          }
+                        : {
+                            backgroundColor: theme.colors.surfaceContainerLow,
+                            borderColor: theme.colors.outlineVariant + "33",
+                            borderWidth: 1,
+                          },
                     ]}
                     onPress={() => setSelectedFilter(filter)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isActive }}
+                    accessibilityLabel={`Filter by ${filter}`}
                   >
-                    <Text style={{
-                      color: isActive ? theme.colors.onPrimaryContainer : theme.colors.onSurface,
-                      fontFamily: 'BeVietnamPro_500Medium',
-                      fontSize: 14
-                    }}>
+                    <Text
+                      style={{
+                        color: isActive
+                          ? theme.colors.onPrimaryContainer
+                          : theme.colors.onSurface,
+                        fontFamily: "BeVietnamPro_500Medium",
+                        fontSize: 14,
+                      }}
+                    >
                       {filter}
                     </Text>
                   </BouncyButton>
@@ -253,31 +441,46 @@ export default function HomeScreen() {
             </ScrollView>
           </View>
 
-          <View style={[styles.transactionsList, { backgroundColor: theme.colors.surfaceContainerLow }]}>
+          <View
+            style={[
+              styles.transactionsList,
+              { backgroundColor: theme.colors.surfaceContainerLow },
+            ]}
+          >
             {filteredTransactions.slice(0, 10).map((tx, index) => {
-              const category = categories.find(c => c.id === tx.categoryId);
-              const isIncome = tx.type === 'income';
-              const isLast = index === Math.min(filteredTransactions.length, 10) - 1;
+              const category = categories.find((c) => c.id === tx.categoryId);
+              const isIncome = tx.type === "income";
+              const isLast =
+                index === Math.min(filteredTransactions.length, 10) - 1;
 
               const budgetLimit = category?.maxBudgetLimitCents;
-              const spent = category ? currentMonthSpentByCategory[category.id] || 0 : 0;
-              const isWarning = budgetLimit && budgetLimit > 0 && spent >= 0.8 * budgetLimit;
+              const spent = category
+                ? currentMonthSpentByCategory[category.id] || 0
+                : 0;
+              const isWarning =
+                budgetLimit && budgetLimit > 0 && spent >= 0.8 * budgetLimit;
 
-              let iconName = 'help';
-              if (category?.name === 'Food') iconName = 'silverware-fork-knife';
-              else if (category?.name === 'Transport') iconName = 'train';
-              else if (isIncome) iconName = 'cash';
-              else if (category?.name === 'Entertainment') iconName = 'movie';
+              let iconName = "help";
+              if (category?.name === "Food") iconName = "silverware-fork-knife";
+              else if (category?.name === "Transport") iconName = "train";
+              else if (isIncome) iconName = "cash";
+              else if (category?.name === "Entertainment") iconName = "movie";
 
-              const itemBg = isWarning ? theme.colors.errorContainer : undefined;
-              const textColor = isWarning ? theme.colors.onErrorContainer : theme.colors.onSurface;
-              const textSubColor = isWarning ? theme.colors.onErrorContainer + 'CC' : theme.colors.onSurfaceVariant;
+              const itemBg = isWarning
+                ? theme.colors.errorContainer
+                : undefined;
+              const textColor = isWarning
+                ? theme.colors.onErrorContainer
+                : theme.colors.onSurface;
+              const textSubColor = isWarning
+                ? theme.colors.onErrorContainer + "CC"
+                : theme.colors.onSurfaceVariant;
 
               return (
                 <Swipeable
                   key={tx.id}
                   onSwipeableOpen={(direction) => {
-                    if (direction === 'right') {
+                    if (direction === "right") {
                       handleDeleteTransaction(tx.id);
                     }
                   }}
@@ -285,22 +488,26 @@ export default function HomeScreen() {
                     const scale = dragX.interpolate({
                       inputRange: [-80, 0],
                       outputRange: [1, 0],
-                      extrapolate: 'clamp',
+                      extrapolate: "clamp",
                     });
                     return (
                       <Pressable
                         onPress={() => handleDeleteTransaction(tx.id)}
                         style={{
                           backgroundColor: theme.colors.errorContainer,
-                          justifyContent: 'center',
-                          alignItems: 'center',
+                          justifyContent: "center",
+                          alignItems: "center",
                           width: 80,
-                          height: '100%',
+                          height: "100%",
                           borderRadius: 16,
                         }}
                       >
                         <RNAnimated.View style={{ transform: [{ scale }] }}>
-                          <MaterialCommunityIcons name="delete" size={24} color={theme.colors.onErrorContainer} />
+                          <MaterialCommunityIcons
+                            name="delete"
+                            size={24}
+                            color={theme.colors.onErrorContainer}
+                          />
                         </RNAnimated.View>
                       </Pressable>
                     );
@@ -315,57 +522,117 @@ export default function HomeScreen() {
                     scaleTo={0.96}
                     style={[
                       styles.txItem,
-                      { backgroundColor: itemBg || 'transparent' },
-                      !isLast && { borderBottomWidth: 1, borderBottomColor: isWarning ? theme.colors.onErrorContainer + '26' : theme.colors.outlineVariant + '26' }
+                      { backgroundColor: itemBg || "transparent" },
+                      !isLast && {
+                        borderBottomWidth: 1,
+                        borderBottomColor: isWarning
+                          ? theme.colors.onErrorContainer + "26"
+                          : theme.colors.outlineVariant + "26",
+                      },
                     ]}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Transaction details for ${tx.note || category?.name || "Transaction"}`}
                   >
                     <View style={styles.txItemLeft}>
-                      <View style={{ width: 48, height: 48, justifyContent: 'center', alignItems: 'center' }}>
+                      <View
+                        style={{
+                          width: 48,
+                          height: 48,
+                          justifyContent: "center",
+                          alignItems: "center",
+                        }}
+                      >
                         {budgetLimit && budgetLimit > 0 && (
-                          <View style={{ position: 'absolute', left: 0, top: 0, zIndex: 1 }}>
+                          <View
+                            style={{
+                              position: "absolute",
+                              left: 0,
+                              top: 0,
+                              zIndex: 1,
+                            }}
+                          >
                             <ProgressRing
                               size={48}
                               strokeWidth={3}
                               progress={spent / budgetLimit}
-                              color={isWarning ? theme.colors.error : theme.colors.primary}
-                              trackColor={isWarning ? theme.colors.errorContainer : theme.colors.surfaceContainerHighest}
+                              color={
+                                isWarning
+                                  ? theme.colors.error
+                                  : theme.colors.primary
+                              }
+                              trackColor={
+                                isWarning
+                                  ? theme.colors.errorContainer
+                                  : theme.colors.surfaceContainerHighest
+                              }
                             />
                           </View>
                         )}
-                        <View style={[
-                          styles.txIconContainer,
-                          { backgroundColor: isIncome ? theme.colors.tertiary + '1A' : (isWarning ? theme.colors.onErrorContainer + '1A' : theme.colors.surfaceContainerHighest) }
-                        ]}>
+                        <View
+                          style={[
+                            styles.txIconContainer,
+                            {
+                              backgroundColor: isIncome
+                                ? theme.colors.tertiary + "1A"
+                                : isWarning
+                                  ? theme.colors.onErrorContainer + "1A"
+                                  : theme.colors.surfaceContainerHighest,
+                            },
+                          ]}
+                        >
                           <MaterialCommunityIcons
                             name={iconName as any}
                             size={24}
-                            color={isIncome ? theme.colors.tertiary : (isWarning ? theme.colors.onErrorContainer : theme.colors.onSurfaceVariant)}
+                            color={
+                              isIncome
+                                ? theme.colors.tertiary
+                                : isWarning
+                                  ? theme.colors.onErrorContainer
+                                  : theme.colors.onSurfaceVariant
+                            }
                           />
                         </View>
                       </View>
                       <View style={{ marginLeft: 4 }}>
-                        <Text style={{ color: textColor, fontFamily: 'BeVietnamPro_500Medium', fontSize: 16 }}>
-                          {tx.note || category?.name || 'Transaction'}
+                        <Text
+                          style={{
+                            color: textColor,
+                            fontFamily: "BeVietnamPro_500Medium",
+                            fontSize: 16,
+                          }}
+                        >
+                          {tx.note || category?.name || "Transaction"}
                         </Text>
-                        <Text style={{ color: textSubColor, fontFamily: 'BeVietnamPro_400Regular', fontSize: 14 }}>
-                          {category?.name || 'Misc'}
+                        <Text
+                          style={{
+                            color: textSubColor,
+                            fontFamily: "BeVietnamPro_400Regular",
+                            fontSize: 14,
+                          }}
+                        >
+                          {category?.name || "Misc"}
                         </Text>
                       </View>
                     </View>
-                    <Text style={{
-                      color: isIncome ? theme.colors.tertiary : textColor,
-                      fontFamily: 'BeVietnamPro_500Medium',
-                      fontSize: 16
-                    }}>
-                      {isIncome ? '+' : '-'}{formatAppCurrency(tx.amountCents)}
+                    <Text
+                      style={{
+                        color: isIncome ? theme.colors.tertiary : textColor,
+                        fontFamily: "BeVietnamPro_500Medium",
+                        fontSize: 16,
+                      }}
+                    >
+                      {isIncome ? "+" : "-"}
+                      {formatAppCurrency(tx.amountCents)}
                     </Text>
                   </BouncyButton>
                 </Swipeable>
               );
             })}
             {filteredTransactions.length === 0 && (
-              <View style={{ padding: 24, alignItems: 'center' }}>
-                <Text style={{ color: theme.colors.onSurfaceVariant }}>No transactions found.</Text>
+              <View style={{ padding: 24, alignItems: "center" }}>
+                <Text style={{ color: theme.colors.onSurfaceVariant }}>
+                  No transactions found.
+                </Text>
               </View>
             )}
           </View>
@@ -384,20 +651,20 @@ const styles = StyleSheet.create({
   },
 
   heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginTop: 16,
   },
   quickActions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 16,
     marginTop: 32,
   },
   actionButton: {
     flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
-    alignItems: 'center',
+    justifyContent: "center",
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderRadius: 32,
@@ -406,10 +673,9 @@ const styles = StyleSheet.create({
   primaryButton: {
     // shadow
   },
-  secondaryButton: {
-  },
+  secondaryButton: {},
   actionButtonText: {
-    fontFamily: 'BeVietnamPro_500Medium',
+    fontFamily: "BeVietnamPro_500Medium",
     fontSize: 16,
   },
   bentoGrid: {
@@ -420,12 +686,12 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 24,
     minHeight: 160,
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
   },
   bentoHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
   },
   badge: {
     paddingHorizontal: 8,
@@ -433,14 +699,14 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   progressBarBg: {
-    width: '100%',
+    width: "100%",
     height: 8,
     borderRadius: 4,
     marginTop: 12,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   progressBarFill: {
-    height: '100%',
+    height: "100%",
     borderRadius: 4,
   },
   transactionsSection: {
@@ -452,24 +718,24 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   searchBarContainer: {
-    position: 'relative',
-    width: '100%',
+    position: "relative",
+    width: "100%",
   },
   searchIcon: {
-    position: 'absolute',
+    position: "absolute",
     left: 16,
-    top: '50%',
+    top: "50%",
     transform: [{ translateY: -10 }],
     zIndex: 1,
   },
   searchInput: {
-    width: '100%',
+    width: "100%",
     borderWidth: 1,
     borderRadius: 16,
     paddingVertical: 12,
     paddingLeft: 48,
     paddingRight: 16,
-    fontFamily: 'BeVietnamPro_400Regular',
+    fontFamily: "BeVietnamPro_400Regular",
     fontSize: 16,
   },
   filterScroll: {
@@ -486,25 +752,25 @@ const styles = StyleSheet.create({
   },
   transactionsList: {
     borderRadius: 24,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   txItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingVertical: 16,
     paddingHorizontal: 24,
   },
   txItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 16,
   },
   txIconContainer: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
