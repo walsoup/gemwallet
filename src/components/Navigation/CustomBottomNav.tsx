@@ -122,6 +122,9 @@ export function CustomBottomNav({ state, descriptors, navigation }: BottomTabBar
               onPress={onPress}
               scaleTo={0.85}
               style={styles.tabItem}
+              accessibilityRole="button"
+              accessibilityState={{ selected: isFocused }}
+              accessibilityLabel={`${label as string} tab`}
             >
               <MaterialCommunityIcons
                 name={iconName as any}
