@@ -15,6 +15,14 @@ export default function AnalyticsScreen() {
   const transactions = useTransactionStore((state) => state.transactions);
   const categories = useTransactionStore((state) => state.categories);
 
+  // ⚡ Bolt Optimization: Memoize category lookups to avoid O(n²) find operations in filter and map
+  const categoryMap = useMemo(() => {
+    return categories.reduce((acc, cat) => {
+      acc[cat.id] = cat;
+      return acc;
+    }, {} as Record<string, typeof categories[0]>);
+  }, [categories]);
+
   const now = useMemo(() => new Date(), []);
   const startOfMonth = useMemo(
     () => new Date(now.getFullYear(), now.getMonth(), 1).getTime(),
@@ -59,7 +67,7 @@ export default function AnalyticsScreen() {
     ];
 
     return Object.keys(map).map((catId, idx) => {
-      const cat = categories.find(c => c.id === catId);
+      const cat = categoryMap[catId];
       return {
         value: map[catId] / 100,
         color: colors[idx % colors.length],
@@ -67,7 +75,7 @@ export default function AnalyticsScreen() {
         label: cat?.name || 'Misc'
       };
     }).sort((a, b) => b.value - a.value);
-  }, [transactions, categories, startOfMonth, theme.colors]);
+  }, [transactions, categoryMap, startOfMonth, theme.colors]);
 
   // Monthly Bar Chart data (last 6 months trend)
   const monthlyBarData = useMemo(() => {
@@ -151,7 +159,7 @@ export default function AnalyticsScreen() {
 
     transactions.forEach(tx => {
       if (tx.type === 'expense' && tx.timestamp >= startOfMonth) {
-        const cat = categories.find(c => c.id === tx.categoryId);
+        const cat = categoryMap[tx.categoryId];
         if (cat) {
           if (!categoryTotals[cat.id]) {
             let icon = 'help';
@@ -170,7 +178,7 @@ export default function AnalyticsScreen() {
     return Object.values(categoryTotals)
       .sort((a, b) => b.total - a.total)
       .slice(0, 3);
-  }, [transactions, categories, startOfMonth]);
+  }, [transactions, categoryMap, startOfMonth]);
 
   const moverPercentages = useMemo(() => {
     const previousStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).getTime();
