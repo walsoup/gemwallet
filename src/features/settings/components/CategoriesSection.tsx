@@ -19,6 +19,7 @@ export function CategoriesSection() {
       </View>
       <View style={[styles.sectionContent, { backgroundColor: theme.colors.surfaceContainer }]}>
         <Pressable
+          accessibilityRole="button"
           style={({ pressed }) => [
             styles.settingRow,
             { backgroundColor: pressed ? theme.colors.surfaceContainerHigh : theme.colors.surfaceContainer },

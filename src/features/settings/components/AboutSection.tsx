@@ -28,6 +28,7 @@ export function AboutSection() {
           </View>
         </View>
         <Pressable
+          accessibilityRole="button"
           style={({ pressed }) => [
             styles.settingRow,
             { backgroundColor: pressed ? theme.colors.surfaceContainerHigh : theme.colors.surfaceContainer },

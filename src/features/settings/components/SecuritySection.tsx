@@ -35,6 +35,8 @@ export function SecuritySection() {
             </View>
           </View>
           <Switch
+            accessibilityRole="switch"
+            accessibilityLabel={biometricAuthEnabled ? 'Disable Biometric Authentication' : 'Enable Biometric Authentication'}
             value={biometricAuthEnabled}
             onValueChange={async (val) => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -54,6 +56,7 @@ export function SecuritySection() {
           />
         </View>
         <Pressable
+          accessibilityRole="button"
           style={({pressed}) => [styles.settingRow, { backgroundColor: pressed ? theme.colors.surfaceContainerHigh : theme.colors.surfaceContainer }]}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -72,6 +75,7 @@ export function SecuritySection() {
 
         {!!passcodePin && (
           <Pressable
+            accessibilityRole="button"
             style={({pressed}) => [styles.settingRow, { backgroundColor: pressed ? theme.colors.surfaceContainerHigh : theme.colors.surfaceContainer }]}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
