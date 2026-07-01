@@ -77,11 +77,10 @@ export default function HomeScreen() {
     : greetingBase;
 
   // Monthly Spend
+  // ⚡ Bolt Optimization: Reuse currentMonthSpentByCategory to avoid redundant O(N) filtering and iteration
   const monthlySpendCents = useMemo(() => {
-    return transactions
-      .filter(tx => tx.type === 'expense' && tx.timestamp >= startOfMonth)
-      .reduce((sum, tx) => sum + tx.amountCents, 0);
-  }, [transactions, startOfMonth]);
+    return Object.values(currentMonthSpentByCategory).reduce((sum, amount) => sum + amount, 0);
+  }, [currentMonthSpentByCategory]);
 
   // Vacation Fund
   const vacationGoal = goals.find(g => g.name.toLowerCase().includes('vacation')) || goals[0];
