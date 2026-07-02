@@ -252,7 +252,7 @@ export default function AnalyticsScreen() {
     });
 
     return percentages;
-  }, [now, startOfMonth, transactions]);
+  }, [now, startOfMonth, transactions, currentMonthSpentByCategory]);
 
   return (
     <ScreenLayout title="Analytics" backgroundColor={theme.colors.background}>
