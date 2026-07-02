@@ -33,6 +33,7 @@ export function LocalDataSection() {
       </View>
       <View style={[styles.sectionContent, { backgroundColor: theme.colors.surfaceContainer }]}>
         <Pressable
+          accessibilityRole="button"
           style={({pressed}) => [styles.settingRow, { backgroundColor: pressed ? theme.colors.surfaceContainerHigh : theme.colors.surfaceContainer }]}
           onPress={async () => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -72,6 +73,7 @@ export function LocalDataSection() {
           <MaterialCommunityIcons name="chevron-right" size={24} color={theme.colors.onSurfaceVariant} />
         </Pressable>
         <Pressable
+          accessibilityRole="button"
           style={({pressed}) => [styles.settingRow, { backgroundColor: pressed ? theme.colors.surfaceContainerHigh : theme.colors.surfaceContainer }]}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
