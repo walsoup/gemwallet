@@ -228,6 +228,9 @@ export default function PlanningScreen() {
                     ? { backgroundColor: theme.colors.errorContainer, borderColor: theme.colors.error }
                     : { backgroundColor: theme.colors.surfaceContainerLowest, borderColor: theme.colors.outlineVariant + '4D' }
                 ]}
+                accessibilityRole="button"
+                accessibilityLabel="Set type to expense"
+                accessibilityState={{ checked: recType === 'expense' }}
               >
                 <Text style={{
                   color: recType === 'expense' ? theme.colors.onErrorContainer : theme.colors.onSurface,
@@ -251,6 +254,9 @@ export default function PlanningScreen() {
                     ? { backgroundColor: theme.colors.tertiary + '1A', borderColor: theme.colors.tertiary }
                     : { backgroundColor: theme.colors.surfaceContainerLowest, borderColor: theme.colors.outlineVariant + '4D' }
                 ]}
+                accessibilityRole="button"
+                accessibilityLabel="Set type to income"
+                accessibilityState={{ checked: recType === 'income' }}
               >
                 <Text style={{
                   color: recType === 'income' ? theme.colors.tertiary : theme.colors.onSurface,
@@ -284,6 +290,9 @@ export default function PlanningScreen() {
                           ? { backgroundColor: theme.colors.primaryContainer, borderColor: theme.colors.primary }
                           : { backgroundColor: theme.colors.surfaceContainerLowest, borderColor: theme.colors.outlineVariant + '4D' }
                       ]}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Select category ${c.name}`}
+                      accessibilityState={{ checked: isSelected }}
                     >
                       <View style={{ width: 32, height: 32, justifyContent: 'center', alignItems: 'center' }}>
                         {budgetLimit && budgetLimit > 0 && (
@@ -325,6 +334,9 @@ export default function PlanningScreen() {
                     ? { backgroundColor: theme.colors.primaryContainer, borderColor: theme.colors.primary }
                     : { backgroundColor: theme.colors.surfaceContainerLowest, borderColor: theme.colors.outlineVariant + '4D' }
                 ]}
+                accessibilityRole="button"
+                accessibilityLabel="Set interval to weekly"
+                accessibilityState={{ checked: recInterval === 'weekly' }}
               >
                 <Text style={{
                   color: recInterval === 'weekly' ? theme.colors.onPrimaryContainer : theme.colors.onSurface,
@@ -344,6 +356,9 @@ export default function PlanningScreen() {
                     ? { backgroundColor: theme.colors.primaryContainer, borderColor: theme.colors.primary }
                     : { backgroundColor: theme.colors.surfaceContainerLowest, borderColor: theme.colors.outlineVariant + '4D' }
                 ]}
+                accessibilityRole="button"
+                accessibilityLabel="Set interval to monthly"
+                accessibilityState={{ checked: recInterval === 'monthly' }}
               >
                 <Text style={{
                   color: recInterval === 'monthly' ? theme.colors.onPrimaryContainer : theme.colors.onSurface,
@@ -391,6 +406,8 @@ export default function PlanningScreen() {
             <BouncyButton
               style={[styles.addButton, { backgroundColor: theme.colors.surfaceContainerHighest }]}
               onPress={openNewGoal}
+              accessibilityRole="button"
+              accessibilityLabel="Add new savings goal"
             >
               <MaterialCommunityIcons name="plus" size={16} color={theme.colors.primary} />
               <Text style={{ color: theme.colors.primary, fontFamily: 'BeVietnamPro_500Medium', fontSize: 14 }}>NEW</Text>
@@ -452,6 +469,8 @@ export default function PlanningScreen() {
             <BouncyButton
               style={[styles.addButton, { backgroundColor: theme.colors.surfaceContainerHighest }]}
               onPress={openNewRecurring}
+              accessibilityRole="button"
+              accessibilityLabel="Add new recurring event"
             >
               <MaterialCommunityIcons name="plus" size={16} color={theme.colors.primary} />
               <Text style={{ color: theme.colors.primary, fontFamily: 'BeVietnamPro_500Medium', fontSize: 14 }}>NEW</Text>
