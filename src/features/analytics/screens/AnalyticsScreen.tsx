@@ -77,40 +77,8 @@ export default function AnalyticsScreen() {
     }).sort((a, b) => b.value - a.value);
   }, [transactions, categoryMap, startOfMonth, theme.colors]);
 
-  // Monthly Bar Chart data (last 6 months trend)
-  const monthlyBarData = useMemo(() => {
-    const monthsData: { year: number; month: number; label: string; value: number }[] = [];
-    const nowTemp = new Date();
-
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(nowTemp.getFullYear(), nowTemp.getMonth() - i, 1);
-      monthsData.push({
-        year: d.getFullYear(),
-        month: d.getMonth(),
-        label: d.toLocaleString('default', { month: 'short' }),
-        value: 0
-      });
-    }
-
-    transactions.forEach(tx => {
-      if (tx.type === 'expense') {
-        const txDate = new Date(tx.timestamp);
-        const match = monthsData.find(m => m.year === txDate.getFullYear() && m.month === txDate.getMonth());
-        if (match) {
-          match.value += tx.amountCents;
-        }
-      }
-    });
-
-    return monthsData.map(m => ({
-      value: m.value / 100,
-      label: m.label,
-      frontColor: theme.colors.primary
-    }));
-  }, [transactions, theme.colors.primary]);
-
-  // Line Chart data (Income vs Expense comparison for last 6 months)
-  const lineChartData = useMemo(() => {
+  // ⚡ Bolt Optimization: Combine monthlyBarData and lineChartData calculations to avoid redundant O(N) loops and O(N) Date instantiations
+  const { monthlyBarData, lineChartData } = useMemo(() => {
     const monthsData: { year: number; month: number; label: string; incomeValue: number; expenseValue: number }[] = [];
     const nowTemp = new Date();
 
@@ -137,6 +105,12 @@ export default function AnalyticsScreen() {
       }
     });
 
+    const monthlyBar = monthsData.map(m => ({
+      value: m.expenseValue / 100,
+      label: m.label,
+      frontColor: theme.colors.primary
+    }));
+
     const incomeLine = monthsData.map(m => ({
       value: m.incomeValue / 100,
       label: m.label
@@ -147,8 +121,11 @@ export default function AnalyticsScreen() {
       label: m.label
     }));
 
-    return { incomeLine, expenseLine };
-  }, [transactions]);
+    return {
+      monthlyBarData: monthlyBar,
+      lineChartData: { incomeLine, expenseLine }
+    };
+  }, [transactions, theme.colors.primary]);
 
   // Top Movers Logic
   const topMovers = useMemo(() => {
