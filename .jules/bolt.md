@@ -5,3 +5,7 @@
 ## 2023-10-27 - Redundant O(N) filtering of immutable large arrays
 **Learning:** React components often perform duplicate $O(N)$ filtering (creating new arrays via `.filter()`) across multiple `useMemo` hooks for the same data slicing (e.g., this month's expenses). This creates significant GC pressure and CPU overhead when $N$ (transactions) is large.
 **Action:** Always check if a pre-existing reduced object (e.g., a dictionary/map of expenses grouped by category) can be summed in $O(C)$ time (where $C$ is the number of categories, usually < 20) to compute totals, rather than doing another $O(N)$ pass over the raw transaction array.
+
+## 2024-07-04 - Eliminate Redundant O(N) Array Sweeps for the Same Dataset Slice
+**Learning:** Found an instance in `AnalyticsScreen.tsx` where `transactions` (an array which scales infinitely as the app usage grows) was being iterated through entirely in separate `useMemo` hooks (once for `monthlyBarData` and once for `lineChartData`) to extract the same 6-month subset.
+**Action:** Always identify when multiple component states need the exact same derived array slice. Compute it once in an upstream `useMemo` (e.g. `lineChartData`), and have downstream hooks (e.g. `monthlyBarData`) map over the much smaller derived output ($O(C)$) instead of looping through the raw $O(N)$ data again.
