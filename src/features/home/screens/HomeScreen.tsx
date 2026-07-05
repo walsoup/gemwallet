@@ -157,6 +157,7 @@ export default function HomeScreen() {
             <BouncyButton
               style={[styles.actionButton, styles.primaryButton, { backgroundColor: theme.colors.primaryContainer }]}
               onPress={() => openQuickAction('income')}
+              accessibilityRole="button"
             >
               <MaterialCommunityIcons name="arrow-up" size={20} color={theme.colors.onPrimaryContainer} />
               <Text style={[styles.actionButtonText, { color: theme.colors.onPrimaryContainer }]}>Add Funds</Text>
@@ -164,6 +165,7 @@ export default function HomeScreen() {
             <BouncyButton
               style={[styles.actionButton, styles.secondaryButton, { backgroundColor: theme.colors.surfaceContainerHighest }]}
               onPress={() => openQuickAction('expense')}
+              accessibilityRole="button"
             >
               <MaterialCommunityIcons name="arrow-down" size={20} color={theme.colors.onSurface} />
               <Text style={[styles.actionButtonText, { color: theme.colors.onSurface }]}>Spend Funds</Text>
@@ -236,6 +238,7 @@ export default function HomeScreen() {
                 placeholderTextColor={theme.colors.onSurfaceVariant}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
+                accessibilityLabel="Search transactions"
               />
             </View>
 
@@ -252,6 +255,9 @@ export default function HomeScreen() {
                                : { backgroundColor: theme.colors.surfaceContainerLow, borderColor: theme.colors.outlineVariant + '33', borderWidth: 1 }
                     ]}
                     onPress={() => setSelectedFilter(filter)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isActive }}
+                    accessibilityLabel={`Filter by ${filter}`}
                   >
                     <Text style={{
                       color: isActive ? theme.colors.onPrimaryContainer : theme.colors.onSurface,
@@ -312,6 +318,8 @@ export default function HomeScreen() {
                           height: '100%',
                           borderRadius: 16,
                         }}
+                        accessibilityRole="button"
+                        accessibilityLabel="Delete transaction"
                       >
                         <RNAnimated.View style={{ transform: [{ scale }] }}>
                           <MaterialCommunityIcons name="delete" size={24} color={theme.colors.onErrorContainer} />
@@ -332,6 +340,8 @@ export default function HomeScreen() {
                       { backgroundColor: itemBg || 'transparent' },
                       !isLast && { borderBottomWidth: 1, borderBottomColor: isWarning ? theme.colors.onErrorContainer + '26' : theme.colors.outlineVariant + '26' }
                     ]}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${isIncome ? 'Income' : 'Expense'} of ${formatAppCurrency(tx.amountCents)} for ${tx.note || category?.name || 'Transaction'}, Category ${category?.name || 'Misc'}`}
                   >
                     <View style={styles.txItemLeft}>
                       <View style={{ width: 48, height: 48, justifyContent: 'center', alignItems: 'center' }}>
