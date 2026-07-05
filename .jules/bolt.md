@@ -9,3 +9,7 @@
 ## 2024-07-04 - Eliminate Redundant O(N) Array Sweeps for the Same Dataset Slice
 **Learning:** Found an instance in `AnalyticsScreen.tsx` where `transactions` (an array which scales infinitely as the app usage grows) was being iterated through entirely in separate `useMemo` hooks (once for `monthlyBarData` and once for `lineChartData`) to extract the same 6-month subset.
 **Action:** Always identify when multiple component states need the exact same derived array slice. Compute it once in an upstream `useMemo` (e.g. `lineChartData`), and have downstream hooks (e.g. `monthlyBarData`) map over the much smaller derived output ($O(C)$) instead of looping through the raw $O(N)$ data again.
+
+## 2025-07-05 - Optimize Relational Data Grouping with single-pass in useMemo
+**Learning:** In React Native applications using global state stores (like Zustand), large immutable arrays (e.g., \`transactions\`) shouldn't be iterated over multiple times using separate \`.forEach()\` loops inside different \`useMemo\` hooks to calculate related metrics. Doing so results in redundant O(N) operations, which causes significant performance degradation as the array grows, leading to unoptimized UI rendering.
+**Action:** Always aim to compute all related statistics and dictionaries (like category totals and counts) in a single O(N) pass inside a single \`useMemo\` hook. Use this pre-computed data to derive necessary components in subsequent \`useMemo\` hooks with O(C) complexity, reducing overhead and improving re-render speeds.
