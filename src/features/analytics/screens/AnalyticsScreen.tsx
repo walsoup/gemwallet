@@ -33,16 +33,21 @@ export default function AnalyticsScreen() {
   );
 
   // Savings Logic
-  const { totalIncome, totalExpense } = useMemo(() => {
+  // ⚡ Bolt Optimization: Combine Savings Logic and Donut Chart map creation to reduce O(N) loops on transactions
+  const { totalIncome, totalExpense, currentMonthExpenseMap } = useMemo(() => {
     let income = 0;
     let expense = 0;
+    const expenseMap: Record<string, number> = {};
     transactions.forEach((tx) => {
       if (tx.timestamp >= startOfMonth) {
         if (tx.type === "income") income += tx.amountCents;
-        if (tx.type === "expense") expense += tx.amountCents;
+        if (tx.type === "expense") {
+          expense += tx.amountCents;
+          expenseMap[tx.categoryId] = (expenseMap[tx.categoryId] || 0) + tx.amountCents;
+        }
       }
     });
-    return { totalIncome: income, totalExpense: expense };
+    return { totalIncome: income, totalExpense: expense, currentMonthExpenseMap: expenseMap };
   }, [transactions, startOfMonth]);
 
   const savedCents = Math.max(0, totalIncome - totalExpense);
@@ -51,13 +56,6 @@ export default function AnalyticsScreen() {
 
   // Donut Chart data (group expenses by category for current month)
   const donutData = useMemo(() => {
-    const map: Record<string, number> = {};
-    transactions.forEach((tx) => {
-      if (tx.type === "expense" && tx.timestamp >= startOfMonth) {
-        map[tx.categoryId] = (map[tx.categoryId] || 0) + tx.amountCents;
-      }
-    });
-
     const colors = [
       theme.colors.primary,
       theme.colors.secondary,
@@ -70,18 +68,18 @@ export default function AnalyticsScreen() {
       theme.colors.inversePrimary,
     ];
 
-    return Object.keys(map)
+    return Object.keys(currentMonthExpenseMap)
       .map((catId, idx) => {
         const cat = categoryMap[catId];
         return {
-          value: map[catId] / 100,
+          value: currentMonthExpenseMap[catId] / 100,
           color: colors[idx % colors.length],
           text: cat?.emoji || "🧩",
           label: cat?.name || "Misc",
         };
       })
       .sort((a, b) => b.value - a.value);
-  }, [transactions, categoryMap, startOfMonth, theme.colors]);
+  }, [currentMonthExpenseMap, categoryMap, theme.colors]);
 
   // Line Chart data (Income vs Expense comparison for last 6 months)
   const lineChartData = useMemo(() => {
