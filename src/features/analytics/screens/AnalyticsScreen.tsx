@@ -32,32 +32,41 @@ export default function AnalyticsScreen() {
     [now],
   );
 
-  // Savings Logic
-  const { totalIncome, totalExpense } = useMemo(() => {
+  // ⚡ Bolt Optimization: Group relational data in a single pass to avoid redundant O(N) array iterations
+  const currentMonthData = useMemo(() => {
     let income = 0;
     let expense = 0;
+    const categoryTotals: Record<string, number> = {};
+    const categoryCounts: Record<string, number> = {};
+
     transactions.forEach((tx) => {
       if (tx.timestamp >= startOfMonth) {
-        if (tx.type === "income") income += tx.amountCents;
-        if (tx.type === "expense") expense += tx.amountCents;
+        if (tx.type === "income") {
+          income += tx.amountCents;
+        } else if (tx.type === "expense") {
+          expense += tx.amountCents;
+          categoryTotals[tx.categoryId] = (categoryTotals[tx.categoryId] || 0) + tx.amountCents;
+          categoryCounts[tx.categoryId] = (categoryCounts[tx.categoryId] || 0) + 1;
+        }
       }
     });
-    return { totalIncome: income, totalExpense: expense };
+
+    return { income, expense, categoryTotals, categoryCounts };
   }, [transactions, startOfMonth]);
+
+  // Savings Logic
+  const { totalIncome, totalExpense } = useMemo(() => {
+    return { totalIncome: currentMonthData.income, totalExpense: currentMonthData.expense };
+  }, [currentMonthData]);
 
   const savedCents = Math.max(0, totalIncome - totalExpense);
   const savedPercentage =
     totalIncome > 0 ? ((savedCents / totalIncome) * 100).toFixed(1) : "0.0";
 
-  // Donut Chart data (group expenses by category for current month)
+// Donut Chart data (group expenses by category for current month)
+  // ⚡ Bolt Optimization: Derive from pre-computed categoryTotals in O(C) complexity
   const donutData = useMemo(() => {
-    const map: Record<string, number> = {};
-    transactions.forEach((tx) => {
-      if (tx.type === "expense" && tx.timestamp >= startOfMonth) {
-        map[tx.categoryId] = (map[tx.categoryId] || 0) + tx.amountCents;
-      }
-    });
-
+    const map = currentMonthData.categoryTotals;
     const colors = [
       theme.colors.primary,
       theme.colors.secondary,
@@ -81,7 +90,7 @@ export default function AnalyticsScreen() {
         };
       })
       .sort((a, b) => b.value - a.value);
-  }, [transactions, categoryMap, startOfMonth, theme.colors]);
+  }, [currentMonthData.categoryTotals, categoryMap, theme.colors]);
 
   // Line Chart data (Income vs Expense comparison for last 6 months)
   const lineChartData = useMemo(() => {
@@ -143,43 +152,35 @@ export default function AnalyticsScreen() {
   }, [lineChartData.expenseLine, theme.colors.primary]);
 
   // Top Movers Logic
+  // ⚡ Bolt Optimization: Derive from pre-computed categoryTotals and categoryCounts in O(C) complexity
   const topMovers = useMemo(() => {
-    const categoryTotals: Record<
-      string,
-      { id: string; total: number; count: number; name: string; icon: string }
-    > = {};
+    const map = currentMonthData.categoryTotals;
+    const counts = currentMonthData.categoryCounts;
+    const results: { id: string; total: number; count: number; name: string; icon: string }[] = [];
 
-    transactions.forEach((tx) => {
-      if (tx.type === "expense" && tx.timestamp >= startOfMonth) {
-        const cat = categoryMap[tx.categoryId];
-        if (cat) {
-          if (!categoryTotals[cat.id]) {
-            let icon = "help";
-            if (cat.name === "Food" || cat.name === "Dining")
-              icon = "silverware-fork-knife";
-            else if (cat.name === "Shopping" || cat.name === "Retail")
-              icon = "shopping";
-            else if (cat.name === "Transport" || cat.name === "Transit")
-              icon = "train";
+    Object.keys(map).forEach((catId) => {
+      const cat = categoryMap[catId];
+      if (cat) {
+        let icon = "help";
+        if (cat.name === "Food" || cat.name === "Dining")
+          icon = "silverware-fork-knife";
+        else if (cat.name === "Shopping" || cat.name === "Retail")
+          icon = "shopping";
+        else if (cat.name === "Transport" || cat.name === "Transit")
+          icon = "train";
 
-            categoryTotals[cat.id] = {
-              id: cat.id,
-              total: 0,
-              count: 0,
-              name: cat.name,
-              icon,
-            };
-          }
-          categoryTotals[cat.id].total += tx.amountCents;
-          categoryTotals[cat.id].count += 1;
-        }
+        results.push({
+          id: cat.id,
+          total: map[catId],
+          count: counts[catId],
+          name: cat.name,
+          icon,
+        });
       }
     });
 
-    return Object.values(categoryTotals)
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 3);
-  }, [transactions, categoryMap, startOfMonth]);
+    return results.sort((a, b) => b.total - a.total).slice(0, 3);
+  }, [currentMonthData, categoryMap]);
 
   const moverPercentages = useMemo(() => {
     const previousStart = new Date(
@@ -203,7 +204,8 @@ export default function AnalyticsScreen() {
       return totals;
     };
 
-    const currentTotals = totalsForPeriod(startOfMonth, now.getTime());
+    // ⚡ Bolt Optimization: Reuse pre-computed currentMonthData.categoryTotals
+    const currentTotals = currentMonthData.categoryTotals;
     const prevTotals = totalsForPeriod(previousStart, previousEnd);
 
     const percentages: Record<string, number> = {};
@@ -219,7 +221,7 @@ export default function AnalyticsScreen() {
     });
 
     return percentages;
-  }, [now, startOfMonth, transactions]);
+  }, [now, startOfMonth, transactions, currentMonthData.categoryTotals]);
 
   return (
     <ScreenLayout title="Analytics" backgroundColor={theme.colors.background}>
