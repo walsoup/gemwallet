@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, View, Pressable, Modal, TextInput } from 'react-native';
+import { ScrollView, StyleSheet, View, Pressable, Modal, TextInput, Alert } from 'react-native';
 import { Text, useTheme, Button } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -130,7 +130,14 @@ export default function CategoriesScreen() {
                     accessibilityLabel={`Delete category ${cat.name}`}
                     onPress={() => {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      deleteCategory(cat.id);
+                      Alert.alert(
+                        'Delete Category',
+                        `Are you sure you want to delete "${cat.name}"?`,
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          { text: 'Delete', style: 'destructive', onPress: () => deleteCategory(cat.id) },
+                        ]
+                      );
                     }}
                     style={[
                       styles.deleteButton,
