@@ -9,3 +9,7 @@
 ## 2024-07-04 - Eliminate Redundant O(N) Array Sweeps for the Same Dataset Slice
 **Learning:** Found an instance in `AnalyticsScreen.tsx` where `transactions` (an array which scales infinitely as the app usage grows) was being iterated through entirely in separate `useMemo` hooks (once for `monthlyBarData` and once for `lineChartData`) to extract the same 6-month subset.
 **Action:** Always identify when multiple component states need the exact same derived array slice. Compute it once in an upstream `useMemo` (e.g. `lineChartData`), and have downstream hooks (e.g. `monthlyBarData`) map over the much smaller derived output ($O(C)$) instead of looping through the raw $O(N)$ data again.
+
+## 2024-11-20 - Memoization Dependencies
+**Learning:** `useMemo` hooks over large transaction arrays often contain redundant array iterations that can be combined. When a UI visualization loop iterates over a subset of the data that an earlier logic loop already parses, these can be grouped together into a single loop by aggregating the required mapping variables within the first loop. This decouples the array parsing logic from the display logic, resulting in Big O(n) rendering optimization.
+**Action:** Always search for components containing multiple `useMemo` hooks that rely on the same array dependency (e.g. `[transactions]`) and consolidate them into a single grouping loop.
