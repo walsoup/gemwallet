@@ -157,6 +157,8 @@ export default function HomeScreen() {
             <BouncyButton
               style={[styles.actionButton, styles.primaryButton, { backgroundColor: theme.colors.primaryContainer }]}
               onPress={() => openQuickAction('income')}
+              accessibilityRole="button"
+              accessibilityLabel="Add Funds"
             >
               <MaterialCommunityIcons name="arrow-up" size={20} color={theme.colors.onPrimaryContainer} />
               <Text style={[styles.actionButtonText, { color: theme.colors.onPrimaryContainer }]}>Add Funds</Text>
@@ -164,6 +166,8 @@ export default function HomeScreen() {
             <BouncyButton
               style={[styles.actionButton, styles.secondaryButton, { backgroundColor: theme.colors.surfaceContainerHighest }]}
               onPress={() => openQuickAction('expense')}
+              accessibilityRole="button"
+              accessibilityLabel="Spend Funds"
             >
               <MaterialCommunityIcons name="arrow-down" size={20} color={theme.colors.onSurface} />
               <Text style={[styles.actionButtonText, { color: theme.colors.onSurface }]}>Spend Funds</Text>
@@ -252,6 +256,9 @@ export default function HomeScreen() {
                                : { backgroundColor: theme.colors.surfaceContainerLow, borderColor: theme.colors.outlineVariant + '33', borderWidth: 1 }
                     ]}
                     onPress={() => setSelectedFilter(filter)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Filter ${filter}`}
+                    accessibilityState={{ checked: isActive }}
                   >
                     <Text style={{
                       color: isActive ? theme.colors.onPrimaryContainer : theme.colors.onSurface,
@@ -332,6 +339,8 @@ export default function HomeScreen() {
                       { backgroundColor: itemBg || 'transparent' },
                       !isLast && { borderBottomWidth: 1, borderBottomColor: isWarning ? theme.colors.onErrorContainer + '26' : theme.colors.outlineVariant + '26' }
                     ]}
+                    accessibilityRole="button"
+                    accessibilityLabel="Transaction details"
                   >
                     <View style={styles.txItemLeft}>
                       <View style={{ width: 48, height: 48, justifyContent: 'center', alignItems: 'center' }}>
