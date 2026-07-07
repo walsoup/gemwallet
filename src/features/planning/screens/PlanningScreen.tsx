@@ -391,6 +391,8 @@ export default function PlanningScreen() {
             <BouncyButton
               style={[styles.addButton, { backgroundColor: theme.colors.surfaceContainerHighest }]}
               onPress={openNewGoal}
+              accessibilityRole="button"
+              accessibilityLabel="Add new savings goal"
             >
               <MaterialCommunityIcons name="plus" size={16} color={theme.colors.primary} />
               <Text style={{ color: theme.colors.primary, fontFamily: 'BeVietnamPro_500Medium', fontSize: 14 }}>NEW</Text>
@@ -452,6 +454,8 @@ export default function PlanningScreen() {
             <BouncyButton
               style={[styles.addButton, { backgroundColor: theme.colors.surfaceContainerHighest }]}
               onPress={openNewRecurring}
+              accessibilityRole="button"
+              accessibilityLabel="Add new recurring event"
             >
               <MaterialCommunityIcons name="plus" size={16} color={theme.colors.primary} />
               <Text style={{ color: theme.colors.primary, fontFamily: 'BeVietnamPro_500Medium', fontSize: 14 }}>NEW</Text>
