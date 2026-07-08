@@ -47,13 +47,16 @@ function summarize(transactions: Transaction[], options: Pick<AnalysisOptions, '
     return 'No transactions yet. Start logging expenses to get useful trends.';
   }
 
-  const expenseTotal = transactions
-    .filter((item) => item.type === 'expense')
-    .reduce((sum, item) => sum + item.amountCents, 0);
-
-  const incomeTotal = transactions
-    .filter((item) => item.type === 'income')
-    .reduce((sum, item) => sum + item.amountCents, 0);
+  // ⚡ Bolt Optimization: Compute income and expense totals in a single pass
+  // to avoid redundant O(N) array iterations and intermediate allocations
+  const { expenseTotal, incomeTotal } = transactions.reduce(
+    (acc, item) => {
+      if (item.type === 'expense') acc.expenseTotal += item.amountCents;
+      else if (item.type === 'income') acc.incomeTotal += item.amountCents;
+      return acc;
+    },
+    { expenseTotal: 0, incomeTotal: 0 }
+  );
 
   const balance = incomeTotal - expenseTotal;
 
