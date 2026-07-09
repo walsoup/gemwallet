@@ -389,6 +389,8 @@ export default function PlanningScreen() {
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Savings Goals</Text>
             <BouncyButton
+              accessibilityRole="button"
+              accessibilityLabel="Add new savings goal"
               style={[styles.addButton, { backgroundColor: theme.colors.surfaceContainerHighest }]}
               onPress={openNewGoal}
             >
@@ -450,6 +452,8 @@ export default function PlanningScreen() {
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Recurring Events</Text>
             <BouncyButton
+              accessibilityRole="button"
+              accessibilityLabel="Add new recurring event"
               style={[styles.addButton, { backgroundColor: theme.colors.surfaceContainerHighest }]}
               onPress={openNewRecurring}
             >
