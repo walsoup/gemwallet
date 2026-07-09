@@ -103,6 +103,9 @@ export default function AnalyticsScreen() {
     }[] = [];
     const nowTemp = new Date();
 
+    // ⚡ Bolt Optimization: Use dictionary for O(1) lookups instead of O(N) array find
+    const monthKeyToIndex: Record<string, number> = {};
+
     for (let i = 5; i >= 0; i--) {
       const d = new Date(nowTemp.getFullYear(), nowTemp.getMonth() - i, 1);
       monthsData.push({
@@ -112,14 +115,22 @@ export default function AnalyticsScreen() {
         incomeValue: 0,
         expenseValue: 0,
       });
+      monthKeyToIndex[`${d.getFullYear()}-${d.getMonth()}`] = 5 - i;
     }
 
+    // ⚡ Bolt Optimization: Calculate earliest time bound once outside loop
+    const earliestDate = new Date(nowTemp.getFullYear(), nowTemp.getMonth() - 5, 1);
+    const earliestTime = earliestDate.getTime();
+
     transactions.forEach((tx) => {
+      // ⚡ Bolt Optimization: Early exit for old transactions to skip Date object creation
+      if (tx.timestamp < earliestTime) return;
+
       const txDate = new Date(tx.timestamp);
-      const match = monthsData.find(
-        (m) => m.year === txDate.getFullYear() && m.month === txDate.getMonth(),
-      );
-      if (match) {
+      const index = monthKeyToIndex[`${txDate.getFullYear()}-${txDate.getMonth()}`];
+
+      if (index !== undefined) {
+        const match = monthsData[index];
         if (tx.type === "income") {
           match.incomeValue += tx.amountCents;
         } else if (tx.type === "expense") {

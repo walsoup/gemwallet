@@ -17,3 +17,11 @@
 ## 2024-07-06 - Optimize Array Accumulation by Combining Multiple Reducers
 **Learning:** `gemmaAnalysis.ts` performed two consecutive `.filter().reduce()` chains over the entire `transactions` array to calculate `expenseTotal` and `incomeTotal` separately. This redundant array iteration causes an unnecessary performance hit, especially as transaction history grows, creating intermediate array instances.
 **Action:** Consolidate multiple iterative array scans into a single standard loop or a single `reduce()` operation over an object to simultaneously compute multiple aggregates, achieving an O(N) single-pass iteration with zero intermediate array allocation overhead.
+
+## 2025-07-06 - Avoid O(N) Array Finding with Fixed Indices
+**Learning:** When calculating data over a fixed sliding window (like 6 months) using an array loop ( ), mapping dynamic transaction dates back to the sequential window can be costly as history grows.
+**Action:** Use an  dictionary mapping keys (e.g. `YYYY-MM`) to array indices for immediate lookup and add early-return filters () to skip processing older entries completely and avoid `new Date` instantiation overhead.
+
+## 2025-07-06 - Avoid O(N) Array Finding with Fixed Indices
+**Learning:** When calculating data over a fixed sliding window (like 6 months) using an array loop (`O(N)` `.find()`), mapping dynamic transaction dates back to the sequential window can be costly as history grows.
+**Action:** Use an `O(1)` dictionary mapping keys (e.g. `YYYY-MM`) to array indices for immediate lookup and add early-return filters (`timestamp < earliestBound`) to skip processing older entries completely and avoid `new Date` instantiation overhead.
