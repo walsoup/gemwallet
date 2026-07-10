@@ -25,3 +25,7 @@
 ## 2025-07-06 - Avoid O(N) Array Finding with Fixed Indices
 **Learning:** When calculating data over a fixed sliding window (like 6 months) using an array loop (`O(N)` `.find()`), mapping dynamic transaction dates back to the sequential window can be costly as history grows.
 **Action:** Use an `O(1)` dictionary mapping keys (e.g. `YYYY-MM`) to array indices for immediate lookup and add early-return filters (`timestamp < earliestBound`) to skip processing older entries completely and avoid `new Date` instantiation overhead.
+
+## 2025-07-06 - Avoid .filter().reduce() chaining on large arrays
+**Learning:** Chaining `.filter().reduce()` on large immutable arrays (like `transactions` store items) causes a new, temporary intermediate array to be allocated and garbage-collected just for the reduction step. This increases memory churn and impacts performance as data grows.
+**Action:** Instead of chaining `.filter().reduce()`, perform a single-pass O(N) `.reduce()` with conditional logic inside it to eliminate the intermediate array allocation entirely.
