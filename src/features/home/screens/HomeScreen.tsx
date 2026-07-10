@@ -228,7 +228,7 @@ export default function HomeScreen() {
         {/* Recent Transactions */}
         <Animated.View entering={FadeInUp.delay(300).springify()} style={styles.transactionsSection}>
           <View style={styles.searchSection}>
-            <View style={styles.searchBarContainer}>
+            <View style={styles.searchBarContainer} accessibilityRole="search">
               <MaterialCommunityIcons name="magnify" size={20} color={theme.colors.onSurfaceVariant} style={styles.searchIcon} />
               <TextInput
                 style={[styles.searchInput, { backgroundColor: theme.colors.surfaceContainerLow, color: theme.colors.onSurface, borderColor: theme.colors.outlineVariant + '4D' }]}
@@ -236,10 +236,11 @@ export default function HomeScreen() {
                 placeholderTextColor={theme.colors.onSurfaceVariant}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
+                accessibilityLabel="Search transactions"
               />
             </View>
 
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterContent}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterContent} accessibilityRole="tablist">
               {filters.map(filter => {
                 const isActive = selectedFilter === filter;
                 return (
@@ -252,6 +253,9 @@ export default function HomeScreen() {
                                : { backgroundColor: theme.colors.surfaceContainerLow, borderColor: theme.colors.outlineVariant + '33', borderWidth: 1 }
                     ]}
                     onPress={() => setSelectedFilter(filter)}
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected: isActive }}
+                    accessibilityLabel={`${filter} filter`}
                   >
                     <Text style={{
                       color: isActive ? theme.colors.onPrimaryContainer : theme.colors.onSurface,
