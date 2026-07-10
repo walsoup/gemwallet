@@ -132,9 +132,14 @@ export const useTransactionStore = create<TransactionState>()(
         const category = state.categories.find(c => c.id === categoryId);
         if (category && category.maxBudgetLimitCents && category.maxBudgetLimitCents > 0) {
           const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
-          const currentSpent = state.transactions
-            .filter(tx => tx.type === 'expense' && tx.categoryId === categoryId && tx.timestamp >= startOfMonth)
-            .reduce((sum, tx) => sum + tx.amountCents, 0);
+          // ⚡ Bolt Optimization: Use a single reduce pass instead of filter().reduce()
+          // to avoid creating intermediate arrays, reducing GC pressure for large transaction arrays
+          const currentSpent = state.transactions.reduce((sum, tx) => {
+            if (tx.type === 'expense' && tx.categoryId === categoryId && tx.timestamp >= startOfMonth) {
+              return sum + tx.amountCents;
+            }
+            return sum;
+          }, 0);
           
           const spentAfterTx = currentSpent + transaction.amountCents;
           triggerBudgetHaptics(spentAfterTx, category.maxBudgetLimitCents);
@@ -167,9 +172,14 @@ export const useTransactionStore = create<TransactionState>()(
             const category = state.categories.find((c) => c.id === newCategoryId);
             if (category && category.maxBudgetLimitCents && category.maxBudgetLimitCents > 0) {
               const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
-              const currentSpent = state.transactions
-                .filter(item => item.type === 'expense' && item.categoryId === newCategoryId && item.timestamp >= startOfMonth)
-                .reduce((sum, item) => sum + item.amountCents, 0);
+              // ⚡ Bolt Optimization: Use a single reduce pass instead of filter().reduce()
+              // to avoid creating intermediate arrays, reducing GC pressure for large transaction arrays
+              const currentSpent = state.transactions.reduce((sum, item) => {
+                if (item.type === 'expense' && item.categoryId === newCategoryId && item.timestamp >= startOfMonth) {
+                  return sum + item.amountCents;
+                }
+                return sum;
+              }, 0);
               
               const oldAmountCents = (tx.type === 'expense' && tx.categoryId === newCategoryId) ? tx.amountCents : 0;
               const spentAfterTx = currentSpent - oldAmountCents + newAmountCents;
