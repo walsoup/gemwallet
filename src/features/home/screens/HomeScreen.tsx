@@ -241,13 +241,23 @@ export default function HomeScreen() {
             <View style={styles.searchBarContainer} accessibilityRole="search">
               <MaterialCommunityIcons name="magnify" size={20} color={theme.colors.onSurfaceVariant} style={styles.searchIcon} />
               <TextInput
-                style={[styles.searchInput, { backgroundColor: theme.colors.surfaceContainerLow, color: theme.colors.onSurface, borderColor: theme.colors.outlineVariant + '4D' }]}
+                style={[styles.searchInput, { backgroundColor: theme.colors.surfaceContainerLow, color: theme.colors.onSurface, borderColor: theme.colors.outlineVariant + '4D', paddingRight: searchQuery.length > 0 ? 48 : 16 }]}
                 placeholder="Search transactions..."
                 placeholderTextColor={theme.colors.onSurfaceVariant}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 accessibilityLabel="Search transactions"
               />
+              {searchQuery.length > 0 && (
+                <BouncyButton
+                  style={styles.clearIcon}
+                  onPress={() => setSearchQuery('')}
+                  accessibilityRole="button"
+                  accessibilityLabel="Clear search"
+                >
+                  <MaterialCommunityIcons name="close-circle" size={20} color={theme.colors.onSurfaceVariant} />
+                </BouncyButton>
+              )}
             </View>
 
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterContent} accessibilityRole="tablist">
@@ -486,6 +496,13 @@ const styles = StyleSheet.create({
   searchIcon: {
     position: 'absolute',
     left: 16,
+    top: '50%',
+    transform: [{ translateY: -10 }],
+    zIndex: 1,
+  },
+  clearIcon: {
+    position: 'absolute',
+    right: 16,
     top: '50%',
     transform: [{ translateY: -10 }],
     zIndex: 1,
