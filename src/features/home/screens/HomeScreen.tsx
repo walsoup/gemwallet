@@ -105,7 +105,13 @@ export default function HomeScreen() {
     // ⚡ Bolt Optimization: Cache toLowerCase outside loop and skip when empty
     const normalizedSearch = searchQuery ? searchQuery.toLowerCase() : '';
 
-    return transactions.filter(tx => {
+    // ⚡ Bolt Optimization: Replace O(N) filter + slice(0,10) with O(1) early-exit loop
+    // This prevents creating a massive intermediate array and iterating through thousands of
+    // transactions when we only need the first 10 for the HomeScreen
+    const results = [];
+    for (const tx of transactions) {
+      if (results.length >= 10) break;
+
       const category = categoryMap[tx.categoryId];
 
       const matchesSearch = normalizedSearch
@@ -120,8 +126,12 @@ export default function HomeScreen() {
           matchesFilter = category?.name === selectedFilter;
         }
       }
-      return matchesSearch && matchesFilter;
-    });
+
+      if (matchesSearch && matchesFilter) {
+        results.push(tx);
+      }
+    }
+    return results;
   }, [transactions, categoryMap, searchQuery, selectedFilter]);
 
   const filters = ['All', 'Food', 'Income', 'Transport'];
@@ -271,11 +281,11 @@ export default function HomeScreen() {
           </View>
 
           <View style={[styles.transactionsList, { backgroundColor: theme.colors.surfaceContainerLow }]}>
-            {filteredTransactions.slice(0, 10).map((tx, index) => {
+            {filteredTransactions.map((tx, index) => {
               // ⚡ Bolt Optimization: O(1) lookup instead of O(n) find
               const category = categoryMap[tx.categoryId];
               const isIncome = tx.type === 'income';
-              const isLast = index === Math.min(filteredTransactions.length, 10) - 1;
+              const isLast = index === filteredTransactions.length - 1;
 
               const budgetLimit = category?.maxBudgetLimitCents;
               const spent = category ? currentMonthSpentByCategory[category.id] || 0 : 0;
