@@ -138,7 +138,7 @@ export function AddTransactionModal({ visible, initialType = 'expense', onClose 
             />
 
             <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8, marginTop: 12 }}>Type</Text>
-            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }} accessibilityRole="radiogroup">
               <BouncyButton
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -148,6 +148,8 @@ export function AddTransactionModal({ visible, initialType = 'expense', onClose 
                     setEditCategoryId(targetCats[0]?.id || '');
                   }
                 }}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: editType === 'expense' }}
                 style={[
                   styles.typeToggleBtn,
                   editType === 'expense'
@@ -171,6 +173,8 @@ export function AddTransactionModal({ visible, initialType = 'expense', onClose 
                     setEditCategoryId(targetCats[0]?.id || '');
                   }
                 }}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: editType === 'income' }}
                 style={[
                   styles.typeToggleBtn,
                   editType === 'income'
@@ -188,7 +192,7 @@ export function AddTransactionModal({ visible, initialType = 'expense', onClose 
             </View>
 
             <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8, marginTop: 12 }}>Category</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }} contentContainerStyle={{ gap: 8 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }} contentContainerStyle={{ gap: 8 }} accessibilityRole="tablist">
               {categories
                 .filter(c => editType === 'income' ? c.kind === 'income' : (c.kind === 'expense' || c.kind === 'system'))
                 .map(c => {
@@ -204,6 +208,8 @@ export function AddTransactionModal({ visible, initialType = 'expense', onClose 
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                         setEditCategoryId(c.id);
                       }}
+                      accessibilityRole="tab"
+                      accessibilityState={{ selected: isSelected }}
                       style={[
                         styles.categoryChip,
                         isSelected

@@ -8,3 +8,6 @@
 ## 2026-07-10 - BouncyButton Tab Pattern
 **Learning:** Custom 'BouncyButton' components used in horizontal scroll lists (like filter chips) consistently lack `accessibilityRole="tab"` and `accessibilityState`. This prevents screen readers from understanding their selected state or purpose.
 **Action:** Always add `accessibilityRole="tab"` (and wrap the container in `accessibilityRole="tablist"` where appropriate) along with `accessibilityState={{ selected: isActive }}` to these interactive lists.
+## 2024-05-19 - Accessibility Labels for Custom Radio Groups
+**Learning:** Custom components acting as mutually exclusive toggle buttons (e.g., Expense/Income selectors) must use `accessibilityRole="radio"` and `accessibilityState={{ checked: boolean }}`, while their surrounding container must use `accessibilityRole="radiogroup"`. This ensures screen readers announce the current state properly.
+**Action:** Always add `accessibilityRole="radio"` and `accessibilityState={{ checked: isChecked }}` to mutually exclusive toggle buttons and `accessibilityRole="radiogroup"` to the container.
