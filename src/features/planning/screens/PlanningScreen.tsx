@@ -64,11 +64,14 @@ export default function PlanningScreen() {
   const currentMonthSpentByCategory = React.useMemo(() => {
     const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
     const map: Record<string, number> = {};
-    transactions.forEach(tx => {
-      if (tx.type === 'expense' && tx.timestamp >= startOfMonth) {
+    // ⚡ Bolt Optimization: Replace O(N) forEach with early-exit for...of loop
+    // since transactions are sorted newest first, skipping processing of older months
+    for (const tx of transactions) {
+      if (tx.timestamp < startOfMonth) break;
+      if (tx.type === 'expense') {
         map[tx.categoryId] = (map[tx.categoryId] || 0) + tx.amountCents;
       }
-    });
+    }
     return map;
   }, [transactions]);
 
