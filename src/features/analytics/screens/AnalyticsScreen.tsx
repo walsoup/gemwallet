@@ -39,17 +39,19 @@ export default function AnalyticsScreen() {
     const categoryTotals: Record<string, number> = {};
     const categoryCounts: Record<string, number> = {};
 
-    transactions.forEach((tx) => {
-      if (tx.timestamp >= startOfMonth) {
-        if (tx.type === "income") {
-          income += tx.amountCents;
-        } else if (tx.type === "expense") {
-          expense += tx.amountCents;
-          categoryTotals[tx.categoryId] = (categoryTotals[tx.categoryId] || 0) + tx.amountCents;
-          categoryCounts[tx.categoryId] = (categoryCounts[tx.categoryId] || 0) + 1;
-        }
+    // ⚡ Bolt Optimization: Replace O(N) forEach with early-exit for...of loop
+    // Since transactions are sorted newest first, we can skip processing older ones
+    for (const tx of transactions) {
+      if (tx.timestamp < startOfMonth) break;
+
+      if (tx.type === "income") {
+        income += tx.amountCents;
+      } else if (tx.type === "expense") {
+        expense += tx.amountCents;
+        categoryTotals[tx.categoryId] = (categoryTotals[tx.categoryId] || 0) + tx.amountCents;
+        categoryCounts[tx.categoryId] = (categoryCounts[tx.categoryId] || 0) + 1;
       }
-    });
+    }
 
     return { income, expense, categoryTotals, categoryCounts };
   }, [transactions, startOfMonth]);
@@ -122,9 +124,9 @@ export default function AnalyticsScreen() {
     const earliestDate = new Date(nowTemp.getFullYear(), nowTemp.getMonth() - 5, 1);
     const earliestTime = earliestDate.getTime();
 
-    transactions.forEach((tx) => {
-      // ⚡ Bolt Optimization: Early exit for old transactions to skip Date object creation
-      if (tx.timestamp < earliestTime) return;
+    // ⚡ Bolt Optimization: Replace O(N) forEach with early-exit for...of loop
+    for (const tx of transactions) {
+      if (tx.timestamp < earliestTime) break;
 
       const txDate = new Date(tx.timestamp);
       const index = monthKeyToIndex[`${txDate.getFullYear()}-${txDate.getMonth()}`];
@@ -137,7 +139,7 @@ export default function AnalyticsScreen() {
           match.expenseValue += tx.amountCents;
         }
       }
-    });
+    }
 
     const incomeLine = monthsData.map((m) => ({
       value: m.incomeValue / 100,
@@ -203,15 +205,16 @@ export default function AnalyticsScreen() {
 
     const totalsForPeriod = (start: number, end: number) => {
       const totals: Record<string, number> = {};
-      transactions.forEach((tx) => {
+      // ⚡ Bolt Optimization: Replace O(N) forEach with early-exit for...of loop
+      for (const tx of transactions) {
+        if (tx.timestamp < start) break;
         if (
           tx.type !== "expense" ||
-          tx.timestamp < start ||
           tx.timestamp >= end
         )
-          return;
+          continue;
         totals[tx.categoryId] = (totals[tx.categoryId] ?? 0) + tx.amountCents;
-      });
+      }
       return totals;
     };
 
