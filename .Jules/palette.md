@@ -11,3 +11,6 @@
 ## 2024-05-19 - Accessibility Labels for Custom Radio Groups
 **Learning:** Custom components acting as mutually exclusive toggle buttons (e.g., Expense/Income selectors) must use `accessibilityRole="radio"` and `accessibilityState={{ checked: boolean }}`, while their surrounding container must use `accessibilityRole="radiogroup"`. This ensures screen readers announce the current state properly.
 **Action:** Always add `accessibilityRole="radio"` and `accessibilityState={{ checked: isChecked }}` to mutually exclusive toggle buttons and `accessibilityRole="radiogroup"` to the container.
+## 2024-07-28 - Accessibility Groups for Custom Inputs
+**Learning:** React Native `accessibilityRole="radiogroup"` and `accessibilityRole="tablist"` can be used on wrapping `View` and `ScrollView` components to contextually group multiple `radio` or `tab` elements, significantly improving screen reader navigation.
+**Action:** Always wrap `accessibilityRole="radio"` and `accessibilityRole="tab"` items in a container with the appropriate `radiogroup` or `tablist` role.

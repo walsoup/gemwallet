@@ -215,8 +215,10 @@ export default function PlanningScreen() {
             />
 
             <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8, marginTop: 12 }}>Type</Text>
-            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }} accessibilityRole="radiogroup">
               <BouncyButton
+                accessibilityRole="radio"
+                accessibilityState={{ checked: recType === 'expense' }}
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   setRecType('expense');
@@ -240,6 +242,8 @@ export default function PlanningScreen() {
                 </Text>
               </BouncyButton>
               <BouncyButton
+                accessibilityRole="radio"
+                accessibilityState={{ checked: recType === 'income' }}
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   setRecType('income');
@@ -265,7 +269,7 @@ export default function PlanningScreen() {
             </View>
 
             <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8, marginTop: 12 }}>Category</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }} contentContainerStyle={{ gap: 8 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }} contentContainerStyle={{ gap: 8 }} accessibilityRole="tablist">
               {categories
                 .filter(c => recType === 'income' ? c.kind === 'income' : (c.kind === 'expense' || c.kind === 'system'))
                 .map(c => {
@@ -277,6 +281,8 @@ export default function PlanningScreen() {
                   return (
                     <BouncyButton
                       key={c.id}
+                      accessibilityRole="tab"
+                      accessibilityState={{ selected: isSelected }}
                       onPress={() => {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                         setRecCategoryId(c.id);
@@ -316,8 +322,10 @@ export default function PlanningScreen() {
             </ScrollView>
 
             <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8, marginTop: 12 }}>Interval</Text>
-            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }} accessibilityRole="radiogroup">
               <BouncyButton
+                accessibilityRole="radio"
+                accessibilityState={{ checked: recInterval === 'weekly' }}
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   setRecInterval('weekly');
@@ -337,6 +345,8 @@ export default function PlanningScreen() {
                 </Text>
               </BouncyButton>
               <BouncyButton
+                accessibilityRole="radio"
+                accessibilityState={{ checked: recInterval === 'monthly' }}
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   setRecInterval('monthly');
