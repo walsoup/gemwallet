@@ -35,3 +35,6 @@
 ## 2026-06-27 - Early-exit in loop for O(N) filtering of sorted array
 **Learning:** React components (e.g., `HomeScreen`, `PlanningScreen`, modals) often calculate derived statistics for a recent timeframe (e.g., current month's expenses by category) using `transactions.forEach`. Since the `transactions` array is sorted newest-first, iterating the entire array is an unnecessary O(N) operation.
 **Action:** Replace `forEach` with a `for...of` loop and use an early `break` statement when `tx.timestamp < timeframeBound` is met. This drops the time complexity from O(N) to effectively O(1) for recent transactions, eliminating significant overhead as transaction history grows.
+## 2026-06-27 - Early-exit in loop for O(N) filtering of sorted array
+**Learning:** React components (e.g., `HomeScreen`, `PlanningScreen`, modals, `AnalyticsScreen`) often calculate derived statistics for a recent timeframe (e.g., current month expenses) using `transactions.forEach`. Since the `transactions` array is sorted newest-first, iterating the entire array is an unnecessary O(N) operation.
+**Action:** Replace `forEach` with a `for...of` loop and use an early `break` statement when `tx.timestamp < timeframeBound` is met. This drops the time complexity from O(N) to effectively O(1) for recent transactions, eliminating significant overhead as transaction history grows.
