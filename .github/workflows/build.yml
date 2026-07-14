@@ -26,7 +26,6 @@ jobs:
 
       - name: Build Standalone APK (Release)
         run: |
-          cd android
           chmod +x gradlew
           ./gradlew :app:assembleRelease -x lintRelease --stacktrace --no-daemon --max-workers=1
 

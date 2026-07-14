@@ -1,0 +1,185 @@
+package com.walsoup.gemwallet.data.preferences
+
+import android.content.Context
+import android.content.SharedPreferences
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import java.security.MessageDigest
+
+class SettingsManager(context: Context) {
+
+    private val prefs: SharedPreferences = context.getSharedPreferences("gemwallet_settings", Context.MODE_PRIVATE)
+    private val securePrefs: SharedPreferences = context.getSharedPreferences("gemwallet_secure_settings", Context.MODE_PRIVATE)
+
+    // Data class representing the settings state
+    data class SettingsState(
+        val themePreference: String = "dark",
+        val oledTrueBlackEnabled: Boolean = true,
+        val highContrastEnabled: Boolean = false,
+        val themePrimary: String = "#ff6b6b",
+        val themeSecondary: String = "#52dea2",
+        val secureAccessEnabled: Boolean = false,
+        val biometricAuthEnabled: Boolean = false,
+        val notificationsTransactionAlerts: Boolean = true,
+        val notificationsWeeklySummary: Boolean = true,
+        val notificationsSavingsGoalProgress: Boolean = true,
+        val notificationsBudgetWarnings: Boolean = true,
+        val passcodeEnabled: Boolean = false,
+        val passcodePinHash: String = "",
+        val currencyCode: String = "USD",
+        val language: String = "en-US",
+        val region: String = "US",
+        val aiProvider: String = "google",
+        val aiFeaturesEnabled: Boolean = false,
+        val gemmaModel: String = "gemma-4-31b-it",
+        val localModelId: String = "gemma-4-e2b-it",
+        val localModelDownloaded: Boolean = false,
+        val smartCategorizationEnabled: Boolean = true,
+        val advancedSummariesEnabled: Boolean = false,
+        val includeNotesInExport: Boolean = true,
+        val setupCoachDismissed: Boolean = false,
+        val backupConfigured: Boolean = false,
+        val customGreetingName: String = "",
+        val hasCompletedOnboarding: Boolean = false,
+        val voiceAssistantEnabled: Boolean = false
+    )
+
+    private val _settingsState = MutableStateFlow(loadSettings())
+    val settingsState: StateFlow<SettingsState> = _settingsState.asStateFlow()
+
+    private fun loadSettings(): SettingsState {
+        return SettingsState(
+            themePreference = prefs.getString("themePreference", "dark") ?: "dark",
+            oledTrueBlackEnabled = prefs.getBoolean("oledTrueBlackEnabled", true),
+            highContrastEnabled = prefs.getBoolean("highContrastEnabled", false),
+            themePrimary = prefs.getString("themePrimary", "#ff6b6b") ?: "#ff6b6b",
+            themeSecondary = prefs.getString("themeSecondary", "#52dea2") ?: "#52dea2",
+            secureAccessEnabled = prefs.getBoolean("secureAccessEnabled", false),
+            biometricAuthEnabled = prefs.getBoolean("biometricAuthEnabled", false),
+            notificationsTransactionAlerts = prefs.getBoolean("notificationsTransactionAlerts", true),
+            notificationsWeeklySummary = prefs.getBoolean("notificationsWeeklySummary", true),
+            notificationsSavingsGoalProgress = prefs.getBoolean("notificationsSavingsGoalProgress", true),
+            notificationsBudgetWarnings = prefs.getBoolean("notificationsBudgetWarnings", true),
+            passcodeEnabled = prefs.getBoolean("passcodeEnabled", false),
+            passcodePinHash = prefs.getString("passcodePinHash", "") ?: "",
+            currencyCode = prefs.getString("currencyCode", "USD") ?: "USD",
+            language = prefs.getString("language", "en-US") ?: "en-US",
+            region = prefs.getString("region", "US") ?: "US",
+            aiProvider = prefs.getString("aiProvider", "google") ?: "google",
+            aiFeaturesEnabled = prefs.getBoolean("aiFeaturesEnabled", false),
+            gemmaModel = prefs.getString("gemmaModel", "gemma-4-31b-it") ?: "gemma-4-31b-it",
+            localModelId = prefs.getString("localModelId", "gemma-4-e2b-it") ?: "gemma-4-e2b-it",
+            localModelDownloaded = prefs.getBoolean("localModelDownloaded", false),
+            smartCategorizationEnabled = prefs.getBoolean("smartCategorizationEnabled", true),
+            advancedSummariesEnabled = prefs.getBoolean("advancedSummariesEnabled", false),
+            includeNotesInExport = prefs.getBoolean("includeNotesInExport", true),
+            setupCoachDismissed = prefs.getBoolean("setupCoachDismissed", false),
+            backupConfigured = prefs.getBoolean("backupConfigured", false),
+            customGreetingName = prefs.getString("customGreetingName", "") ?: "",
+            hasCompletedOnboarding = prefs.getBoolean("hasCompletedOnboarding", false),
+            voiceAssistantEnabled = prefs.getBoolean("voiceAssistantEnabled", false)
+        )
+    }
+
+    private fun updatePrefs(block: SharedPreferences.Editor.() -> Unit) {
+        val editor = prefs.edit()
+        editor.block()
+        editor.apply()
+        _settingsState.value = loadSettings()
+    }
+
+    // Setters
+    fun setThemePreference(valStr: String) = updatePrefs { putString("themePreference", valStr) }
+    fun setOledTrueBlackEnabled(enabled: Boolean) = updatePrefs { putBoolean("oledTrueBlackEnabled", enabled) }
+    fun setHighContrastEnabled(enabled: Boolean) = updatePrefs { putBoolean("highContrastEnabled", enabled) }
+    fun setThemePrimary(color: String) = updatePrefs { putString("themePrimary", color.trim()) }
+    fun setThemeSecondary(color: String) = updatePrefs { putString("themeSecondary", color.trim()) }
+    fun setSecureAccessEnabled(enabled: Boolean) = updatePrefs { putBoolean("secureAccessEnabled", enabled) }
+    fun setBiometricAuthEnabled(enabled: Boolean) = updatePrefs { putBoolean("biometricAuthEnabled", enabled) }
+    fun setNotificationsTransactionAlerts(enabled: Boolean) = updatePrefs { putBoolean("notificationsTransactionAlerts", enabled) }
+    fun setNotificationsWeeklySummary(enabled: Boolean) = updatePrefs { putBoolean("notificationsWeeklySummary", enabled) }
+    fun setNotificationsSavingsGoalProgress(enabled: Boolean) = updatePrefs { putBoolean("notificationsSavingsGoalProgress", enabled) }
+    fun setNotificationsBudgetWarnings(enabled: Boolean) = updatePrefs { putBoolean("notificationsBudgetWarnings", enabled) }
+    
+    fun setPasscodePin(pin: String) {
+        val hash = if (pin.isNotEmpty()) sha256(pin) else ""
+        updatePrefs {
+            putString("passcodePinHash", hash)
+            putBoolean("passcodeEnabled", hash.isNotEmpty())
+        }
+    }
+    
+    fun removePasscode() {
+        updatePrefs {
+            putString("passcodePinHash", "")
+            putBoolean("passcodeEnabled", false)
+        }
+    }
+
+    fun setCurrencyCode(code: String) = updatePrefs { putString("currencyCode", code) }
+    fun setLanguage(lang: String) = updatePrefs { putString("language", lang) }
+    fun setRegion(reg: String) = updatePrefs { putString("region", reg) }
+    fun setAiProvider(provider: String) = updatePrefs { putString("aiProvider", provider) }
+    fun setAiFeaturesEnabled(enabled: Boolean) = updatePrefs { putBoolean("aiFeaturesEnabled", enabled) }
+    fun setGemmaModel(model: String) = updatePrefs { putString("gemmaModel", model) }
+    fun setLocalModelId(modelId: String) = updatePrefs { putString("localModelId", modelId) }
+    fun setLocalModelDownloaded(downloaded: Boolean) = updatePrefs { putBoolean("localModelDownloaded", downloaded) }
+    fun setSmartCategorizationEnabled(enabled: Boolean) = updatePrefs { putBoolean("smartCategorizationEnabled", enabled) }
+    fun setAdvancedSummariesEnabled(enabled: Boolean) = updatePrefs { putBoolean("advancedSummariesEnabled", enabled) }
+    fun setIncludeNotesInExport(enabled: Boolean) = updatePrefs { putBoolean("includeNotesInExport", enabled) }
+    fun setSetupCoachDismissed(dismissed: Boolean) = updatePrefs { putBoolean("setupCoachDismissed", dismissed) }
+    fun setBackupConfigured(configured: Boolean) = updatePrefs { putBoolean("backupConfigured", configured) }
+    fun setCustomGreetingName(name: String) = updatePrefs { putString("customGreetingName", name) }
+    fun setHasCompletedOnboarding(completed: Boolean) = updatePrefs { putBoolean("hasCompletedOnboarding", completed) }
+    fun setVoiceAssistantEnabled(enabled: Boolean) = updatePrefs { putBoolean("voiceAssistantEnabled", enabled) }
+
+    fun clearAllData() {
+        updatePrefs {
+            clear()
+        }
+        securePrefs.edit().clear().apply()
+    }
+
+    fun resetSettings() {
+        updatePrefs {
+            // Keep onboarding status but reset other settings
+            val onboarded = prefs.getBoolean("hasCompletedOnboarding", false)
+            clear()
+            putBoolean("hasCompletedOnboarding", onboarded)
+        }
+    }
+
+    // Secure Storage for API Keys
+    fun getGeminiApiKey(): String {
+        return securePrefs.getString("gemini_api_key", "") ?: ""
+    }
+
+    fun setGeminiApiKey(key: String) {
+        securePrefs.edit().putString("gemini_api_key", key).apply()
+    }
+
+    fun deleteGeminiApiKey() {
+        securePrefs.edit().remove("gemini_api_key").apply()
+    }
+
+    fun getHuggingFaceToken(): String {
+        return securePrefs.getString("hugging_face_token", "") ?: ""
+    }
+
+    fun setHuggingFaceToken(token: String) {
+        securePrefs.edit().putString("hugging_face_token", token).apply()
+    }
+
+    fun deleteHuggingFaceToken() {
+        securePrefs.edit().remove("hugging_face_token").apply()
+    }
+
+    // SHA-256 helper
+    private fun sha256(input: String): String {
+        val bytes = input.toByteArray()
+        val md = MessageDigest.getInstance("SHA-256")
+        val digest = md.digest(bytes)
+        return digest.fold("") { str, it -> str + "%02x".format(it) }
+    }
+}
