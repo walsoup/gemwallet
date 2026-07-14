@@ -24,6 +24,18 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
+      - name: Generate signing keystore
+        run: |
+          keytool -genkey -v \
+            -keystore app/keystore.jks \
+            -alias mykey \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -storepass android123 \
+            -keypass android123 \
+            -dname "CN=GemWallet, OU=Dev, O=Walsoup, L=Unknown, ST=Unknown, C=MA"
+
       - name: Build Standalone APK (Release)
         run: |
           chmod +x gradlew
