@@ -359,7 +359,6 @@ class MainActivity : FragmentActivity() {
             }
         }
     }
-    }
 
     @Composable
     private fun MainContent(
