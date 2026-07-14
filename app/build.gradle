@@ -1,40 +1,51 @@
-plugins {
-    id 'com.android.application'
-    id 'org.jetbrains.kotlin.android'
-    id 'kotlin-kapt'
-}
+name: Build Android APK (Raw Gradle - Release)
 
-android {
-    namespace 'com.walsoup.gemwallet'
-    compileSdk 34
+on:
+  push:
+    branches:
+      - main
 
-    defaultConfig {
-        applicationId "com.walsoup.gemwallet"
-        minSdk 26
-        targetSdk 34
-        versionCode 1
-        versionName "1.0.0"
+permissions:
+  contents: read
 
-        vectorDrawables {
-            useSupportLibrary true
-        }
-    }
+jobs:
+  build-android-apk:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
-    signingConfigs {
-        release {
-            storeFile file("keystore.jks")
-            storePassword "android123"
-            keyAlias "mykey"
-            keyPassword "android123"
-        }
-    }
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    buildTypes {
-        release {
-            signingConfig signingConfigs.release
-            minifyEnabled true
-            shrinkResources true
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Generate signing keystore
+        run: |
+          keytool -genkey -v \
+            -keystore app/keystore.jks \
+            -alias mykey \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -storepass android123 \
+            -keypass android123 \
+            -dname "CN=GemWallet, OU=Dev, O=Walsoup, L=Unknown, ST=Unknown, C=MA"
+
+      - name: Build Standalone APK (Release)
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:assembleRelease -x lintRelease --stacktrace --no-daemon --max-workers=1
+
+      - name: Upload APK artifact (release)
+        uses: actions/upload-artifact@v4
+        with:
+          name: gemwallet-standalone-apk
+          path: app/build/outputs/apk/release/*.apk            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 

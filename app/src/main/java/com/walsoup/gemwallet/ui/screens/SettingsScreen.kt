@@ -3,6 +3,7 @@ package com.walsoup.gemwallet.ui.screens
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.widget.Toast
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
@@ -10,10 +11,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -23,12 +24,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.core.content.FileProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.walsoup.gemwallet.data.database.CategoryEntity
 import com.walsoup.gemwallet.data.preferences.SettingsManager
 import com.walsoup.gemwallet.ui.components.formatCurrency
@@ -42,8 +45,7 @@ import kotlinx.coroutines.Dispatchers
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    settingsState: SettingsManager.SettingsState,
-    settingsManager: SettingsManager,
+    settingsManager: SettingsManager = viewModel(),
     categories: List<CategoryEntity>,
     onAddCustomCategory: (name: String, emoji: String) -> Unit,
     onClearAllData: () -> Unit,
@@ -51,14 +53,34 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val settingsState by settingsManager.settingsState.collectAsStateWithLifecycle()
 
-    // Modal view states
+    // Modal states
     var showCategoryModal by remember { mutableStateOf(false) }
     var showGeminiKeyModal by remember { mutableStateOf(false) }
     var showPasscodeModal by remember { mutableStateOf(false) }
-    
+    var showRemovePasscodeConfirm by remember { mutableStateOf(false) }
     var showClearDataConfirm by remember { mutableStateOf(false) }
     var showResetConfirm by remember { mutableStateOf(false) }
+
+    // Currency picker state
+    var showCurrencyPicker by remember { mutableStateOf(false) }
+
+    // Common currency list
+    val currencyOptions = remember {
+        listOf(
+            "USD" to "US Dollar ($)",
+            "EUR" to "Euro (€)",
+            "GBP" to "British Pound (£)",
+            "JPY" to "Japanese Yen (¥)",
+            "CAD" to "Canadian Dollar (CA$)",
+            "AUD" to "Australian Dollar (A$)",
+            "CHF" to "Swiss Franc (CHF)",
+            "CNY" to "Chinese Yuan (¥)",
+            "INR" to "Indian Rupee (₹)",
+            "BRL" to "Brazilian Real (R$)"
+        )
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -67,12 +89,9 @@ fun SettingsScreen(
             .padding(horizontal = 24.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        // Safe Area Padding
-        item {
-            Spacer(modifier = Modifier.height(48.dp))
-        }
+        item { Spacer(modifier = Modifier.height(48.dp)) }
 
-        // Header Section
+        // Header
         item {
             Column {
                 Text(
@@ -91,541 +110,308 @@ fun SettingsScreen(
             }
         }
 
-        // 1. Security Section Card
+        // 1. Security Section
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    "Security",
-                    fontFamily = SpaceGroteskFamily,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                    shape = RoundedCornerShape(20.dp)
+            SectionCard(title = "Security", icon = Icons.Default.Shield) {
+                // Biometric Auth
+                SettingsRow(
+                    icon = Icons.Default.Fingerprint,
+                    title = "Biometric Authentication",
+                    subtitle = "Require Face ID / Touch ID"
                 ) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        // Biometrics Auth Toggle
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Icon(Icons.Default.Fingerprint, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Column {
-                                    Text("Biometric Authentication", fontFamily = BeVietnamProFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                                    Text("Require Face ID / Touch ID", fontFamily = BeVietnamProFamily, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                            }
-                            Switch(
-                                checked = settingsState.biometricAuthEnabled,
-                                onCheckedChange = { checked ->
-                                    if (checked) {
-                                        val biometricManager = BiometricManager.from(context)
-                                        val canAuthenticate = biometricManager.canAuthenticate(
-                                            BiometricManager.Authenticators.BIOMETRIC_STRONG or 
-                                            BiometricManager.Authenticators.BIOMETRIC_WEAK
-                                        )
-                                        if (canAuthenticate == BiometricManager.BIOMETRIC_SUCCESS) {
-                                            settingsManager.setBiometricAuthEnabled(true)
-                                        } else {
-                                            if (canAuthenticate == BiometricPrompt.ERROR_LOCKOUT || canAuthenticate == BiometricPrompt.ERROR_LOCKOUT_PERMANENT) {
-                                                Toast.makeText(context, "Biometrics are temporarily locked due to too many attempts. Please unlock your device first.", Toast.LENGTH_LONG).show()
-                                            } else {
-                                                Toast.makeText(context, "Biometric authentication is not available or not set up on this device.", Toast.LENGTH_LONG).show()
-                                            }
-                                        }
-                                    } else {
-                                        settingsManager.setBiometricAuthEnabled(false)
+                    Switch(
+                        checked = settingsState.biometricAuthEnabled,
+                        onCheckedChange = { checked ->
+                            if (checked) {
+                                val biometricManager = BiometricManager.from(context)
+                                val canAuthenticate = biometricManager.canAuthenticate(
+                                    BiometricManager.Authenticators.BIOMETRIC_STRONG or
+                                    BiometricManager.Authenticators.BIOMETRIC_WEAK
+                                )
+                                when (canAuthenticate) {
+                                    BiometricManager.BIOMETRIC_SUCCESS -> {
+                                        settingsManager.setBiometricAuthEnabled(true)
+                                    }
+                                    BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE,
+                                    BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE -> {
+                                        Toast.makeText(context, "Biometric hardware not available", Toast.LENGTH_LONG).show()
+                                    }
+                                    BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> {
+                                        Toast.makeText(context, "No biometrics enrolled. Set up Face ID / Touch ID in system settings.", Toast.LENGTH_LONG).show()
+                                    }
+                                    else -> {
+                                        Toast.makeText(context, "Biometric authentication unavailable", Toast.LENGTH_LONG).show()
                                     }
                                 }
-                            )
-                        }
-
-                        // Divider
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
-
-                        // Passcode Pin Set/Change Row
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { showPasscodeModal = true },
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Icon(Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Column {
-                                    Text(
-                                        text = if (settingsState.passcodeEnabled) "Change Passcode" else "Set Passcode",
-                                        fontFamily = BeVietnamProFamily,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 15.sp
-                                    )
-                                    Text(
-                                        text = if (settingsState.passcodeEnabled) "Update your 6-digit pin" else "Require a pin to open",
-                                        fontFamily = BeVietnamProFamily,
-                                        fontSize = 13.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-
-                        // Remove Passcode if set
-                        if (settingsState.passcodeEnabled) {
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { settingsManager.removePasscode() },
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    Icon(Icons.Default.LockOpen, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    Column {
-                                        Text("Remove Passcode", fontFamily = BeVietnamProFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                                        Text("Disable pin authentication", fontFamily = BeVietnamProFamily, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    }
-                                }
+                            } else {
+                                settingsManager.setBiometricAuthEnabled(false)
                             }
                         }
-                    }
-                }
-            }
-        }
-
-        // 2. Appearance Section Card
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    "Appearance",
-                    fontFamily = SpaceGroteskFamily,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                    shape = RoundedCornerShape(20.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        // Theme Selection (Light / Dark / System)
-                        Column {
-                            Text("Theme Preference", fontFamily = BeVietnamProFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                listOf("light", "dark", "system").forEach { theme ->
-                                    val active = settingsState.themePreference == theme
-                                    FilterChip(
-                                        selected = active,
-                                        onClick = { settingsManager.setThemePreference(theme) },
-                                        label = { Text(theme.replaceFirstChar { it.uppercase() }, fontFamily = BeVietnamProFamily) },
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                }
-                            }
-                        }
-
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
-
-                        // OLED True Black
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Icon(Icons.Default.Brightness2, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Column {
-                                    Text("OLED True Black", fontFamily = BeVietnamProFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                                    Text("Force total black background", fontFamily = BeVietnamProFamily, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                            }
-                            Switch(
-                                checked = settingsState.oledTrueBlackEnabled,
-                                onCheckedChange = { settingsManager.setOledTrueBlackEnabled(it) }
-                            )
-                        }
-
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
-
-                        // High Contrast Mode
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Icon(Icons.Default.Compare, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Column {
-                                    Text("High Contrast Mode", fontFamily = BeVietnamProFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                                    Text("Maximum contrast outlines & text", fontFamily = BeVietnamProFamily, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                            }
-                            Switch(
-                                checked = settingsState.highContrastEnabled,
-                                onCheckedChange = { settingsManager.setHighContrastEnabled(it) }
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        // 3. AI & Assistant Section Card
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    "AI & Assistant",
-                    fontFamily = SpaceGroteskFamily,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                    shape = RoundedCornerShape(20.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        // Model Provider
-                        Column {
-                            Text("Model Provider", fontFamily = BeVietnamProFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                listOf("local", "google").forEach { provider ->
-                                    val active = settingsState.aiProvider == provider
-                                    val label = if (provider == "local") "Local Model" else "Cloud API"
-                                    FilterChip(
-                                        selected = active,
-                                        onClick = { settingsManager.setAiProvider(provider) },
-                                        label = { Text(label, fontFamily = BeVietnamProFamily) },
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                }
-                            }
-                        }
-
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
-
-                        // Show AI Assistant Tab Toggle
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Icon(Icons.Default.Chat, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Column {
-                                    Text("AI Assistant", fontFamily = BeVietnamProFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                                    Text("Show Chat screen in navigation", fontFamily = BeVietnamProFamily, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                            }
-                            Switch(
-                                checked = settingsState.aiFeaturesEnabled,
-                                onCheckedChange = { settingsManager.setAiFeaturesEnabled(it) }
-                            )
-                        }
-
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
-
-                        // Edit Gemini API Key (if cloud selected)
-                        if (settingsState.aiProvider == "google") {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { showGeminiKeyModal = true },
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    Icon(Icons.Default.Key, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    Column {
-                                        Text("Gemini API Key", fontFamily = BeVietnamProFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                                        val hasKey = settingsManager.getGeminiApiKey().isNotEmpty()
-                                        Text(
-                                            text = if (hasKey) "Key configured" else "Tap to configure key",
-                                            fontFamily = BeVietnamProFamily,
-                                            fontSize = 13.sp,
-                                            color = if (hasKey) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
-                                Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        } else {
-                            // Local model download button mock
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    Icon(Icons.Default.Memory, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    Column {
-                                        Text("Local Model Status", fontFamily = BeVietnamProFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                                        Text("Gemma 2B model", fontFamily = BeVietnamProFamily, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    }
-                                }
-                                Button(
-                                    onClick = { Toast.makeText(context, "Local model downloaded & active", Toast.LENGTH_SHORT).show() },
-                                    shape = RoundedCornerShape(12.dp)
-                                ) {
-                                    Text("Download", fontFamily = BeVietnamProFamily)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // 4. Currency & Regions Section Card
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    "Region & Localization",
-                    fontFamily = SpaceGroteskFamily,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                    shape = RoundedCornerShape(20.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        // Currency selection dropdown or custom text field for simplicity
-                        var isCurrencyExpanded by remember { mutableStateOf(false) }
-                        Column {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { isCurrencyExpanded = !isCurrencyExpanded },
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    Icon(Icons.Default.AttachMoney, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    Column {
-                                        Text("Currency Code", fontFamily = BeVietnamProFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                                        Text(settingsState.currencyCode, fontFamily = BeVietnamProFamily, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    }
-                                }
-                                Icon(Icons.Default.ArrowDropDown, contentDescription = null)
-                            }
-                            if (isCurrencyExpanded) {
-                                Spacer(modifier = Modifier.height(12.dp))
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    listOf("USD", "EUR", "GBP", "JPY").forEach { code ->
-                                        val active = settingsState.currencyCode == code
-                                        FilterChip(
-                                            selected = active,
-                                            onClick = {
-                                                settingsManager.setCurrencyCode(code)
-                                                isCurrencyExpanded = false
-                                            },
-                                            label = { Text(code, fontFamily = BeVietnamProFamily) },
-                                            modifier = Modifier.weight(1f)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // 5. Custom Categories List Card
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Bottom
-                ) {
-                    Text(
-                        "Categories",
-                        fontFamily = SpaceGroteskFamily,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
                     )
-                    TextButton(onClick = { showCategoryModal = true }) {
-                        Text("+ ADD CUSTOM", fontFamily = BeVietnamProFamily, fontWeight = FontWeight.Bold)
+                }
+
+                DividerItem()
+
+                // Passcode
+                if (settingsState.passcodeEnabled) {
+                    SettingsRow(
+                        icon = Icons.Default.Lock,
+                        title = "Change Passcode",
+                        subtitle = "Update your 6-digit PIN",
+                        showChevron = true,
+                        onClick = { showPasscodeModal = true; true }
+                    )
+                    DividerItem()
+                    SettingsRow(
+                        icon = Icons.Default.LockOpen,
+                        title = "Remove Passcode",
+                        subtitle = "Disable PIN authentication",
+                        iconColor = MaterialTheme.colorScheme.error,
+                        titleColor = MaterialTheme.colorScheme.error,
+                        onClick = { showRemovePasscodeConfirm = true; true }
+                    )
+                } else {
+                    SettingsRow(
+                        icon = Icons.Default.Lock,
+                        title = "Set Passcode",
+                        subtitle = "Require a PIN to open",
+                        showChevron = true,
+                        onClick = { showPasscodeModal = true; true }
+                    )
+                }
+            }
+        }
+
+        // 2. Appearance
+        item {
+            SectionCard(title = "Appearance", icon = Icons.Default.Palette) {
+                SettingsRow(
+                    icon = Icons.Default.Brightness6,
+                    title = "Theme Preference",
+                    subtitle = "Light, Dark, or System"
+                ) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf("light" to "Light", "dark" to "Dark", "system" to "System").forEach { (key, label) ->
+                            val active = settingsState.themePreference == key
+                            FilterChip(
+                                selected = active,
+                                onClick = { settingsManager.setThemePreference(key) },
+                                label = { Text(label, fontFamily = BeVietnamProFamily) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
                     }
                 }
 
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                    shape = RoundedCornerShape(20.dp)
+                DividerItem()
+
+                SettingsRow(
+                    icon = Icons.Default.Brightness2,
+                    title = "OLED True Black",
+                    subtitle = "Force total black background"
                 ) {
+                    Switch(
+                        checked = settingsState.oledTrueBlackEnabled,
+                        onCheckedChange = { settingsManager.setOledTrueBlackEnabled(it) }
+                    )
+                }
+
+                DividerItem()
+
+                SettingsRow(
+                    icon = Icons.Default.Compare,
+                    title = "High Contrast Mode",
+                    subtitle = "Maximum contrast outlines & text"
+                ) {
+                    Switch(
+                        checked = settingsState.highContrastEnabled,
+                        onCheckedChange = { settingsManager.setHighContrastEnabled(it) }
+                    )
+                }
+            }
+        }
+
+        // 3. AI & Assistant
+        item {
+            SectionCard(title = "AI & Assistant", icon = Icons.Default.Psychology) {
+                SettingsRow(
+                    icon = Icons.Default.Cloud,
+                    title = "Model Provider",
+                    subtitle = "Choose between local or cloud"
+                ) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf("local" to "Local Model", "google" to "Cloud API").forEach { (key, label) ->
+                            val active = settingsState.aiProvider == key
+                            FilterChip(
+                                selected = active,
+                                onClick = { settingsManager.setAiProvider(key) },
+                                label = { Text(label, fontFamily = BeVietnamProFamily) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+
+                DividerItem()
+
+                SettingsRow(
+                    icon = Icons.Default.Chat,
+                    title = "AI Assistant",
+                    subtitle = "Show Chat screen in navigation"
+                ) {
+                    Switch(
+                        checked = settingsState.aiFeaturesEnabled,
+                        onCheckedChange = { settingsManager.setAiFeaturesEnabled(it) }
+                    )
+                }
+
+                DividerItem()
+
+                if (settingsState.aiProvider == "google") {
+                    SettingsRow(
+                        icon = Icons.Default.Key,
+                        title = "Gemini API Key",
+                        subtitle = if (settingsManager.getGeminiApiKey().isNotEmpty()) "Key configured" else "Tap to configure key",
+                        subtitleColor = if (settingsManager.getGeminiApiKey().isNotEmpty()) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        showChevron = true,
+                        onClick = { showGeminiKeyModal = true; true }
+                    )
+                } else {
+                    SettingsRow(
+                        icon = Icons.Default.Memory,
+                        title = "Local Model Status",
+                        subtitle = settingsState.localModelId
+                    ) {
+                        Button(
+                            onClick = {
+                                scope.launch {
+                                    // Simulate download
+                                    try {
+                                        // TODO: Actual model download logic
+                                        settingsManager.setLocalModelDownloaded(true)
+                                        settingsManager.setLocalModelId("gemma-4-e2b-it")
+                                        Toast.makeText(context, "Local model downloaded & active", Toast.LENGTH_SHORT).show()
+                                    } catch (e: Exception) {
+                                        Toast.makeText(context, "Download failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            },
+                            enabled = !settingsState.localModelDownloaded,
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                if (settingsState.localModelDownloaded) "Downloaded" else "Download",
+                                fontFamily = BeVietnamProFamily
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // 4. Region & Localization
+        item {
+            SectionCard(title = "Region & Localization", icon = Icons.Default.Public) {
+                SettingsRow(
+                    icon = Icons.Default.AttachMoney,
+                    title = "Currency",
+                    subtitle = currencyOptions.find { it.first == settingsState.currencyCode }?.second ?: settingsState.currencyCode,
+                    showChevron = true,
+                    onClick = { showCurrencyPicker = true; true }
+                )
+            }
+        }
+
+        // 5. Categories
+        item {
+            SectionCard(title = "Categories", icon = Icons.Default.Category, actionLabel = "+ ADD CUSTOM", onActionClick = { showCategoryModal = true }) {
+                if (categories.isEmpty()) {
+                    Text(
+                        "No custom categories yet",
+                        fontFamily = BeVietnamProFamily,
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                        textAlign = TextAlign.Center
+                    )
+                } else {
                     Column(
-                        modifier = Modifier.padding(16.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        categories.take(6).forEach { cat ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(36.dp)
-                                        .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.surfaceContainerHighest),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(cat.emoji, fontSize = 16.sp)
-                                }
-                                Column {
-                                    Text(cat.name, fontFamily = BeVietnamProFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp)
-                                    Text(
-                                        text = cat.kind.replaceFirstChar { it.uppercase() } + if (cat.isLocked) " (Locked)" else "",
-                                        fontFamily = BeVietnamProFamily,
-                                        fontSize = 12.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
+                        categories.forEach { cat ->
+                            CategoryRow(category = cat)
                         }
                     }
                 }
             }
         }
 
-        // 6. Data Export & Clear Section Card
+        // 6. Data Management
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    "Data Management",
-                    fontFamily = SpaceGroteskFamily,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+            SectionCard(title = "Data Management", icon = Icons.Default.Storage) {
+                SettingsRow(
+                    icon = Icons.Default.Share,
+                    title = "Export Data",
+                    subtitle = "Export ledger to .csv",
+                    showChevron = true,
+                    onClick = {
+                        scope.launch {
+                            try {
+                                val csvContent = withContext(Dispatchers.IO) { onExportCsv() }
+                                val file = withContext(Dispatchers.IO) {
+                                    val f = File(context.cacheDir, "gemwallet_transactions.csv")
+                                    f.writeText(csvContent)
+                                    f
+                                }
+                                val uri = FileProvider.getUriForFile(
+                                    context,
+                                    "${context.packageName}.fileprovider",
+                                    file
+                                )
+                                val shareIntent = Intent().apply {
+                                    action = Intent.ACTION_SEND
+                                    putExtra(Intent.EXTRA_STREAM, uri)
+                                    type = "text/csv"
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }
+                                context.startActivity(Intent.createChooser(shareIntent, "Export Transactions CSV"))
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "Export failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                        true
+                    }
                 )
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                    shape = RoundedCornerShape(20.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        // Export CSV
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    scope.launch {
-                                        try {
-                                            val csvContent = withContext(Dispatchers.IO) {
-                                                onExportCsv()
-                                            }
-                                            val file = withContext(Dispatchers.IO) {
-                                                val f = File(context.cacheDir, "gemwallet_transactions.csv")
-                                                f.writeText(csvContent)
-                                                f
-                                            }
-                                            val uri: Uri = FileProvider.getUriForFile(
-                                                context,
-                                                "${context.packageName}.fileprovider",
-                                                file
-                                            )
-                                            val shareIntent = Intent().apply {
-                                                action = Intent.ACTION_SEND
-                                                putExtra(Intent.EXTRA_STREAM, uri)
-                                                type = "text/csv"
-                                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                            }
-                                            context.startActivity(Intent.createChooser(shareIntent, "Export Transactions CSV"))
-                                        } catch (e: Exception) {
-                                            Toast
-                                                .makeText(context, "Export failed: ${e.message}", Toast.LENGTH_SHORT)
-                                                .show()
-                                        }
-                                    }
-                                },
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Icon(Icons.Default.Share, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Column {
-                                    Text("Export Data", fontFamily = BeVietnamProFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                                    Text("Export ledger to .csv", fontFamily = BeVietnamProFamily, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                            }
-                            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
 
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+                DividerItem()
 
-                        // Reset Settings
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { showResetConfirm = true },
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Icon(Icons.Default.Refresh, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Column {
-                                    Text("Reset Settings", fontFamily = BeVietnamProFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                                    Text("Reset configuration choices", fontFamily = BeVietnamProFamily, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                            }
-                            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
+                SettingsRow(
+                    icon = Icons.Default.Refresh,
+                    title = "Reset Settings",
+                    subtitle = "Restore default configurations (keeps transactions)",
+                    showChevron = true,
+                    onClick = { showResetConfirm = true; true }
+                )
 
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+                DividerItem()
 
-                        // Clear All Data
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { showClearDataConfirm = true },
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Icon(Icons.Default.DeleteForever, contentDescription = null, tint = MaterialTheme.colorScheme.error)
-                                Column {
-                                    Text("Clear All Data", fontFamily = BeVietnamProFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = MaterialTheme.colorScheme.error)
-                                    Text("Wipe database & preferences", fontFamily = BeVietnamProFamily, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                            }
-                            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                }
+                SettingsRow(
+                    icon = Icons.Default.DeleteForever,
+                    title = "Clear All Data",
+                    subtitle = "Wipe database & preferences permanently",
+                    iconColor = MaterialTheme.colorScheme.error,
+                    titleColor = MaterialTheme.colorScheme.error,
+                    onClick = { showClearDataConfirm = true; true }
+                )
             }
         }
 
-        // About Section
+        // About
         item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                shape = RoundedCornerShape(20.dp)
-            ) {
+            SectionCard(title = "") {
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
@@ -647,258 +433,535 @@ fun SettingsScreen(
             }
         }
 
-        // Bottom space
-        item {
-            Spacer(modifier = Modifier.height(48.dp))
-        }
+        item { Spacer(modifier = Modifier.height(48.dp)) }
     }
 
-    // Modal Dialog: Add Category
-    if (showCategoryModal) {
-        var categoryName by remember { mutableStateOf("") }
-        var categoryEmoji by remember { mutableStateOf("") }
+    // ===== MODALS =====
 
-        Dialog(onDismissRequest = { showCategoryModal = false }) {
-            Card(
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
+    // Add Category Modal
+    if (showCategoryModal) CategoryModal(
+        onDismiss = { showCategoryModal = false },
+        onAdd = { name, emoji ->
+            onAddCustomCategory(name, emoji)
+            showCategoryModal = false
+        }
+    )
+
+    // Gemini API Key Modal
+    if (showGeminiKeyModal) GeminiKeyModal(
+        currentKey = settingsManager.getGeminiApiKey(),
+        onDismiss = { showGeminiKeyModal = false },
+        onSave = { key ->
+            settingsManager.setGeminiApiKey(key)
+            showGeminiKeyModal = false
+        },
+        onDelete = {
+            settingsManager.deleteGeminiApiKey()
+            showGeminiKeyModal = false
+        }
+    )
+
+    // Passcode Modal (Set / Change)
+    if (showPasscodeModal) PasscodeModal(
+        isChange = settingsState.passcodeEnabled,
+        onDismiss = { showPasscodeModal = false },
+        onSubmit = { newPin, oldPin ->
+            val result = if (settingsState.passcodeEnabled) {
+                settingsManager.setPasscodePin(newPin, oldPin)
+            } else {
+                settingsManager.setPasscodePin(newPin)
+            }
+            result.onSuccess { showPasscodeModal = false }
+                .onFailure { e ->
+                    Toast.makeText(context, e.message ?: "Failed to set passcode", Toast.LENGTH_SHORT).show()
+                }
+        }
+    )
+
+    // Remove Passcode Confirmation
+    if (showRemovePasscodeConfirm) RemovePasscodeConfirmModal(
+        onDismiss = { showRemovePasscodeConfirm = false },
+        onConfirm = { currentPin ->
+            settingsManager.removePasscode(currentPin)
+                .onSuccess { showRemovePasscodeConfirm = false }
+                .onFailure { e ->
+                    Toast.makeText(context, e.message ?: "Incorrect passcode", Toast.LENGTH_SHORT).show()
+                }
+        }
+    )
+
+    // Currency Picker Modal
+    if (showCurrencyPicker) CurrencyPickerModal(
+        currentCode = settingsState.currencyCode,
+        options = currencyOptions,
+        onDismiss = { showCurrencyPicker = false },
+        onSelect = { code ->
+            settingsManager.setCurrencyCode(code)
+            showCurrencyPicker = false
+        }
+    )
+
+    // Reset Settings Confirmation
+    if (showResetConfirm) ConfirmDialog(
+        title = "Reset Settings?",
+        message = "This will restore default configurations but keep your transaction ledger history intact.",
+        confirmText = "Reset",
+        onConfirm = {
+            settingsManager.resetSettings()
+            showResetConfirm = false
+        },
+        onDismiss = { showResetConfirm = false }
+    )
+
+    // Clear All Data Confirmation
+    if (showClearDataConfirm) ConfirmDialog(
+        title = "Clear All Data?",
+        message = "Are you sure? This action is permanent and will completely delete your transaction ledger, categories, goals, and settings.",
+        confirmText = "Wipe Everything",
+        confirmColor = MaterialTheme.colorScheme.error,
+        onConfirm = {
+            onClearAllData()
+            showClearDataConfirm = false
+        },
+        onDismiss = { showClearDataConfirm = false }
+    )
+}
+
+// ===== REUSABLE COMPONENTS =====
+
+@Composable
+fun SectionCard(
+    title: String,
+    icon: androidx.compose.material.icons.filled.Icon? = null,
+    actionLabel: String? = null,
+    onActionClick: (() -> Unit)? = null,
+    content: @Composable () -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        if (title.isNotBlank()) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Bottom
             ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    icon?.let { Icon(it, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
                     Text(
-                        "New Custom Category",
+                        title,
                         fontFamily = SpaceGroteskFamily,
+                        fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp
+                        color = MaterialTheme.colorScheme.primary
                     )
-
-                    OutlinedTextField(
-                        value = categoryName,
-                        onValueChange = { categoryName = it },
-                        label = { Text("Name", fontFamily = BeVietnamProFamily) },
-                        placeholder = { Text("e.g. Gaming, Laundry...", fontFamily = BeVietnamProFamily) },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-
-                    OutlinedTextField(
-                        value = categoryEmoji,
-                        onValueChange = { categoryEmoji = it },
-                        label = { Text("Emoji", fontFamily = BeVietnamProFamily) },
-                        placeholder = { Text("🎮", fontFamily = BeVietnamProFamily) },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        TextButton(onClick = { showCategoryModal = false }) {
-                            Text("Cancel", fontFamily = BeVietnamProFamily)
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Button(
-                            onClick = {
-                                if (categoryName.trim().isNotEmpty()) {
-                                    val emoji = categoryEmoji.trim().ifEmpty { "🧩" }
-                                    onAddCustomCategory(categoryName.trim(), emoji)
-                                    showCategoryModal = false
-                                }
-                            },
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Text("Add", fontFamily = BeVietnamProFamily)
-                        }
+                }
+                actionLabel?.let { label ->
+                    TextButton(onClick = onActionClick!!) {
+                        Text(label, fontFamily = BeVietnamProFamily, fontWeight = FontWeight.Bold)
                     }
                 }
             }
         }
-    }
-
-    // Modal Dialog: Gemini API Key Config
-    if (showGeminiKeyModal) {
-        var keyText by remember { mutableStateOf(settingsManager.getGeminiApiKey()) }
-
-        Dialog(onDismissRequest = { showGeminiKeyModal = false }) {
-            Card(
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Text(
-                        "Configure Gemini API Key",
-                        fontFamily = SpaceGroteskFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp
-                    )
-
-                    OutlinedTextField(
-                        value = keyText,
-                        onValueChange = { keyText = it },
-                        label = { Text("Gemini API Key", fontFamily = BeVietnamProFamily) },
-                        placeholder = { Text("AIzaSy...", fontFamily = BeVietnamProFamily) },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        TextButton(
-                            onClick = {
-                                settingsManager.deleteGeminiApiKey()
-                                showGeminiKeyModal = false
-                            },
-                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                        ) {
-                            Text("Delete Key", fontFamily = BeVietnamProFamily)
-                        }
-                        Spacer(modifier = Modifier.weight(1f))
-                        TextButton(onClick = { showGeminiKeyModal = false }) {
-                            Text("Cancel", fontFamily = BeVietnamProFamily)
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Button(
-                            onClick = {
-                                if (keyText.trim().isNotEmpty()) {
-                                    settingsManager.setGeminiApiKey(keyText.trim())
-                                    showGeminiKeyModal = false
-                                }
-                            },
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Text("Save", fontFamily = BeVietnamProFamily)
-                        }
-                    }
-                }
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+            shape = RoundedCornerShape(20.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                content()
             }
         }
     }
+}
 
-    // Modal Dialog: Set Passcode PIN
-    if (showPasscodeModal) {
-        var pinValue by remember { mutableStateOf("") }
-        var errorMsg by remember { mutableStateOf<String?>(null) }
+@Composable
+fun SettingsRow(
+    icon: androidx.compose.material.icons.filled.Icon,
+    title: String,
+    subtitle: String,
+    iconColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    titleColor: Color = MaterialTheme.colorScheme.onSurface,
+    subtitleColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    showChevron: Boolean = false,
+    onClick: (() -> Boolean)? = null,
+    trailing: @Composable (() -> Unit)? = null
+) {
+    val modifier = Modifier
+        .fillMaxWidth()
+        .let { if (onClick != null) it.clickable { onClick() } else it }
+        .padding(vertical = 4.dp)
 
-        Dialog(onDismissRequest = { showPasscodeModal = false }) {
-            Card(
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        "Set 6-Digit Passcode",
-                        fontFamily = SpaceGroteskFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp
-                    )
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Icon(icon, contentDescription = null, tint = iconColor)
+            Column {
+                Text(title, fontFamily = BeVietnamProFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = titleColor)
+                Text(subtitle, fontFamily = BeVietnamProFamily, fontSize = 13.sp, color = subtitleColor)
+            }
+        }
+        if (showChevron) {
+            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        trailing?.invoke()
+    }
+}
 
-                    OutlinedTextField(
-                        value = pinValue,
-                        onValueChange = {
-                            if (it.length <= 6 && it.all { char -> char.isDigit() }) {
-                                pinValue = it
+@Composable
+fun DividerItem() {
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+}
+
+@Composable
+fun CategoryRow(category: CategoryEntity) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(category.emoji, fontSize = 16.sp)
+        }
+        Column {
+            Text(category.name, fontFamily = BeVietnamProFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp)
+            Text(
+                text = category.kind.replaceFirstChar { it.uppercase() } + if (category.isLocked) " (Locked)" else "",
+                fontFamily = BeVietnamProFamily,
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+// ===== MODAL COMPONENTS =====
+
+@Composable
+fun CategoryModal(onDismiss: () -> Unit, onAdd: (String, String) -> Unit) {
+    var categoryName by remember { mutableStateOf("") }
+    var categoryEmoji by remember { mutableStateOf("") }
+
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+            modifier = Modifier.fillMaxWidth().padding(16.dp)
+        ) {
+            Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text("New Custom Category", fontFamily = SpaceGroteskFamily, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+
+                OutlinedTextField(
+                    value = categoryName,
+                    onValueChange = { categoryName = it },
+                    label = { Text("Name", fontFamily = BeVietnamProFamily) },
+                    placeholder = { Text("e.g. Gaming, Laundry...", fontFamily = BeVietnamProFamily) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                )
+
+                OutlinedTextField(
+                    value = categoryEmoji,
+                    onValueChange = { categoryEmoji = it },
+                    label = { Text("Emoji", fontFamily = BeVietnamProFamily) },
+                    placeholder = { Text("🎮", fontFamily = BeVietnamProFamily) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    maxLines = 1
+                )
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = onDismiss) { Text("Cancel", fontFamily = BeVietnamProFamily) }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = {
+                            if (categoryName.trim().isNotEmpty()) {
+                                val emoji = categoryEmoji.trim().ifEmpty { "🧩" }
+                                onAdd(categoryName.trim(), emoji)
                             }
                         },
-                        label = { Text("Passcode", fontFamily = BeVietnamProFamily) },
+                        shape = RoundedCornerShape(12.dp)
+                    ) { Text("Add", fontFamily = BeVietnamProFamily) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun GeminiKeyModal(
+    currentKey: String,
+    onDismiss: () -> Unit,
+    onSave: (String) -> Unit,
+    onDelete: () -> Unit
+) {
+    var keyText by remember { mutableStateOf(currentKey) }
+
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+            modifier = Modifier.fillMaxWidth().padding(16.dp)
+        ) {
+            Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text("Configure Gemini API Key", fontFamily = SpaceGroteskFamily, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+
+                OutlinedTextField(
+                    value = keyText,
+                    onValueChange = { keyText = it },
+                    label = { Text("Gemini API Key", fontFamily = BeVietnamProFamily) },
+                    placeholder = { Text("AIzaSy...", fontFamily = BeVietnamProFamily) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text)
+                )
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(
+                        onClick = onDelete,
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    ) { Text("Delete Key", fontFamily = BeVietnamProFamily) }
+                    Spacer(modifier = Modifier.weight(1f))
+                    TextButton(onClick = onDismiss) { Text("Cancel", fontFamily = BeVietnamProFamily) }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = { if (keyText.trim().isNotEmpty()) onSave(keyText.trim()) },
+                        shape = RoundedCornerShape(12.dp)
+                    ) { Text("Save", fontFamily = BeVietnamProFamily) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun PasscodeModal(
+    isChange: Boolean,
+    onDismiss: () -> Unit,
+    onSubmit: (newPin: String, oldPin: String?) -> Unit
+) {
+    var pinValue by remember { mutableStateOf("") }
+    var confirmPin by remember { mutableStateOf("") }
+    var oldPin by remember { mutableStateOf("") }
+    var errorMsg by remember { mutableStateOf<String?>(null) }
+    var step by remember { mutableStateOf(0) } // 0 = old pin (if change), 1 = new pin, 2 = confirm
+
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+            modifier = Modifier.fillMaxWidth().padding(16.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    if (isChange) "Change 6-Digit Passcode" else "Set 6-Digit Passcode",
+                    fontFamily = SpaceGroteskFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp
+                )
+
+                if (isChange && step == 0) {
+                    OutlinedTextField(
+                        value = oldPin,
+                        onValueChange = {
+                            if (it.length <= 6 && it.all { it.isDigit() }) oldPin = it
+                        },
+                        label = { Text("Current Passcode", fontFamily = BeVietnamProFamily) },
                         placeholder = { Text("######", fontFamily = BeVietnamProFamily) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(12.dp),
+                        visualTransformation = PasswordVisualTransformation()
                     )
-
-                    errorMsg?.let {
-                        Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
-                    }
-
-                    Row(
+                } else if (step == 1 || (!isChange && step == 0)) {
+                    OutlinedTextField(
+                        value = pinValue,
+                        onValueChange = {
+                            if (it.length <= 6 && it.all { it.isDigit() }) pinValue = it
+                        },
+                        label = { Text(if (isChange) "New Passcode" else "Passcode", fontFamily = BeVietnamProFamily) },
+                        placeholder = { Text("######", fontFamily = BeVietnamProFamily) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        TextButton(onClick = { showPasscodeModal = false }) {
-                            Text("Cancel", fontFamily = BeVietnamProFamily)
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Button(
-                            onClick = {
-                                if (pinValue.length == 6) {
-                                    settingsManager.setPasscodePin(pinValue)
-                                    showPasscodeModal = false
+                        shape = RoundedCornerShape(12.dp),
+                        visualTransformation = PasswordVisualTransformation()
+                    )
+                } else {
+                    OutlinedTextField(
+                        value = confirmPin,
+                        onValueChange = {
+                            if (it.length <= 6 && it.all { it.isDigit() }) confirmPin = it
+                        },
+                        label = { Text("Confirm Passcode", fontFamily = BeVietnamProFamily) },
+                        placeholder = { Text("######", fontFamily = BeVietnamProFamily) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        visualTransformation = PasswordVisualTransformation()
+                    )
+                }
+
+                errorMsg?.let {
+                    Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+                }
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = onDismiss) { Text("Cancel", fontFamily = BeVietnamProFamily) }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = {
+                            errorMsg = null
+                            if (isChange && step == 0) {
+                                if (oldPin.length == 6) step = 1 else errorMsg = "Enter current 6-digit passcode"
+                            } else if (step == 1 || (!isChange && step == 0)) {
+                                if (pinValue.length == 6) step = 2 else errorMsg = "Passcode must be exactly 6 digits"
+                            } else {
+                                if (confirmPin == pinValue) {
+                                    onSubmit(pinValue, if (isChange) oldPin else null)
                                 } else {
-                                    errorMsg = "Passcode must be exactly 6 digits."
+                                    errorMsg = "Passcodes don't match"
                                 }
-                            },
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Text("Save", fontFamily = BeVietnamProFamily)
-                        }
-                    }
+                            }
+                        },
+                        shape = RoundedCornerShape(12.dp)
+                    ) { Text(if (step == 2) "Save" else "Next", fontFamily = BeVietnamProFamily) }
                 }
             }
         }
     }
+}
 
-    // Confirmation dialog: Reset settings
-    if (showResetConfirm) {
-        AlertDialog(
-            onDismissRequest = { showResetConfirm = false },
-            title = { Text("Reset Settings?") },
-            text = { Text("This will restore default configurations but keep your transaction ledger history intact.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    settingsManager.resetSettings()
-                    showResetConfirm = false
-                }) {
-                    Text("Reset")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showResetConfirm = false }) {
-                    Text("Cancel")
+@Composable
+fun RemovePasscodeConfirmModal(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
+    var pinValue by remember { mutableStateOf("") }
+    var errorMsg by remember { mutableStateOf<String?>(null) }
+
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+            modifier = Modifier.fillMaxWidth().padding(16.dp)
+        ) {
+            Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text("Remove Passcode", fontFamily = SpaceGroteskFamily, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                Text("Enter your current passcode to confirm removal", fontFamily = BeVietnamProFamily, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+                OutlinedTextField(
+                    value = pinValue,
+                    onValueChange = {
+                        if (it.length <= 6 && it.all { it.isDigit() }) pinValue = it
+                    },
+                    label = { Text("Current Passcode", fontFamily = BeVietnamProFamily) },
+                    placeholder = { Text("######", fontFamily = BeVietnamProFamily) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    visualTransformation = PasswordVisualTransformation()
+                )
+
+                errorMsg?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp) }
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = onDismiss) { Text("Cancel", fontFamily = BeVietnamProFamily) }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = {
+                            if (pinValue.length == 6) onConfirm(pinValue) else errorMsg = "Enter 6-digit passcode"
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.onErrorContainer),
+                        shape = RoundedCornerShape(12.dp)
+                    ) { Text("Remove", fontFamily = BeVietnamProFamily) }
                 }
             }
-        )
+        }
     }
+}
 
-    // Confirmation dialog: Wipe data
-    if (showClearDataConfirm) {
-        AlertDialog(
-            onDismissRequest = { showClearDataConfirm = false },
-            title = { Text("Clear All Data?") },
-            text = { Text("Are you sure? This action is permanent and will completely delete your transaction ledger, categories, goals, and settings.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    onClearAllData()
-                    showClearDataConfirm = false
-                }) {
-                    Text("Wipe Everything", color = MaterialTheme.colorScheme.error)
+@Composable
+fun CurrencyPickerModal(
+    currentCode: String,
+    options: List<Pair<String, String>>,
+    onDismiss: () -> Unit,
+    onSelect: (String) -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+            modifier = Modifier.fillMaxWidth().padding(16.dp)
+        ) {
+            Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text("Select Currency", fontFamily = SpaceGroteskFamily, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+
+                Column(
+                    modifier = Modifier.fillMaxWidth().height(300.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    androidx.compose.foundation.lazy.LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        items(options) { (code, label) ->
+                            val selected = currentCode == code
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp, horizontal = 4.dp)
+                                    .clickable { onSelect(code) }
+                                    .background(if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent, RoundedCornerShape(12.dp)),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(label, fontFamily = BeVietnamProFamily, fontSize = 16.sp, color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface)
+                                if (selected) {
+                                    Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                }
+                            }
+                        }
+                    }
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = { showClearDataConfirm = false }) {
-                    Text("Cancel")
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = onDismiss) { Text("Cancel", fontFamily = BeVietnamProFamily) }
                 }
             }
-        )
+        }
     }
+}
+
+@Composable
+fun ConfirmDialog(
+    title: String,
+    message: String,
+    confirmText: String,
+    confirmColor: Color = MaterialTheme.colorScheme.primary,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title, fontFamily = BeVietnamProFamily, fontWeight = FontWeight.Bold) },
+        text = { Text(message, fontFamily = BeVietnamProFamily) },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                colors = ButtonDefaults.textButtonColors(contentColor = confirmColor)
+            ) { Text(confirmText, fontFamily = BeVietnamProFamily, fontWeight = FontWeight.Bold) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel", fontFamily = BeVietnamProFamily) }
+        }
+    )
 }
