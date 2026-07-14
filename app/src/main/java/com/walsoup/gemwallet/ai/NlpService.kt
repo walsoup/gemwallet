@@ -269,7 +269,7 @@ class NlpService(
             You are GemWallet's AI financial assistant. Analyze the user's finances and help them manage money.
 
             CONTEXT:
-            - Locale: ${request.locale.languageTag}
+            - Locale: ${request.locale.toLanguageTag()}
             - Region: ${request.region}
             - Currency: ${request.currencyCode} (${currencyFormat.currency.symbol})
             - Available categories: $categoryList
@@ -521,7 +521,7 @@ class PromptBuilder(
             You are GemWallet's AI financial assistant. Analyze the user's finances and help them manage money.
 
             CONTEXT:
-            - Locale: ${request.locale.languageTag}
+            - Locale: ${request.locale.toLanguageTag()}
             - Region: ${request.region}
             - Currency: ${request.currencyCode} (${currencyFormat.currency.symbol})
             - Available categories: $categoryList
