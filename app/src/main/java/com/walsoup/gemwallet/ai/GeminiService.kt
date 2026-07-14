@@ -2,9 +2,7 @@ package com.walsoup.gemwallet.ai
 
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -119,7 +117,7 @@ class GeminiService {
         prompt: String,
         apiKey: String,
         modelName: String = "gemini-1.5-flash"
-    ): Flow<String> = flow {
+    ): Flow<String> = flow<String> {
         // Map gemma custom placeholder to gemini model to ensure live calls work
         val resolvedModel = if (modelName.contains("gemma")) "gemini-1.5-flash" else modelName
         val url = "https://generativelanguage.googleapis.com/v1beta/models/$resolvedModel:streamGenerateContent?key=$apiKey"

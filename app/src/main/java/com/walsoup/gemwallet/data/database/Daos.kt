@@ -50,6 +50,9 @@ interface TransactionDao {
     @Query("DELETE FROM transactions")
     suspend fun deleteAllTransactions()
 
+    @Query("DELETE FROM categories WHERE id = :id")
+    suspend fun deleteCategoryById(id: String)
+
     @Transaction
     suspend fun deleteCategoryAndRemapTransactions(categoryId: String, fallbackCategoryId: String) {
         // Remap transactions
