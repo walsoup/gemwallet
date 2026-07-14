@@ -24,6 +24,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.style.TextAlign
+import java.util.Locale
 import com.walsoup.gemwallet.ai.NlpService
 import com.walsoup.gemwallet.data.database.CategoryEntity
 import com.walsoup.gemwallet.data.database.TransactionEntity
@@ -394,7 +396,7 @@ fun ChatScreen(
                     placeholder = { Text("Ask me anything...", fontFamily = BeVietnamProFamily) },
                     modifier = Modifier
                         .weight(1f)
-                        .maxHeight(100.dp),
+                        .heightIn(max = 100.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = Color.Transparent,
                         unfocusedBorderColor = Color.Transparent

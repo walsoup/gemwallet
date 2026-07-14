@@ -25,6 +25,7 @@ import com.walsoup.gemwallet.ui.components.*
 import com.walsoup.gemwallet.ui.theme.BeVietnamProFamily
 import com.walsoup.gemwallet.ui.theme.SpaceGroteskFamily
 import java.util.*
+import java.text.SimpleDateFormat
 
 @Composable
 fun AnalyticsScreen(
