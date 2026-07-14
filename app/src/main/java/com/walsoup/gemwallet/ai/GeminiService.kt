@@ -144,7 +144,8 @@ class GeminiService {
             .post(jsonRequest.toString().toRequestBody(mediaType))
             .build()
 
-        client.newCall(request).execute().use { response ->
+        val response = client.newCall(request).execute()
+        try {
             if (!response.isSuccessful) {
                 emit("Error starting stream: HTTP ${response.code}")
                 return@flow
@@ -210,6 +211,8 @@ class GeminiService {
                     // Ignore final errors
                 }
             }
+        } finally {
+            response.close()
         }.flowOn(Dispatchers.IO)
     }
 
