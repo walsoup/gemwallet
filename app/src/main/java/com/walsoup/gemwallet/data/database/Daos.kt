@@ -25,6 +25,17 @@ interface CategoryDao {
 
     @Query("DELETE FROM categories WHERE id = :id")
     suspend fun deleteCategoryById(id: String)
+
+    @Transaction
+    suspend fun deleteCategoryAndRemapTransactions(categoryId: String, fallbackCategoryId: String) {
+        // Remap transactions
+        remapTransactionsCategory(categoryId, fallbackCategoryId)
+        // Delete category
+        deleteCategoryById(categoryId)
+    }
+
+    @Query("UPDATE transactions SET categoryId = :newCategoryId WHERE categoryId = :oldCategoryId")
+    suspend fun remapTransactionsCategory(oldCategoryId: String, newCategoryId: String)
 }
 
 @Dao
@@ -49,20 +60,6 @@ interface TransactionDao {
 
     @Query("DELETE FROM transactions")
     suspend fun deleteAllTransactions()
-
-    @Query("DELETE FROM categories WHERE id = :id")
-    suspend fun deleteCategoryById(id: String)
-
-    @Transaction
-    suspend fun deleteCategoryAndRemapTransactions(categoryId: String, fallbackCategoryId: String) {
-        // Remap transactions
-        remapTransactionsCategory(categoryId, fallbackCategoryId)
-        // Delete category
-        deleteCategoryById(categoryId)
-    }
-
-    @Query("UPDATE transactions SET categoryId = :newCategoryId WHERE categoryId = :oldCategoryId")
-    suspend fun remapTransactionsCategory(oldCategoryId: String, newCategoryId: String)
 }
 
 @Dao

@@ -39,8 +39,7 @@ fun PasscodeGateScreen(
 
         if (next.length == 6) {
             // Check passcode
-            val hash = sha256(next)
-            if (hash == passcodePinHash) {
+            if (verifyPasscodePin(next, passcodePinHash)) {
                 onSuccess()
             } else {
                 pinError = "Incorrect passcode. Try again."
@@ -192,9 +191,23 @@ fun PasscodeGateScreen(
 
 private fun Arrangement.SpaceSpacey() = Arrangement.SpaceEvenly
 
-private fun sha256(input: String): String {
-    val bytes = input.toByteArray()
-    val md = MessageDigest.getInstance("SHA-256")
-    val digest = md.digest(bytes)
-    return digest.fold("") { str, it -> str + "%02x".format(it) }
+private fun verifyPasscodePin(enteredPin: String, storedHash: String): Boolean {
+    if (storedHash.isEmpty()) return false
+    return try {
+        val parts = storedHash.split(":")
+        if (parts.size != 2) return false
+        val salt = android.util.Base64.decode(parts[0], android.util.Base64.NO_WRAP)
+        val storedPinHash = parts[1]
+        
+        val iterations = 10000
+        val keyLength = 256
+        val spec = javax.crypto.spec.PBEKeySpec(enteredPin.toCharArray(), salt, iterations, keyLength)
+        val skf = javax.crypto.SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
+        val hash = skf.generateSecret(spec).encoded
+        val computedPinHash = android.util.Base64.encodeToString(hash, android.util.Base64.NO_WRAP)
+        
+        storedPinHash == computedPinHash
+    } catch (e: Exception) {
+        false
+    }
 }

@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.biometric.BiometricPrompt
+import androidx.biometric.BiometricManager
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -13,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.walsoup.gemwallet.ai.GeminiService
 import com.walsoup.gemwallet.ai.HuggingFaceService
 import com.walsoup.gemwallet.ai.NlpService
@@ -23,6 +25,7 @@ import com.walsoup.gemwallet.ui.theme.BeVietnamProFamily
 import com.walsoup.gemwallet.ui.theme.GemWalletTheme
 import com.walsoup.gemwallet.ui.theme.SpaceGroteskFamily
 import com.walsoup.gemwallet.utils.exportTransactionsCsv
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -38,6 +41,7 @@ class MainActivity : FragmentActivity() {
     private lateinit var settingsManager: SettingsManager
     private lateinit var nlpService: NlpService
     private lateinit var executor: Executor
+    private lateinit var appScope: CoroutineScope
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -47,28 +51,29 @@ class MainActivity : FragmentActivity() {
         settingsManager = SettingsManager(this)
         nlpService = NlpService(GeminiService(), HuggingFaceService())
         executor = ContextCompat.getMainExecutor(this)
+        appScope = (application as MainApplication).applicationScope
 
         setContent {
-            val settingsState by settingsManager.settingsState.collectAsState()
+            val settingsState by settingsManager.settingsState.collectAsStateWithLifecycle()
             
             // Database Flows collected as state
-            val transactions by database.transactionDao().getAllTransactions().collectAsState(initial = emptyList())
-            val categories by database.categoryDao().getAllCategories().collectAsState(initial = emptyList())
-            val goals by database.goalDao().getAllGoals().collectAsState(initial = emptyList())
-            val events by database.recurringEventDao().getAllEvents().collectAsState(initial = emptyList())
+            val transactions by database.transactionDao().getAllTransactions().collectAsStateWithLifecycle(initialValue = emptyList())
+            val categories by database.categoryDao().getAllCategories().collectAsStateWithLifecycle(initialValue = emptyList())
+            val goals by database.goalDao().getAllGoals().collectAsStateWithLifecycle(initialValue = emptyList())
+            val events by database.recurringEventDao().getAllEvents().collectAsStateWithLifecycle(initialValue = emptyList())
 
             val balanceCents = remember(transactions) {
                 transactions.sumOf { if (it.type == "income") it.amountCents else -it.amountCents }
             }
 
             var activeTab by remember { mutableStateOf("home") }
-            var isUnlocked by remember {
-                mutableStateOf(!settingsState.biometricAuthEnabled && !settingsState.passcodeEnabled)
+            var isUnlocked by remember(settingsState.isLoaded) {
+                mutableStateOf(settingsState.isLoaded && !settingsState.biometricAuthEnabled && !settingsState.passcodeEnabled)
             }
 
             // Launch biometrics prompt if enabled on startup
-            LaunchedEffect(settingsState.biometricAuthEnabled) {
-                if (settingsState.biometricAuthEnabled && !isUnlocked) {
+            LaunchedEffect(settingsState.isLoaded, settingsState.biometricAuthEnabled) {
+                if (settingsState.isLoaded && settingsState.biometricAuthEnabled && !isUnlocked) {
                     showBiometricPrompt {
                         isUnlocked = true
                     }
@@ -79,7 +84,11 @@ class MainActivity : FragmentActivity() {
             LaunchedEffect(transactions.isNotEmpty()) {
                 while (true) {
                     delay(60000)
-                    applyDueRecurringEvents()
+                    try {
+                        applyDueRecurringEvents()
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
                 }
             }
 
@@ -102,19 +111,25 @@ class MainActivity : FragmentActivity() {
                                 settingsManager.setVoiceAssistantEnabled(enableAi)
                                 settingsManager.setHasCompletedOnboarding(true)
                                 
-                                // Genesis Transaction of Opening Balance
-                                lifecycleScope.launch(Dispatchers.IO) {
-                                    database.transactionDao().insertTransaction(
-                                        TransactionEntity(
-                                            id = "genesis-${UUID.randomUUID()}",
-                                            amountCents = 0,
-                                            type = "income",
-                                            timestamp = System.currentTimeMillis(),
-                                            categoryId = "income-custom",
-                                            note = "Opening balance"
-                                        )
-                                    )
-                                }
+                                 // Genesis Transaction of Opening Balance
+                                 appScope.launch {
+                                     try {
+                                         database.transactionDao().insertTransaction(
+                                             TransactionEntity(
+                                                 id = "genesis-${UUID.randomUUID()}",
+                                                 amountCents = 0,
+                                                 type = "income",
+                                                 timestamp = System.currentTimeMillis(),
+                                                 categoryId = "income-custom",
+                                                 note = "Opening balance"
+                                             )
+                                         )
+                                     } catch (e: Exception) {
+                                         withContext(Dispatchers.Main) {
+                                             Toast.makeText(this@MainActivity, "Failed to insert opening balance: ${e.message}", Toast.LENGTH_LONG).show()
+                                         }
+                                     }
+                                 }
                             }
                         )
                     } else if (!isUnlocked) {
@@ -191,36 +206,54 @@ class MainActivity : FragmentActivity() {
                                         localeString = settingsState.language,
                                         customGreetingName = settingsState.customGreetingName,
                                         onAddTransaction = { amount, catId, type, note ->
-                                            lifecycleScope.launch(Dispatchers.IO) {
-                                                database.transactionDao().insertTransaction(
-                                                    TransactionEntity(
-                                                        id = UUID.randomUUID().toString(),
-                                                        amountCents = amount,
-                                                        type = type,
-                                                        timestamp = System.currentTimeMillis(),
-                                                        categoryId = catId,
-                                                        note = note
+                                            appScope.launch {
+                                                try {
+                                                    database.transactionDao().insertTransaction(
+                                                        TransactionEntity(
+                                                            id = UUID.randomUUID().toString(),
+                                                            amountCents = amount,
+                                                            type = type,
+                                                            timestamp = System.currentTimeMillis(),
+                                                            categoryId = catId,
+                                                            note = note
+                                                        )
                                                     )
-                                                )
+                                                } catch (e: Exception) {
+                                                    withContext(Dispatchers.Main) {
+                                                        Toast.makeText(this@MainActivity, "Failed to add transaction: ${e.message}", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                }
                                             }
                                         },
                                         onDeleteTransaction = { id ->
-                                            lifecycleScope.launch(Dispatchers.IO) {
-                                                database.transactionDao().deleteTransactionById(id)
+                                            appScope.launch {
+                                                try {
+                                                    database.transactionDao().deleteTransactionById(id)
+                                                } catch (e: Exception) {
+                                                    withContext(Dispatchers.Main) {
+                                                        Toast.makeText(this@MainActivity, "Failed to delete transaction: ${e.message}", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                }
                                             }
                                         },
                                         onUpdateTransaction = { id, amount, catId, type, note ->
-                                            lifecycleScope.launch(Dispatchers.IO) {
-                                                database.transactionDao().updateTransaction(
-                                                    TransactionEntity(
-                                                        id = id,
-                                                        amountCents = amount,
-                                                        type = type,
-                                                        timestamp = System.currentTimeMillis(),
-                                                        categoryId = catId,
-                                                        note = note
+                                            appScope.launch {
+                                                try {
+                                                    database.transactionDao().updateTransaction(
+                                                        TransactionEntity(
+                                                            id = id,
+                                                            amountCents = amount,
+                                                            type = type,
+                                                            timestamp = System.currentTimeMillis(),
+                                                            categoryId = catId,
+                                                            note = note
+                                                        )
                                                     )
-                                                )
+                                                } catch (e: Exception) {
+                                                    withContext(Dispatchers.Main) {
+                                                        Toast.makeText(this@MainActivity, "Failed to update transaction: ${e.message}", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                }
                                             }
                                         }
                                     )
@@ -237,58 +270,82 @@ class MainActivity : FragmentActivity() {
                                         settingsManager = settingsManager,
                                         nlpService = nlpService,
                                         onAddExpense = { amount, catId, note ->
-                                            lifecycleScope.launch(Dispatchers.IO) {
-                                                database.transactionDao().insertTransaction(
-                                                    TransactionEntity(
-                                                        id = UUID.randomUUID().toString(),
-                                                        amountCents = amount,
-                                                        type = "expense",
-                                                        timestamp = System.currentTimeMillis(),
-                                                        categoryId = catId,
-                                                        note = note
+                                            appScope.launch {
+                                                try {
+                                                    database.transactionDao().insertTransaction(
+                                                        TransactionEntity(
+                                                            id = UUID.randomUUID().toString(),
+                                                            amountCents = amount,
+                                                            type = "expense",
+                                                            timestamp = System.currentTimeMillis(),
+                                                            categoryId = catId,
+                                                            note = note
+                                                        )
                                                     )
-                                                )
+                                                } catch (e: Exception) {
+                                                    withContext(Dispatchers.Main) {
+                                                        Toast.makeText(this@MainActivity, "Failed to add expense: ${e.message}", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                }
                                             }
                                         },
                                         onAddIncome = { amount, catId, note ->
-                                            lifecycleScope.launch(Dispatchers.IO) {
-                                                database.transactionDao().insertTransaction(
-                                                    TransactionEntity(
-                                                        id = UUID.randomUUID().toString(),
-                                                        amountCents = amount,
-                                                        type = "income",
-                                                        timestamp = System.currentTimeMillis(),
-                                                        categoryId = catId,
-                                                        note = note
+                                            appScope.launch {
+                                                try {
+                                                    database.transactionDao().insertTransaction(
+                                                        TransactionEntity(
+                                                            id = UUID.randomUUID().toString(),
+                                                            amountCents = amount,
+                                                            type = "income",
+                                                            timestamp = System.currentTimeMillis(),
+                                                            categoryId = catId,
+                                                            note = note
+                                                        )
                                                     )
-                                                )
+                                                } catch (e: Exception) {
+                                                    withContext(Dispatchers.Main) {
+                                                        Toast.makeText(this@MainActivity, "Failed to add income: ${e.message}", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                }
                                             }
                                         },
                                         onAddRecurring = { name, amount, type, interval, catId, startDate ->
-                                            lifecycleScope.launch(Dispatchers.IO) {
-                                                database.recurringEventDao().insertEvent(
-                                                    RecurringEventEntity(
-                                                        id = "recurring-${UUID.randomUUID()}",
-                                                        name = name,
-                                                        amountCents = amount,
-                                                        type = type,
-                                                        categoryId = catId,
-                                                        interval = interval,
-                                                        nextRun = startDate
+                                            appScope.launch {
+                                                try {
+                                                    database.recurringEventDao().insertEvent(
+                                                        RecurringEventEntity(
+                                                            id = "recurring-${UUID.randomUUID()}",
+                                                            name = name,
+                                                            amountCents = amount,
+                                                            type = type,
+                                                            categoryId = catId,
+                                                            interval = interval,
+                                                            nextRun = startDate
+                                                        )
                                                     )
-                                                )
+                                                } catch (e: Exception) {
+                                                    withContext(Dispatchers.Main) {
+                                                        Toast.makeText(this@MainActivity, "Failed to add recurring event: ${e.message}", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                }
                                             }
                                         },
                                         onAddGoal = { name, target, dueDate ->
-                                            lifecycleScope.launch(Dispatchers.IO) {
-                                                database.goalDao().insertGoal(
-                                                    GoalEntity(
-                                                        id = "goal-${UUID.randomUUID()}",
-                                                        name = name,
-                                                        targetCents = target,
-                                                        dueDate = dueDate
+                                            appScope.launch {
+                                                try {
+                                                    database.goalDao().insertGoal(
+                                                        GoalEntity(
+                                                            id = "goal-${UUID.randomUUID()}",
+                                                            name = name,
+                                                            targetCents = target,
+                                                            dueDate = dueDate
+                                                        )
                                                     )
-                                                )
+                                                } catch (e: Exception) {
+                                                    withContext(Dispatchers.Main) {
+                                                        Toast.makeText(this@MainActivity, "Failed to add goal: ${e.message}", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                }
                                             }
                                         }
                                     )
@@ -299,36 +356,54 @@ class MainActivity : FragmentActivity() {
                                         currencyCode = settingsState.currencyCode,
                                         localeString = settingsState.language,
                                         onAddGoal = { name, target ->
-                                            lifecycleScope.launch(Dispatchers.IO) {
-                                                database.goalDao().insertGoal(
-                                                    GoalEntity(
-                                                        id = "goal-${UUID.randomUUID()}",
-                                                        name = name,
-                                                        targetCents = target
+                                            appScope.launch {
+                                                try {
+                                                    database.goalDao().insertGoal(
+                                                        GoalEntity(
+                                                            id = "goal-${UUID.randomUUID()}",
+                                                            name = name,
+                                                            targetCents = target
+                                                        )
                                                     )
-                                                )
+                                                } catch (e: Exception) {
+                                                    withContext(Dispatchers.Main) {
+                                                        Toast.makeText(this@MainActivity, "Failed to add goal: ${e.message}", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                }
                                             }
                                         },
                                         onAddRecurring = { name, amount, type, interval, catId, startDate ->
-                                            lifecycleScope.launch(Dispatchers.IO) {
-                                                database.recurringEventDao().insertEvent(
-                                                    RecurringEventEntity(
-                                                        id = "recurring-${UUID.randomUUID()}",
-                                                        name = name,
-                                                        amountCents = amount,
-                                                        type = type,
-                                                        categoryId = catId,
-                                                        interval = interval,
-                                                        nextRun = startDate
+                                            appScope.launch {
+                                                try {
+                                                    database.recurringEventDao().insertEvent(
+                                                        RecurringEventEntity(
+                                                            id = "recurring-${UUID.randomUUID()}",
+                                                            name = name,
+                                                            amountCents = amount,
+                                                            type = type,
+                                                            categoryId = catId,
+                                                            interval = interval,
+                                                            nextRun = startDate
+                                                        )
                                                     )
-                                                )
+                                                } catch (e: Exception) {
+                                                    withContext(Dispatchers.Main) {
+                                                        Toast.makeText(this@MainActivity, "Failed to add recurring event: ${e.message}", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                }
                                             }
                                         },
                                         onToggleRecurring = { id, enabled ->
-                                            lifecycleScope.launch(Dispatchers.IO) {
-                                                val existing = database.recurringEventDao().getAllEventsSync().find { it.id == id }
-                                                existing?.let {
-                                                    database.recurringEventDao().updateEvent(it.copy(enabled = enabled))
+                                            appScope.launch {
+                                                try {
+                                                    val existing = database.recurringEventDao().getAllEventsSync().find { it.id == id }
+                                                    existing?.let {
+                                                        database.recurringEventDao().updateEvent(it.copy(enabled = enabled))
+                                                    }
+                                                } catch (e: Exception) {
+                                                    withContext(Dispatchers.Main) {
+                                                        Toast.makeText(this@MainActivity, "Failed to toggle recurring: ${e.message}", Toast.LENGTH_SHORT).show()
+                                                    }
                                                 }
                                             }
                                         }
@@ -338,28 +413,40 @@ class MainActivity : FragmentActivity() {
                                         settingsManager = settingsManager,
                                         categories = categories,
                                         onAddCustomCategory = { name, emoji ->
-                                            lifecycleScope.launch(Dispatchers.IO) {
-                                                database.categoryDao().insertCategory(
-                                                    CategoryEntity(
-                                                        id = "custom-${UUID.randomUUID()}",
-                                                        name = name,
-                                                        emoji = emoji,
-                                                        kind = "expense"
+                                            appScope.launch {
+                                                try {
+                                                    database.categoryDao().insertCategory(
+                                                        CategoryEntity(
+                                                            id = "custom-${UUID.randomUUID()}",
+                                                            name = name,
+                                                            emoji = emoji,
+                                                            kind = "expense"
+                                                        )
                                                     )
-                                                )
+                                                } catch (e: Exception) {
+                                                    withContext(Dispatchers.Main) {
+                                                        Toast.makeText(this@MainActivity, "Failed to add category: ${e.message}", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                }
                                             }
                                         },
                                         onClearAllData = {
-                                            lifecycleScope.launch(Dispatchers.IO) {
-                                                database.transactionDao().deleteAllTransactions()
-                                                database.goalDao().deleteAllGoals()
-                                                database.recurringEventDao().deleteAllEvents()
-                                                // Reset preferences
-                                                settingsManager.clearAllData()
-                                                // Relaunch app or restart main screen
-                                                withContext(Dispatchers.Main) {
-                                                    isUnlocked = true
-                                                    activeTab = "home"
+                                            appScope.launch {
+                                                try {
+                                                    database.transactionDao().deleteAllTransactions()
+                                                    database.goalDao().deleteAllGoals()
+                                                    database.recurringEventDao().deleteAllEvents()
+                                                    // Reset preferences
+                                                    settingsManager.clearAllData()
+                                                    // Relaunch app or restart main screen
+                                                    withContext(Dispatchers.Main) {
+                                                        isUnlocked = true
+                                                        activeTab = "home"
+                                                    }
+                                                } catch (e: Exception) {
+                                                    withContext(Dispatchers.Main) {
+                                                        Toast.makeText(this@MainActivity, "Failed to clear data: ${e.message}", Toast.LENGTH_SHORT).show()
+                                                    }
                                                 }
                                             }
                                         },
@@ -377,6 +464,13 @@ class MainActivity : FragmentActivity() {
     }
 
     private fun showBiometricPrompt(onSuccess: () -> Unit) {
+        val biometricManager = BiometricManager.from(this)
+        val canAuthenticate = biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.BIOMETRIC_WEAK)
+        if (canAuthenticate != BiometricManager.BIOMETRIC_SUCCESS) {
+            Toast.makeText(this, "Biometric authentication is not available or not set up.", Toast.LENGTH_LONG).show()
+            return
+        }
+
         val promptInfo = BiometricPrompt.PromptInfo.Builder()
             .setTitle("Unlock GemWallet")
             .setSubtitle("Use your device biometrics to unlock")
@@ -395,34 +489,38 @@ class MainActivity : FragmentActivity() {
     }
 
     private suspend fun applyDueRecurringEvents() {
-        withContext(Dispatchers.IO) {
-            val now = System.currentTimeMillis()
-            val enabledEvents = database.recurringEventDao().getEnabledEventsSync()
-            
-            for (event in enabledEvents) {
-                if (event.nextRun <= now) {
-                    var currentNextRun = event.nextRun
-                    
-                    // Insert all skipped occurrences
-                    while (currentNextRun <= now) {
-                        database.transactionDao().insertTransaction(
-                            TransactionEntity(
-                                id = UUID.randomUUID().toString(),
-                                amountCents = event.amountCents,
-                                type = event.type,
-                                timestamp = currentNextRun,
-                                categoryId = event.categoryId,
-                                note = "${event.name} (recurring)"
+        try {
+            withContext(Dispatchers.IO) {
+                val now = System.currentTimeMillis()
+                val enabledEvents = database.recurringEventDao().getEnabledEventsSync()
+                
+                for (event in enabledEvents) {
+                    if (event.nextRun <= now) {
+                        var currentNextRun = event.nextRun
+                        
+                        // Insert all skipped occurrences
+                        while (currentNextRun <= now) {
+                            database.transactionDao().insertTransaction(
+                                TransactionEntity(
+                                    id = UUID.randomUUID().toString(),
+                                    amountCents = event.amountCents,
+                                    type = event.type,
+                                    timestamp = currentNextRun,
+                                    categoryId = event.categoryId,
+                                    note = "${event.name} (recurring)"
+                                )
                             )
-                        )
-                        // Add interval
-                        currentNextRun = addInterval(currentNextRun, event.interval)
-                    }
+                            // Add interval
+                            currentNextRun = addInterval(currentNextRun, event.interval)
+                        }
 
-                    // Update next run time in DB
-                    database.recurringEventDao().updateEvent(event.copy(nextRun = currentNextRun))
+                        // Update next run time in DB
+                        database.recurringEventDao().updateEvent(event.copy(nextRun = currentNextRun))
+                    }
                 }
             }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 

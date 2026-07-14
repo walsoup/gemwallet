@@ -42,6 +42,20 @@ data class ChatMessage(
     val text: String
 )
 
+sealed class PendingCommand {
+    data class AddExpense(val amountCents: Long, val categoryHint: String, val note: String?) : PendingCommand()
+    data class AddIncome(val amountCents: Long, val categoryHint: String, val note: String?) : PendingCommand()
+    data class AddRecurring(
+        val name: String,
+        val amountCents: Long,
+        val type: String,
+        val interval: String,
+        val categoryHint: String?,
+        val startDate: Long?
+    ) : PendingCommand()
+    data class AddGoal(val name: String, val targetCents: Long, val dueDate: Long?) : PendingCommand()
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
@@ -67,6 +81,8 @@ fun ChatScreen(
         )
     }
 
+    var pendingCommand by remember { mutableStateOf<PendingCommand?>(null) }
+
     // Scroll to bottom when messages list size changes
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) {
@@ -82,34 +98,14 @@ fun ChatScreen(
     }
 
     // Callback implementation for parsed NLP actions
-    val callbacks = remember {
+    val callbacks = remember(categories, settingsState, onAddExpense, onAddIncome, onAddRecurring, onAddGoal) {
         object : NlpService.CommandCallbacks {
             override suspend fun onAddExpense(amountCents: Long, categoryHint: String, note: String?) {
-                val cleaned = categoryHint.trim().lowercase()
-                val cat = categories.find { it.kind == "expense" && it.name.lowercase() == cleaned }
-                val catId = cat?.id ?: "expense-misc"
-                onAddExpense(amountCents, catId, note)
-                
-                messages.add(
-                    ChatMessage(
-                        role = "system",
-                        text = "Logged expense: ${formatCurrencyAmount(amountCents, settingsState.currencyCode)} - ${note ?: categoryHint}"
-                    )
-                )
+                pendingCommand = PendingCommand.AddExpense(amountCents, categoryHint, note)
             }
 
             override suspend fun onAddIncome(amountCents: Long, categoryHint: String, note: String?) {
-                val cleaned = categoryHint.trim().lowercase()
-                val cat = categories.find { it.kind == "income" && it.name.lowercase() == cleaned }
-                val catId = cat?.id ?: "income-custom"
-                onAddIncome(amountCents, catId, note)
-
-                messages.add(
-                    ChatMessage(
-                        role = "system",
-                        text = "Logged income: ${formatCurrencyAmount(amountCents, settingsState.currencyCode)} - ${note ?: categoryHint}"
-                    )
-                )
+                pendingCommand = PendingCommand.AddIncome(amountCents, categoryHint, note)
             }
 
             override suspend fun onAddRecurring(
@@ -120,31 +116,11 @@ fun ChatScreen(
                 categoryHint: String?,
                 startDate: Long?
             ) {
-                val kind = if (type == "income") "income" else "expense"
-                val cat = categoryHint?.let { hint ->
-                    categories.find { it.kind == kind && it.name.lowercase() == hint.trim().lowercase() }
-                }
-                val catId = cat?.id ?: if (type == "income") "income-custom" else "expense-misc"
-                
-                onAddRecurring(name, amountCents, type, interval, catId, startDate ?: System.currentTimeMillis())
-
-                messages.add(
-                    ChatMessage(
-                        role = "system",
-                        text = "Added recurring $type: ${formatCurrencyAmount(amountCents, settingsState.currencyCode)} - $name ($interval)"
-                    )
-                )
+                pendingCommand = PendingCommand.AddRecurring(name, amountCents, type, interval, categoryHint, startDate)
             }
 
             override suspend fun onAddGoal(name: String, targetCents: Long, dueDate: Long?) {
-                onAddGoal(name, targetCents, dueDate)
-
-                messages.add(
-                    ChatMessage(
-                        role = "system",
-                        text = "Added goal: $name - ${formatCurrencyAmount(targetCents, settingsState.currencyCode)}"
-                    )
-                )
+                pendingCommand = PendingCommand.AddGoal(name, targetCents, dueDate)
             }
 
             override fun onSystemMessage(message: String) {
@@ -428,6 +404,127 @@ fun ChatScreen(
                     )
                 }
             }
+        }
+
+        pendingCommand?.let { cmd ->
+            AlertDialog(
+                onDismissRequest = { pendingCommand = null },
+                title = {
+                    Text(
+                        text = "Confirm Action",
+                        fontFamily = SpaceGroteskFamily,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                text = {
+                    Column {
+                        Text(
+                            text = "The AI wants to execute the following command. Do you confirm this action?",
+                            fontFamily = BeVietnamProFamily,
+                            fontSize = 14.sp,
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
+                        
+                        val detailText = when (cmd) {
+                            is PendingCommand.AddExpense -> {
+                                "Add Expense: ${formatCurrencyAmount(cmd.amountCents, settingsState.currencyCode)} for ${cmd.note ?: cmd.categoryHint} (${cmd.categoryHint})"
+                            }
+                            is PendingCommand.AddIncome -> {
+                                "Add Income: ${formatCurrencyAmount(cmd.amountCents, settingsState.currencyCode)} for ${cmd.note ?: cmd.categoryHint} (${cmd.categoryHint})"
+                            }
+                            is PendingCommand.AddRecurring -> {
+                                "Add Recurring ${cmd.type}: ${formatCurrencyAmount(cmd.amountCents, settingsState.currencyCode)} - ${cmd.name} (${cmd.interval})"
+                            }
+                            is PendingCommand.AddGoal -> {
+                                "Add Savings Goal: ${cmd.name} of ${formatCurrencyAmount(cmd.targetCents, settingsState.currencyCode)}"
+                            }
+                        }
+                        
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
+                                .padding(12.dp)
+                        ) {
+                            Text(
+                                text = detailText,
+                                fontFamily = SpaceGroteskFamily,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 15.sp
+                            )
+                        }
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            when (cmd) {
+                                is PendingCommand.AddExpense -> {
+                                    val cleaned = cmd.categoryHint.trim().lowercase()
+                                    val cat = categories.find { it.kind == "expense" && it.name.lowercase() == cleaned }
+                                    val catId = cat?.id ?: "expense-misc"
+                                    onAddExpense(cmd.amountCents, catId, cmd.note)
+                                    messages.add(
+                                        ChatMessage(
+                                            role = "system",
+                                            text = "Logged expense: ${formatCurrencyAmount(cmd.amountCents, settingsState.currencyCode)} - ${cmd.note ?: cmd.categoryHint}"
+                                        )
+                                    )
+                                }
+                                is PendingCommand.AddIncome -> {
+                                    val cleaned = cmd.categoryHint.trim().lowercase()
+                                    val cat = categories.find { it.kind == "income" && it.name.lowercase() == cleaned }
+                                    val catId = cat?.id ?: "income-custom"
+                                    onAddIncome(cmd.amountCents, catId, cmd.note)
+                                    messages.add(
+                                        ChatMessage(
+                                            role = "system",
+                                            text = "Logged income: ${formatCurrencyAmount(cmd.amountCents, settingsState.currencyCode)} - ${cmd.note ?: cmd.categoryHint}"
+                                        )
+                                    )
+                                }
+                                is PendingCommand.AddRecurring -> {
+                                    val kind = if (cmd.type == "income") "income" else "expense"
+                                    val cat = cmd.categoryHint?.let { hint ->
+                                        categories.find { it.kind == kind && it.name.lowercase() == hint.trim().lowercase() }
+                                    }
+                                    val catId = cat?.id ?: if (cmd.type == "income") "income-custom" else "expense-misc"
+                                    onAddRecurring(cmd.name, cmd.amountCents, cmd.type, cmd.interval, catId, cmd.startDate ?: System.currentTimeMillis())
+                                    messages.add(
+                                        ChatMessage(
+                                            role = "system",
+                                            text = "Added recurring ${cmd.type}: ${formatCurrencyAmount(cmd.amountCents, settingsState.currencyCode)} - ${cmd.name} (${cmd.interval})"
+                                        )
+                                    )
+                                }
+                                is PendingCommand.AddGoal -> {
+                                    onAddGoal(cmd.name, cmd.targetCents, cmd.dueDate)
+                                    messages.add(
+                                        ChatMessage(
+                                            role = "system",
+                                            text = "Added goal: ${cmd.name} - ${formatCurrencyAmount(cmd.targetCents, settingsState.currencyCode)}"
+                                        )
+                                    )
+                                }
+                            }
+                            pendingCommand = null
+                        }
+                    ) {
+                        Text("Confirm")
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = {
+                            messages.add(ChatMessage(role = "system", text = "Command cancelled by user."))
+                            pendingCommand = null
+                        }
+                    ) {
+                        Text("Cancel")
+                    }
+                }
+            )
         }
     }
 }

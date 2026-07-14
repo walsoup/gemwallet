@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import androidx.biometric.BiometricManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -33,6 +34,9 @@ import com.walsoup.gemwallet.ui.components.formatCurrency
 import com.walsoup.gemwallet.ui.theme.BeVietnamProFamily
 import com.walsoup.gemwallet.ui.theme.SpaceGroteskFamily
 import java.io.File
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,6 +49,7 @@ fun SettingsScreen(
     onExportCsv: () -> String
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     // Modal view states
     var showCategoryModal by remember { mutableStateOf(false) }
@@ -116,7 +121,22 @@ fun SettingsScreen(
                             }
                             Switch(
                                 checked = settingsState.biometricAuthEnabled,
-                                onCheckedChange = { settingsManager.setBiometricAuthEnabled(it) }
+                                onCheckedChange = { checked ->
+                                    if (checked) {
+                                        val biometricManager = BiometricManager.from(context)
+                                        val canAuthenticate = biometricManager.canAuthenticate(
+                                            BiometricManager.Authenticators.BIOMETRIC_STRONG or 
+                                            BiometricManager.Authenticators.BIOMETRIC_WEAK
+                                        )
+                                        if (canAuthenticate == BiometricManager.BIOMETRIC_SUCCESS) {
+                                            settingsManager.setBiometricAuthEnabled(true)
+                                        } else {
+                                            Toast.makeText(context, "Biometric authentication is not available or not set up on this device.", Toast.LENGTH_LONG).show()
+                                        }
+                                    } else {
+                                        settingsManager.setBiometricAuthEnabled(false)
+                                    }
+                                }
                             )
                         }
 
@@ -504,26 +524,33 @@ fun SettingsScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
-                                    val csvContent = onExportCsv()
-                                    try {
-                                        val file = File(context.cacheDir, "gemwallet_transactions.csv")
-                                        file.writeText(csvContent)
-                                        val uri: Uri = FileProvider.getUriForFile(
-                                            context,
-                                            "${context.packageName}.fileprovider",
-                                            file
-                                        )
-                                        val shareIntent = Intent().apply {
-                                            action = Intent.ACTION_SEND
-                                            putExtra(Intent.EXTRA_STREAM, uri)
-                                            type = "text/csv"
-                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                    scope.launch {
+                                        try {
+                                            val csvContent = withContext(Dispatchers.IO) {
+                                                onExportCsv()
+                                            }
+                                            val file = withContext(Dispatchers.IO) {
+                                                val f = File(context.cacheDir, "gemwallet_transactions.csv")
+                                                f.writeText(csvContent)
+                                                f
+                                            }
+                                            val uri: Uri = FileProvider.getUriForFile(
+                                                context,
+                                                "${context.packageName}.fileprovider",
+                                                file
+                                            )
+                                            val shareIntent = Intent().apply {
+                                                action = Intent.ACTION_SEND
+                                                putExtra(Intent.EXTRA_STREAM, uri)
+                                                type = "text/csv"
+                                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                            }
+                                            context.startActivity(Intent.createChooser(shareIntent, "Export Transactions CSV"))
+                                        } catch (e: Exception) {
+                                            Toast
+                                                .makeText(context, "Export failed: ${e.message}", Toast.LENGTH_SHORT)
+                                                .show()
                                         }
-                                        context.startActivity(Intent.createChooser(shareIntent, "Export Transactions CSV"))
-                                    } catch (e: Exception) {
-                                        Toast
-                                            .makeText(context, "Export failed: ${e.message}", Toast.LENGTH_SHORT)
-                                            .show()
                                     }
                                 },
                             verticalAlignment = Alignment.CenterVertically,

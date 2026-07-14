@@ -1,6 +1,7 @@
 package com.walsoup.gemwallet.ai
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
@@ -43,26 +44,28 @@ class HuggingFaceService {
             .post(jsonRequest.toString().toRequestBody(mediaType))
             .build()
 
-        client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                throw Exception("Hugging Face API Error: ${response.code} ${response.message}")
-            }
-            val body = response.body?.string() ?: throw Exception("Empty response body")
-            
-            // Hugging Face standard text-gen response is an array: [{"generated_text": "..."}]
-            if (body.trim().startsWith("[")) {
-                val array = JSONArray(body)
-                if (array.length() > 0) {
-                    return array.getJSONObject(0).optString("generated_text", "")
+        return withContext(Dispatchers.IO) {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    throw Exception("Hugging Face API Error: ${response.code} ${response.message}")
                 }
-            } else if (body.trim().startsWith("{")) {
-                val obj = JSONObject(body)
-                if (obj.has("error")) {
-                    throw Exception(obj.getString("error"))
+                val body = response.body?.string() ?: throw Exception("Empty response body")
+                
+                // Hugging Face standard text-gen response is an array: [{"generated_text": "..."}]
+                if (body.trim().startsWith("[")) {
+                    val array = JSONArray(body)
+                    if (array.length() > 0) {
+                        return@withContext array.getJSONObject(0).optString("generated_text", "")
+                    }
+                } else if (body.trim().startsWith("{")) {
+                    val obj = JSONObject(body)
+                    if (obj.has("error")) {
+                        throw Exception(obj.getString("error"))
+                    }
+                    return@withContext obj.optString("generated_text", "")
                 }
-                return obj.optString("generated_text", "")
+                body
             }
-            return body
         }
     }
 

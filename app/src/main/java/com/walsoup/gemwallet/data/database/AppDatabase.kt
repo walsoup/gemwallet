@@ -26,14 +26,16 @@ abstract class AppDatabase : RoomDatabase() {
 
         fun getDatabase(context: Context, scope: CoroutineScope): AppDatabase {
             return INSTANCE ?: synchronized(this) {
+                var tempInstance: AppDatabase? = null
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
                     "gemwallet_database"
                 )
-                .addCallback(AppDatabaseCallback(scope))
+                .addCallback(AppDatabaseCallback(scope) { tempInstance ?: INSTANCE })
                 .fallbackToDestructiveMigration()
                 .build()
+                tempInstance = instance
                 INSTANCE = instance
                 instance
             }
@@ -41,12 +43,13 @@ abstract class AppDatabase : RoomDatabase() {
     }
 
     private class AppDatabaseCallback(
-        private val scope: CoroutineScope
+        private val scope: CoroutineScope,
+        private val getDb: () -> AppDatabase?
     ) : RoomDatabase.Callback() {
         override fun onCreate(db: SupportSQLiteDatabase) {
             super.onCreate(db)
-            INSTANCE?.let { database ->
-                scope.launch(Dispatchers.IO) {
+            scope.launch(Dispatchers.IO) {
+                getDb()?.let { database ->
                     populateDefaultCategories(database.categoryDao())
                 }
             }

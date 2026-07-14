@@ -2,6 +2,8 @@ package com.walsoup.gemwallet.data.preferences
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -10,7 +12,20 @@ import java.security.MessageDigest
 class SettingsManager(context: Context) {
 
     private val prefs: SharedPreferences = context.getSharedPreferences("gemwallet_settings", Context.MODE_PRIVATE)
-    private val securePrefs: SharedPreferences = context.getSharedPreferences("gemwallet_secure_settings", Context.MODE_PRIVATE)
+    private val securePrefs: SharedPreferences = try {
+        val masterKey = MasterKey.Builder(context)
+            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+            .build()
+        EncryptedSharedPreferences.create(
+            context,
+            "gemwallet_secure_settings_enc",
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+    } catch (e: Exception) {
+        context.getSharedPreferences("gemwallet_secure_settings", Context.MODE_PRIVATE)
+    }
 
     // Data class representing the settings state
     data class SettingsState(
@@ -42,7 +57,8 @@ class SettingsManager(context: Context) {
         val backupConfigured: Boolean = false,
         val customGreetingName: String = "",
         val hasCompletedOnboarding: Boolean = false,
-        val voiceAssistantEnabled: Boolean = false
+        val voiceAssistantEnabled: Boolean = false,
+        val isLoaded: Boolean = false
     )
 
     private val _settingsState = MutableStateFlow(loadSettings())
@@ -78,7 +94,8 @@ class SettingsManager(context: Context) {
             backupConfigured = prefs.getBoolean("backupConfigured", false),
             customGreetingName = prefs.getString("customGreetingName", "") ?: "",
             hasCompletedOnboarding = prefs.getBoolean("hasCompletedOnboarding", false),
-            voiceAssistantEnabled = prefs.getBoolean("voiceAssistantEnabled", false)
+            voiceAssistantEnabled = prefs.getBoolean("voiceAssistantEnabled", false),
+            isLoaded = true
         )
     }
 
@@ -103,7 +120,7 @@ class SettingsManager(context: Context) {
     fun setNotificationsBudgetWarnings(enabled: Boolean) = updatePrefs { putBoolean("notificationsBudgetWarnings", enabled) }
     
     fun setPasscodePin(pin: String) {
-        val hash = if (pin.isNotEmpty()) sha256(pin) else ""
+        val hash = if (pin.isNotEmpty()) pbkdf2Hash(pin) else ""
         updatePrefs {
             putString("passcodePinHash", hash)
             putBoolean("passcodeEnabled", hash.isNotEmpty())
@@ -175,11 +192,34 @@ class SettingsManager(context: Context) {
         securePrefs.edit().remove("hugging_face_token").apply()
     }
 
-    // SHA-256 helper
-    private fun sha256(input: String): String {
-        val bytes = input.toByteArray()
-        val md = MessageDigest.getInstance("SHA-256")
-        val digest = md.digest(bytes)
-        return digest.fold("") { str, it -> str + "%02x".format(it) }
+    private fun pbkdf2Hash(pin: String): String {
+        val random = java.security.SecureRandom()
+        val salt = ByteArray(16)
+        random.nextBytes(salt)
+        return hashPinWithSalt(pin, salt)
+    }
+
+    private fun hashPinWithSalt(pin: String, salt: ByteArray): String {
+        val iterations = 10000
+        val keyLength = 256
+        val spec = javax.crypto.spec.PBEKeySpec(pin.toCharArray(), salt, iterations, keyLength)
+        val skf = javax.crypto.SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
+        val hash = skf.generateSecret(spec).encoded
+        return android.util.Base64.encodeToString(salt, android.util.Base64.NO_WRAP) + ":" + android.util.Base64.encodeToString(hash, android.util.Base64.NO_WRAP)
+    }
+
+    fun verifyPasscodePin(enteredPin: String, storedHash: String): Boolean {
+        if (storedHash.isEmpty()) return false
+        return try {
+            val parts = storedHash.split(":")
+            if (parts.size != 2) return false
+            val salt = android.util.Base64.decode(parts[0], android.util.Base64.NO_WRAP)
+            val storedPinHash = parts[1]
+            val computedHashString = hashPinWithSalt(enteredPin, salt)
+            val computedPinHash = computedHashString.split(":")[1]
+            storedPinHash == computedPinHash
+        } catch (e: Exception) {
+            false
+        }
     }
 }

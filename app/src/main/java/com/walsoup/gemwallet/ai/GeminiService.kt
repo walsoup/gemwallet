@@ -2,6 +2,7 @@ package com.walsoup.gemwallet.ai
 
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -77,36 +78,38 @@ class GeminiService {
             .post(jsonRequest.toString().toRequestBody(mediaType))
             .build()
 
-        client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                throw Exception("HTTP Error: ${response.code} ${response.message}")
-            }
-            val body = response.body?.string() ?: throw Exception("Empty response body")
-            val jo = JSONObject(body)
-            val candidates = jo.optJSONArray("candidates")
-            val content = candidates?.optJSONObject(0)?.optJSONObject("content")
-            val parts = content?.optJSONArray("parts")
-            val rawText = parts?.optJSONObject(0)?.optString("text") ?: ""
+        return withContext(Dispatchers.IO) {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    throw Exception("HTTP Error: ${response.code} ${response.message}")
+                }
+                val body = response.body?.string() ?: throw Exception("Empty response body")
+                val jo = JSONObject(body)
+                val candidates = jo.optJSONArray("candidates")
+                val content = candidates?.optJSONObject(0)?.optJSONObject("content")
+                val parts = content?.optJSONArray("parts")
+                val rawText = parts?.optJSONObject(0)?.optString("text") ?: ""
 
-            // Extract JSON array
-            val regex = Regex("\\[.*\\]", RegexOption.DOT_MATCHES_ALL)
-            val matchResult = regex.find(rawText)
-            val jsonArrayStr = matchResult?.value ?: rawText
+                // Extract JSON array
+                val regex = Regex("\\[.*\\]", RegexOption.DOT_MATCHES_ALL)
+                val matchResult = regex.find(rawText)
+                val jsonArrayStr = matchResult?.value ?: rawText
 
-            val parsedList = mutableListOf<ParsedTransaction>()
-            val array = JSONArray(jsonArrayStr)
-            for (i in 0 until array.length()) {
-                val item = array.getJSONObject(i)
-                parsedList.add(
-                    ParsedTransaction(
-                        item = item.optString("item", "Transaction"),
-                        amountCents = item.optLong("amount", 0),
-                        category = item.optString("category", "Misc"),
-                        confidence = item.optDouble("confidence", 1.0)
+                val parsedList = mutableListOf<ParsedTransaction>()
+                val array = JSONArray(jsonArrayStr)
+                for (i in 0 until array.length()) {
+                    val item = array.getJSONObject(i)
+                    parsedList.add(
+                        ParsedTransaction(
+                            item = item.optString("item", "Transaction"),
+                            amountCents = item.optLong("amount", 0),
+                            category = item.optString("category", "Misc"),
+                            confidence = item.optDouble("confidence", 1.0)
+                        )
                     )
-                )
+                }
+                parsedList
             }
-            return parsedList
         }
     }
 
@@ -144,7 +147,9 @@ class GeminiService {
             .post(jsonRequest.toString().toRequestBody(mediaType))
             .build()
 
-        val response = client.newCall(request).execute()
+        val response = withContext(Dispatchers.IO) {
+            client.newCall(request).execute()
+        }
         try {
             if (!response.isSuccessful) {
                 emit("Error starting stream: HTTP ${response.code}")

@@ -52,17 +52,19 @@ fun HomeScreen(
     val scrollState = rememberScrollState()
 
     // Greeting logic
-    val now = Calendar.getInstance()
-    val hour = now.get(Calendar.HOUR_OF_DAY)
-    val greetingBase = when {
-        hour in 0..11 -> "Good morning"
-        hour in 12..16 -> "Good afternoon"
-        else -> "Good evening"
-    }
-    val greeting = if (customGreetingName.trim().isNotEmpty()) {
-        "$greetingBase, ${customGreetingName.trim()}"
-    } else {
-        greetingBase
+    val greeting = remember(customGreetingName) {
+        val now = Calendar.getInstance()
+        val hour = now.get(Calendar.HOUR_OF_DAY)
+        val greetingBase = when {
+            hour in 0..11 -> "Good morning"
+            hour in 12..16 -> "Good afternoon"
+            else -> "Good evening"
+        }
+        if (customGreetingName.trim().isNotEmpty()) {
+            "$greetingBase, ${customGreetingName.trim()}"
+        } else {
+            greetingBase
+        }
     }
 
     // Modal Visibility States
@@ -781,7 +783,13 @@ fun TransactionDetailModal(
                             val selected = txType == type
                             FilterChip(
                                 selected = selected,
-                                onClick = { txType = type },
+                                onClick = {
+                                    txType = type
+                                    val validCategories = categories.filter { it.kind == type || it.kind == "system" }
+                                    if (validCategories.none { it.id == selectedCategoryId }) {
+                                        selectedCategoryId = validCategories.firstOrNull()?.id ?: ""
+                                    }
+                                },
                                 label = { Text(type.replaceFirstChar { it.uppercase() }, fontFamily = BeVietnamProFamily) },
                                 modifier = Modifier.weight(1f)
                             )

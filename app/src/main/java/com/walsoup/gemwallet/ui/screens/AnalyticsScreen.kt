@@ -27,6 +27,10 @@ import com.walsoup.gemwallet.ui.theme.SpaceGroteskFamily
 import java.util.*
 import java.text.SimpleDateFormat
 
+import androidx.compose.runtime.*
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
+
 @Composable
 fun AnalyticsScreen(
     transactions: List<TransactionEntity>,
@@ -34,132 +38,132 @@ fun AnalyticsScreen(
     currencyCode: String,
     localeString: String
 ) {
-    val categoryMap = remember(categories) { categories.associateBy { it.id } }
+    var currentMonthIncome by remember { mutableStateOf(0L) }
+    var currentMonthExpense by remember { mutableStateOf(0L) }
+    var savedCents by remember { mutableStateOf(0L) }
+    var savedPercentage by remember { mutableStateOf(0f) }
+    var donutSlices by remember { mutableStateOf<List<DonutSlice>>(emptyList()) }
+    var last6MonthsData by remember { mutableStateOf<List<MonthData>>(emptyList()) }
+    var topMovers by remember { mutableStateOf<List<TopMoverItem>>(emptyList()) }
 
-    // Start of current month
-    val currentMonthStart = remember {
-        Calendar.getInstance().apply {
-            set(Calendar.DAY_OF_MONTH, 1)
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-        }.timeInMillis
-    }
-
-    // Income vs Expense current month
-    val currentMonthIncome = remember(transactions, currentMonthStart) {
-        transactions.filter { it.type == "income" && it.timestamp >= currentMonthStart }.sumOf { it.amountCents }
-    }
-    val currentMonthExpense = remember(transactions, currentMonthStart) {
-        transactions.filter { it.type == "expense" && it.timestamp >= currentMonthStart }.sumOf { it.amountCents }
-    }
-    val savedCents = remember(currentMonthIncome, currentMonthExpense) {
-        (currentMonthIncome - currentMonthExpense).coerceAtLeast(0L)
-    }
-    val savedPercentage = remember(currentMonthIncome, savedCents) {
-        if (currentMonthIncome > 0) (savedCents.toFloat() / currentMonthIncome.toFloat() * 100f)
-        else 0f
-    }
-
-    // Donut Chart data (Group expenses by category for current month)
-    val donutSlices = remember(transactions, categories, currentMonthStart) {
-        val categoryExpenses = transactions
-            .filter { it.type == "expense" && it.timestamp >= currentMonthStart }
-            .groupBy { it.categoryId }
-            .mapValues { entry -> entry.value.sumOf { it.amountCents } }
-
-        val colors = listOf(
-            Color(0xFFff6b6b), Color(0xFF52dea2), Color(0xFF4a90e2),
-            Color(0xFFf39c12), Color(0xFF9b59b6), Color(0xFF1abc9c),
-            Color(0xFFe74c3c), Color(0xFF34495e), Color(0xFFd35400)
-        )
-
-        categoryExpenses.map { (catId, amtCents) ->
-            val cat = categoryMap[catId]
-            val index = categories.indexOfFirst { it.id == catId }.coerceAtLeast(0)
-            DonutSlice(
-                value = amtCents.toFloat() / 100f,
-                color = colors[index % colors.size],
-                label = cat?.name ?: "Misc",
-                emoji = cat?.emoji ?: "🧩"
-            )
-        }.sortedByDescending { it.value }
-    }
-
-    // 6-month calculations
-    val last6MonthsData = remember(transactions) {
-        val calendar = Calendar.getInstance()
-        val list = mutableListOf<MonthData>()
-        for (i in 5 downTo 0) {
-            val cal = Calendar.getInstance().apply {
-                add(Calendar.MONTH, -i)
+    LaunchedEffect(transactions, categories) {
+        withContext(Dispatchers.Default) {
+            val categoryMap = categories.associateBy { it.id }
+            
+            // Start of current month
+            val currentMonthStart = Calendar.getInstance().apply {
                 set(Calendar.DAY_OF_MONTH, 1)
                 set(Calendar.HOUR_OF_DAY, 0)
                 set(Calendar.MINUTE, 0)
                 set(Calendar.SECOND, 0)
-            }
-            val start = cal.timeInMillis
-            val end = cal.apply { add(Calendar.MONTH, 1) }.timeInMillis
-            val label = SimpleDateFormat("MMM", Locale.US).format(cal.time)
+            }.timeInMillis
 
-            val monthIncome = transactions.filter { it.type == "income" && it.timestamp in start until end }.sumOf { it.amountCents }
-            val monthExpense = transactions.filter { it.type == "expense" && it.timestamp in start until end }.sumOf { it.amountCents }
+            // Income vs Expense current month
+            val income = transactions.filter { it.type == "income" && it.timestamp >= currentMonthStart }.sumOf { it.amountCents }
+            val expense = transactions.filter { it.type == "expense" && it.timestamp >= currentMonthStart }.sumOf { it.amountCents }
+            val saved = (income - expense).coerceAtLeast(0L)
+            val pct = if (income > 0) (saved.toFloat() / income.toFloat() * 100f) else 0f
 
-            list.add(
-                MonthData(
-                    label = label,
-                    income = monthIncome.toFloat() / 100f,
-                    expense = monthExpense.toFloat() / 100f
+            // Donut Slices
+            val categoryExpenses = transactions
+                .filter { it.type == "expense" && it.timestamp >= currentMonthStart }
+                .groupBy { it.categoryId }
+                .mapValues { entry -> entry.value.sumOf { it.amountCents } }
+
+            val colors = listOf(
+                Color(0xFFff6b6b), Color(0xFF52dea2), Color(0xFF4a90e2),
+                Color(0xFFf39c12), Color(0xFF9b59b6), Color(0xFF1abc9c),
+                Color(0xFFe74c3c), Color(0xFF34495e), Color(0xFFd35400)
+            )
+
+            val slices = categoryExpenses.map { (catId, amtCents) ->
+                val cat = categoryMap[catId]
+                val index = categories.indexOfFirst { it.id == catId }.coerceAtLeast(0)
+                DonutSlice(
+                    value = amtCents.toFloat() / 100f,
+                    color = colors[index % colors.size],
+                    label = cat?.name ?: "Misc",
+                    emoji = cat?.emoji ?: "🧩"
                 )
-            )
+            }.sortedByDescending { it.value }
+
+            // 6-month calculations
+            val list = mutableListOf<MonthData>()
+            for (i in 5 downTo 0) {
+                val cal = Calendar.getInstance().apply {
+                    add(Calendar.MONTH, -i)
+                    set(Calendar.DAY_OF_MONTH, 1)
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                }
+                val start = cal.timeInMillis
+                val end = cal.apply { add(Calendar.MONTH, 1) }.timeInMillis
+                val label = SimpleDateFormat("MMM", Locale.US).format(cal.time)
+
+                val monthIncome = transactions.filter { it.type == "income" && it.timestamp in start until end }.sumOf { it.amountCents }
+                val monthExpense = transactions.filter { it.type == "expense" && it.timestamp in start until end }.sumOf { it.amountCents }
+
+                list.add(
+                    MonthData(
+                        label = label,
+                        income = monthIncome.toFloat() / 100f,
+                        expense = monthExpense.toFloat() / 100f
+                    )
+                )
+            }
+
+            // Top Movers
+            val currentMonthExpenses = transactions
+                .filter { it.type == "expense" && it.timestamp >= currentMonthStart }
+                .groupBy { it.categoryId }
+                .mapValues { entry ->
+                    val total = entry.value.sumOf { it.amountCents }
+                    val count = entry.value.size
+                    Pair(total, count)
+                }
+
+            val prevStart = Calendar.getInstance().apply {
+                add(Calendar.MONTH, -1)
+                set(Calendar.DAY_OF_MONTH, 1)
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+            }.timeInMillis
+            val prevEnd = currentMonthStart
+
+            val previousExpenses = transactions
+                .filter { it.type == "expense" && it.timestamp in prevStart until prevEnd }
+                .groupBy { it.categoryId }
+                .mapValues { entry -> entry.value.sumOf { it.amountCents } }
+
+            val movers = currentMonthExpenses.map { (catId, pair) ->
+                val cat = categoryMap[catId]
+                val prevTotal = previousExpenses[catId] ?: 0L
+                val percentChange = if (prevTotal > 0L) {
+                    ((pair.first - prevTotal).toFloat() / prevTotal.toFloat() * 100f).toInt()
+                } else {
+                    if (pair.first > 0L) 100 else 0
+                }
+
+                TopMoverItem(
+                    categoryId = catId,
+                    name = cat?.name ?: "Misc",
+                    emoji = cat?.emoji ?: "🧩",
+                    totalCents = pair.first,
+                    txCount = pair.second,
+                    percentageChange = percentChange
+                )
+            }.sortedByDescending { it.totalCents }.take(3)
+
+            currentMonthIncome = income
+            currentMonthExpense = expense
+            savedCents = saved
+            savedPercentage = pct
+            donutSlices = slices
+            last6MonthsData = list
+            topMovers = movers
         }
-        list
-    }
-
-    // Top Movers
-    val topMovers = remember(transactions, currentMonthStart, categoryMap) {
-        val categoryExpenses = transactions
-            .filter { it.type == "expense" && it.timestamp >= currentMonthStart }
-            .groupBy { it.categoryId }
-            .mapValues { entry ->
-                val total = entry.value.sumOf { it.amountCents }
-                val count = entry.value.size
-                Pair(total, count)
-            }
-
-        // Previous month bounds
-        val prevStart = Calendar.getInstance().apply {
-            add(Calendar.MONTH, -1)
-            set(Calendar.DAY_OF_MONTH, 1)
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-        }.timeInMillis
-        val prevEnd = currentMonthStart
-
-        val previousExpenses = transactions
-            .filter { it.type == "expense" && it.timestamp in prevStart until prevEnd }
-            .groupBy { it.categoryId }
-            .mapValues { entry -> entry.value.sumOf { it.amountCents } }
-
-        categoryExpenses.map { (catId, pair) ->
-            val cat = categoryMap[catId]
-            val prevTotal = previousExpenses[catId] ?: 0L
-            val percentChange = if (prevTotal > 0L) {
-                ((pair.first - prevTotal).toFloat() / prevTotal.toFloat() * 100f).toInt()
-            } else {
-                if (pair.first > 0L) 100 else 0
-            }
-
-            TopMoverItem(
-                categoryId = catId,
-                name = cat?.name ?: "Misc",
-                emoji = cat?.emoji ?: "🧩",
-                totalCents = pair.first,
-                txCount = pair.second,
-                percentageChange = percentChange
-            )
-        }.sortedByDescending { it.totalCents }.take(3)
     }
 
     LazyColumn(
