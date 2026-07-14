@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricPrompt
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -131,7 +132,7 @@ fun SettingsScreen(
                                         if (canAuthenticate == BiometricManager.BIOMETRIC_SUCCESS) {
                                             settingsManager.setBiometricAuthEnabled(true)
                                         } else {
-                                            if (canAuthenticate == BiometricManager.BIOMETRIC_ERROR_LOCKOUT || canAuthenticate == BiometricManager.BIOMETRIC_ERROR_LOCKOUT_PERMANENT) {
+                                            if (canAuthenticate == BiometricPrompt.ERROR_LOCKOUT || canAuthenticate == BiometricPrompt.ERROR_LOCKOUT_PERMANENT) {
                                                 Toast.makeText(context, "Biometrics are temporarily locked due to too many attempts. Please unlock your device first.", Toast.LENGTH_LONG).show()
                                             } else {
                                                 Toast.makeText(context, "Biometric authentication is not available or not set up on this device.", Toast.LENGTH_LONG).show()

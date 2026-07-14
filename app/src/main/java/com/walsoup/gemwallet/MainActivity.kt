@@ -469,7 +469,7 @@ class MainActivity : FragmentActivity() {
         val biometricManager = BiometricManager.from(this)
         val canAuthenticate = biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.BIOMETRIC_WEAK)
         if (canAuthenticate != BiometricManager.BIOMETRIC_SUCCESS) {
-            if (canAuthenticate == BiometricManager.BIOMETRIC_ERROR_LOCKOUT || canAuthenticate == BiometricManager.BIOMETRIC_ERROR_LOCKOUT_PERMANENT) {
+            if (canAuthenticate == BiometricPrompt.ERROR_LOCKOUT || canAuthenticate == BiometricPrompt.ERROR_LOCKOUT_PERMANENT) {
                 Toast.makeText(this, "Biometrics are temporarily locked. Please enter your passcode PIN instead.", Toast.LENGTH_LONG).show()
             } else {
                 Toast.makeText(this, "Biometric authentication is not available or not set up.", Toast.LENGTH_LONG).show()
