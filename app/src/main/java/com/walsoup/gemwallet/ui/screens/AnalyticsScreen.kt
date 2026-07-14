@@ -38,12 +38,13 @@ fun AnalyticsScreen(
     currencyCode: String,
     localeString: String
 ) {
-    var currentMonthIncome by remember { mutableStateOf(0L) }
-    var currentMonthExpense by remember { mutableStateOf(0L) }
     var savedCents by remember { mutableStateOf(0L) }
     var savedPercentage by remember { mutableStateOf(0f) }
     var donutSlices by remember { mutableStateOf<List<DonutSlice>>(emptyList()) }
     var last6MonthsData by remember { mutableStateOf<List<MonthData>>(emptyList()) }
+    var barChartItems by remember { mutableStateOf<List<BarChartItem>>(emptyList()) }
+    var lineChartIncomeItems by remember { mutableStateOf<List<LineChartItem>>(emptyList()) }
+    var lineChartExpenseItems by remember { mutableStateOf<List<LineChartItem>>(emptyList()) }
     var topMovers by remember { mutableStateOf<List<TopMoverItem>>(emptyList()) }
 
     LaunchedEffect(transactions, categories) {
@@ -56,6 +57,7 @@ fun AnalyticsScreen(
                 set(Calendar.HOUR_OF_DAY, 0)
                 set(Calendar.MINUTE, 0)
                 set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
             }.timeInMillis
 
             // Income vs Expense current month
@@ -96,10 +98,11 @@ fun AnalyticsScreen(
                     set(Calendar.HOUR_OF_DAY, 0)
                     set(Calendar.MINUTE, 0)
                     set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
                 }
                 val start = cal.timeInMillis
-                val end = cal.apply { add(Calendar.MONTH, 1) }.timeInMillis
                 val label = SimpleDateFormat("MMM", Locale.US).format(cal.time)
+                val end = cal.apply { add(Calendar.MONTH, 1) }.timeInMillis
 
                 val monthIncome = transactions.filter { it.type == "income" && it.timestamp in start until end }.sumOf { it.amountCents }
                 val monthExpense = transactions.filter { it.type == "expense" && it.timestamp in start until end }.sumOf { it.amountCents }
@@ -129,6 +132,7 @@ fun AnalyticsScreen(
                 set(Calendar.HOUR_OF_DAY, 0)
                 set(Calendar.MINUTE, 0)
                 set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
             }.timeInMillis
             val prevEnd = currentMonthStart
 
@@ -156,12 +160,17 @@ fun AnalyticsScreen(
                 )
             }.sortedByDescending { it.totalCents }.take(3)
 
-            currentMonthIncome = income
-            currentMonthExpense = expense
+            val barItems = list.map { BarChartItem(it.expense, it.label) }
+            val lineIncome = list.map { LineChartItem(it.income, it.label) }
+            val lineExpense = list.map { LineChartItem(it.expense, it.label) }
+
             savedCents = saved
             savedPercentage = pct
             donutSlices = slices
             last6MonthsData = list
+            barChartItems = barItems
+            lineChartIncomeItems = lineIncome
+            lineChartExpenseItems = lineExpense
             topMovers = movers
         }
     }
@@ -263,7 +272,7 @@ fun AnalyticsScreen(
                 shape = RoundedCornerShape(20.dp)
             ) {
                 SimpleBarChart(
-                    items = last6MonthsData.map { BarChartItem(it.expense, it.label) },
+                    items = barChartItems,
                     primaryColor = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(16.dp)
                 )
@@ -307,8 +316,8 @@ fun AnalyticsScreen(
                 shape = RoundedCornerShape(20.dp)
             ) {
                 SimpleLineChart(
-                    incomeItems = last6MonthsData.map { LineChartItem(it.income, it.label) },
-                    expenseItems = last6MonthsData.map { LineChartItem(it.expense, it.label) },
+                    incomeItems = lineChartIncomeItems,
+                    expenseItems = lineChartExpenseItems,
                     incomeColor = MaterialTheme.colorScheme.tertiary,
                     expenseColor = MaterialTheme.colorScheme.error,
                     modifier = Modifier.padding(16.dp)

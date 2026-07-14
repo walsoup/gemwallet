@@ -131,7 +131,11 @@ fun SettingsScreen(
                                         if (canAuthenticate == BiometricManager.BIOMETRIC_SUCCESS) {
                                             settingsManager.setBiometricAuthEnabled(true)
                                         } else {
-                                            Toast.makeText(context, "Biometric authentication is not available or not set up on this device.", Toast.LENGTH_LONG).show()
+                                            if (canAuthenticate == BiometricManager.BIOMETRIC_ERROR_LOCKOUT || canAuthenticate == BiometricManager.BIOMETRIC_ERROR_LOCKOUT_PERMANENT) {
+                                                Toast.makeText(context, "Biometrics are temporarily locked due to too many attempts. Please unlock your device first.", Toast.LENGTH_LONG).show()
+                                            } else {
+                                                Toast.makeText(context, "Biometric authentication is not available or not set up on this device.", Toast.LENGTH_LONG).show()
+                                            }
                                         }
                                     } else {
                                         settingsManager.setBiometricAuthEnabled(false)

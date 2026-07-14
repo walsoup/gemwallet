@@ -78,7 +78,7 @@ class SettingsManager(context: Context) {
             notificationsSavingsGoalProgress = prefs.getBoolean("notificationsSavingsGoalProgress", true),
             notificationsBudgetWarnings = prefs.getBoolean("notificationsBudgetWarnings", true),
             passcodeEnabled = prefs.getBoolean("passcodeEnabled", false),
-            passcodePinHash = prefs.getString("passcodePinHash", "") ?: "",
+            passcodePinHash = securePrefs.getString("passcodePinHash", "") ?: "",
             currencyCode = prefs.getString("currencyCode", "USD") ?: "USD",
             language = prefs.getString("language", "en-US") ?: "en-US",
             region = prefs.getString("region", "US") ?: "US",
@@ -121,15 +121,15 @@ class SettingsManager(context: Context) {
     
     fun setPasscodePin(pin: String) {
         val hash = if (pin.isNotEmpty()) pbkdf2Hash(pin) else ""
+        securePrefs.edit().putString("passcodePinHash", hash).apply()
         updatePrefs {
-            putString("passcodePinHash", hash)
             putBoolean("passcodeEnabled", hash.isNotEmpty())
         }
     }
     
     fun removePasscode() {
+        securePrefs.edit().remove("passcodePinHash").apply()
         updatePrefs {
-            putString("passcodePinHash", "")
             putBoolean("passcodeEnabled", false)
         }
     }
@@ -159,6 +159,7 @@ class SettingsManager(context: Context) {
     }
 
     fun resetSettings() {
+        securePrefs.edit().remove("passcodePinHash").apply()
         updatePrefs {
             // Keep onboarding status but reset other settings
             val onboarded = prefs.getBoolean("hasCompletedOnboarding", false)
@@ -208,16 +209,21 @@ class SettingsManager(context: Context) {
         return android.util.Base64.encodeToString(salt, android.util.Base64.NO_WRAP) + ":" + android.util.Base64.encodeToString(hash, android.util.Base64.NO_WRAP)
     }
 
+    fun verifyPasscodePin(enteredPin: String): Boolean {
+        val storedHash = securePrefs.getString("passcodePinHash", "") ?: ""
+        return verifyPasscodePin(enteredPin, storedHash)
+    }
+
     fun verifyPasscodePin(enteredPin: String, storedHash: String): Boolean {
         if (storedHash.isEmpty()) return false
         return try {
             val parts = storedHash.split(":")
             if (parts.size != 2) return false
             val salt = android.util.Base64.decode(parts[0], android.util.Base64.NO_WRAP)
-            val storedPinHash = parts[1]
+            val storedPinHashBytes = android.util.Base64.decode(parts[1], android.util.Base64.NO_WRAP)
             val computedHashString = hashPinWithSalt(enteredPin, salt)
-            val computedPinHash = computedHashString.split(":")[1]
-            storedPinHash == computedPinHash
+            val computedPinHashBytes = android.util.Base64.decode(computedHashString.split(":")[1], android.util.Base64.NO_WRAP)
+            java.security.MessageDigest.isEqual(storedPinHashBytes, computedPinHashBytes)
         } catch (e: Exception) {
             false
         }

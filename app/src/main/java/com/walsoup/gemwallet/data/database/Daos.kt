@@ -100,6 +100,9 @@ interface RecurringEventDao {
     @Update
     suspend fun updateEvent(event: RecurringEventEntity)
 
+    @Query("UPDATE recurring_events SET enabled = :enabled WHERE id = :id")
+    suspend fun toggleEvent(id: String, enabled: Boolean)
+
     @Query("DELETE FROM recurring_events WHERE id = :id")
     suspend fun deleteEventById(id: String)
 

@@ -23,8 +23,8 @@ import java.security.MessageDigest
 
 @Composable
 fun PasscodeGateScreen(
-    passcodePinHash: String,
     biometricsEnabled: Boolean,
+    onVerifyPin: (String) -> Boolean,
     onSuccess: () -> Unit,
     onRequestBiometrics: (() -> Unit)? = null
 ) {
@@ -39,7 +39,7 @@ fun PasscodeGateScreen(
 
         if (next.length == 6) {
             // Check passcode
-            if (verifyPasscodePin(next, passcodePinHash)) {
+            if (onVerifyPin(next)) {
                 onSuccess()
             } else {
                 pinError = "Incorrect passcode. Try again."
@@ -190,24 +190,3 @@ fun PasscodeGateScreen(
 }
 
 private fun Arrangement.SpaceSpacey() = Arrangement.SpaceEvenly
-
-private fun verifyPasscodePin(enteredPin: String, storedHash: String): Boolean {
-    if (storedHash.isEmpty()) return false
-    return try {
-        val parts = storedHash.split(":")
-        if (parts.size != 2) return false
-        val salt = android.util.Base64.decode(parts[0], android.util.Base64.NO_WRAP)
-        val storedPinHash = parts[1]
-        
-        val iterations = 10000
-        val keyLength = 256
-        val spec = javax.crypto.spec.PBEKeySpec(enteredPin.toCharArray(), salt, iterations, keyLength)
-        val skf = javax.crypto.SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
-        val hash = skf.generateSecret(spec).encoded
-        val computedPinHash = android.util.Base64.encodeToString(hash, android.util.Base64.NO_WRAP)
-        
-        storedPinHash == computedPinHash
-    } catch (e: Exception) {
-        false
-    }
-}

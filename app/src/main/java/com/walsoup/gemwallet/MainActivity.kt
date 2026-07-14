@@ -19,6 +19,7 @@ import com.walsoup.gemwallet.ai.GeminiService
 import com.walsoup.gemwallet.ai.HuggingFaceService
 import com.walsoup.gemwallet.ai.NlpService
 import com.walsoup.gemwallet.data.database.*
+import androidx.room.withTransaction
 import com.walsoup.gemwallet.data.preferences.SettingsManager
 import com.walsoup.gemwallet.ui.screens.*
 import com.walsoup.gemwallet.ui.theme.BeVietnamProFamily
@@ -47,11 +48,12 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
 
         // Initialize Services & Databases
-        database = AppDatabase.getDatabase(this, lifecycleScope)
-        settingsManager = SettingsManager(this)
+        val applicationScope = (application as MainApplication).applicationScope
+        appScope = applicationScope
+        database = AppDatabase.getDatabase(applicationContext, applicationScope)
+        settingsManager = SettingsManager(applicationContext)
         nlpService = NlpService(GeminiService(), HuggingFaceService())
         executor = ContextCompat.getMainExecutor(this)
-        appScope = (application as MainApplication).applicationScope
 
         setContent {
             val settingsState by settingsManager.settingsState.collectAsStateWithLifecycle()
@@ -126,7 +128,7 @@ class MainActivity : FragmentActivity() {
                                          )
                                      } catch (e: Exception) {
                                          withContext(Dispatchers.Main) {
-                                             Toast.makeText(this@MainActivity, "Failed to insert opening balance: ${e.message}", Toast.LENGTH_LONG).show()
+                                             Toast.makeText(applicationContext, "Failed to insert opening balance: ${e.message}", Toast.LENGTH_LONG).show()
                                          }
                                      }
                                  }
@@ -135,8 +137,8 @@ class MainActivity : FragmentActivity() {
                     } else if (!isUnlocked) {
                         // Authentication gate
                         PasscodeGateScreen(
-                            passcodePinHash = settingsState.passcodePinHash,
                             biometricsEnabled = settingsState.biometricAuthEnabled,
+                            onVerifyPin = { pin -> settingsManager.verifyPasscodePin(pin) },
                             onSuccess = { isUnlocked = true },
                             onRequestBiometrics = {
                                 showBiometricPrompt {
@@ -220,7 +222,7 @@ class MainActivity : FragmentActivity() {
                                                     )
                                                 } catch (e: Exception) {
                                                     withContext(Dispatchers.Main) {
-                                                        Toast.makeText(this@MainActivity, "Failed to add transaction: ${e.message}", Toast.LENGTH_SHORT).show()
+                                                        Toast.makeText(applicationContext, "Failed to add transaction: ${e.message}", Toast.LENGTH_SHORT).show()
                                                     }
                                                 }
                                             }
@@ -231,7 +233,7 @@ class MainActivity : FragmentActivity() {
                                                     database.transactionDao().deleteTransactionById(id)
                                                 } catch (e: Exception) {
                                                     withContext(Dispatchers.Main) {
-                                                        Toast.makeText(this@MainActivity, "Failed to delete transaction: ${e.message}", Toast.LENGTH_SHORT).show()
+                                                        Toast.makeText(applicationContext, "Failed to delete transaction: ${e.message}", Toast.LENGTH_SHORT).show()
                                                     }
                                                 }
                                             }
@@ -251,7 +253,7 @@ class MainActivity : FragmentActivity() {
                                                     )
                                                 } catch (e: Exception) {
                                                     withContext(Dispatchers.Main) {
-                                                        Toast.makeText(this@MainActivity, "Failed to update transaction: ${e.message}", Toast.LENGTH_SHORT).show()
+                                                        Toast.makeText(applicationContext, "Failed to update transaction: ${e.message}", Toast.LENGTH_SHORT).show()
                                                     }
                                                 }
                                             }
@@ -284,7 +286,7 @@ class MainActivity : FragmentActivity() {
                                                     )
                                                 } catch (e: Exception) {
                                                     withContext(Dispatchers.Main) {
-                                                        Toast.makeText(this@MainActivity, "Failed to add expense: ${e.message}", Toast.LENGTH_SHORT).show()
+                                                        Toast.makeText(applicationContext, "Failed to add expense: ${e.message}", Toast.LENGTH_SHORT).show()
                                                     }
                                                 }
                                             }
@@ -304,7 +306,7 @@ class MainActivity : FragmentActivity() {
                                                     )
                                                 } catch (e: Exception) {
                                                     withContext(Dispatchers.Main) {
-                                                        Toast.makeText(this@MainActivity, "Failed to add income: ${e.message}", Toast.LENGTH_SHORT).show()
+                                                        Toast.makeText(applicationContext, "Failed to add income: ${e.message}", Toast.LENGTH_SHORT).show()
                                                     }
                                                 }
                                             }
@@ -325,7 +327,7 @@ class MainActivity : FragmentActivity() {
                                                     )
                                                 } catch (e: Exception) {
                                                     withContext(Dispatchers.Main) {
-                                                        Toast.makeText(this@MainActivity, "Failed to add recurring event: ${e.message}", Toast.LENGTH_SHORT).show()
+                                                        Toast.makeText(applicationContext, "Failed to add recurring event: ${e.message}", Toast.LENGTH_SHORT).show()
                                                     }
                                                 }
                                             }
@@ -343,7 +345,7 @@ class MainActivity : FragmentActivity() {
                                                     )
                                                 } catch (e: Exception) {
                                                     withContext(Dispatchers.Main) {
-                                                        Toast.makeText(this@MainActivity, "Failed to add goal: ${e.message}", Toast.LENGTH_SHORT).show()
+                                                        Toast.makeText(applicationContext, "Failed to add goal: ${e.message}", Toast.LENGTH_SHORT).show()
                                                     }
                                                 }
                                             }
@@ -367,7 +369,7 @@ class MainActivity : FragmentActivity() {
                                                     )
                                                 } catch (e: Exception) {
                                                     withContext(Dispatchers.Main) {
-                                                        Toast.makeText(this@MainActivity, "Failed to add goal: ${e.message}", Toast.LENGTH_SHORT).show()
+                                                        Toast.makeText(applicationContext, "Failed to add goal: ${e.message}", Toast.LENGTH_SHORT).show()
                                                     }
                                                 }
                                             }
@@ -388,7 +390,7 @@ class MainActivity : FragmentActivity() {
                                                     )
                                                 } catch (e: Exception) {
                                                     withContext(Dispatchers.Main) {
-                                                        Toast.makeText(this@MainActivity, "Failed to add recurring event: ${e.message}", Toast.LENGTH_SHORT).show()
+                                                        Toast.makeText(applicationContext, "Failed to add recurring event: ${e.message}", Toast.LENGTH_SHORT).show()
                                                     }
                                                 }
                                             }
@@ -402,7 +404,7 @@ class MainActivity : FragmentActivity() {
                                                     }
                                                 } catch (e: Exception) {
                                                     withContext(Dispatchers.Main) {
-                                                        Toast.makeText(this@MainActivity, "Failed to toggle recurring: ${e.message}", Toast.LENGTH_SHORT).show()
+                                                        Toast.makeText(applicationContext, "Failed to toggle recurring: ${e.message}", Toast.LENGTH_SHORT).show()
                                                     }
                                                 }
                                             }
@@ -425,7 +427,7 @@ class MainActivity : FragmentActivity() {
                                                     )
                                                 } catch (e: Exception) {
                                                     withContext(Dispatchers.Main) {
-                                                        Toast.makeText(this@MainActivity, "Failed to add category: ${e.message}", Toast.LENGTH_SHORT).show()
+                                                        Toast.makeText(applicationContext, "Failed to add category: ${e.message}", Toast.LENGTH_SHORT).show()
                                                     }
                                                 }
                                             }
@@ -445,7 +447,7 @@ class MainActivity : FragmentActivity() {
                                                     }
                                                 } catch (e: Exception) {
                                                     withContext(Dispatchers.Main) {
-                                                        Toast.makeText(this@MainActivity, "Failed to clear data: ${e.message}", Toast.LENGTH_SHORT).show()
+                                                        Toast.makeText(applicationContext, "Failed to clear data: ${e.message}", Toast.LENGTH_SHORT).show()
                                                     }
                                                 }
                                             }
@@ -467,13 +469,18 @@ class MainActivity : FragmentActivity() {
         val biometricManager = BiometricManager.from(this)
         val canAuthenticate = biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.BIOMETRIC_WEAK)
         if (canAuthenticate != BiometricManager.BIOMETRIC_SUCCESS) {
-            Toast.makeText(this, "Biometric authentication is not available or not set up.", Toast.LENGTH_LONG).show()
+            if (canAuthenticate == BiometricManager.BIOMETRIC_ERROR_LOCKOUT || canAuthenticate == BiometricManager.BIOMETRIC_ERROR_LOCKOUT_PERMANENT) {
+                Toast.makeText(this, "Biometrics are temporarily locked. Please enter your passcode PIN instead.", Toast.LENGTH_LONG).show()
+            } else {
+                Toast.makeText(this, "Biometric authentication is not available or not set up.", Toast.LENGTH_LONG).show()
+            }
             return
         }
 
         val promptInfo = BiometricPrompt.PromptInfo.Builder()
             .setTitle("Unlock GemWallet")
             .setSubtitle("Use your device biometrics to unlock")
+            .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.BIOMETRIC_WEAK)
             .setNegativeButtonText("Use Passcode PIN")
             .build()
 
@@ -483,6 +490,15 @@ class MainActivity : FragmentActivity() {
                     super.onAuthenticationSucceeded(result)
                     onSuccess()
                 }
+
+                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                    super.onAuthenticationError(errorCode, errString)
+                    if (errorCode == BiometricPrompt.ERROR_LOCKOUT || errorCode == BiometricPrompt.ERROR_LOCKOUT_PERMANENT) {
+                        Toast.makeText(applicationContext, "Biometrics locked. Please unlock using your passcode PIN: $errString", Toast.LENGTH_LONG).show()
+                    } else if (errorCode != BiometricPrompt.ERROR_USER_CANCELED && errorCode != BiometricPrompt.ERROR_NEGATIVE_BUTTON) {
+                        Toast.makeText(applicationContext, "Biometric error: $errString", Toast.LENGTH_SHORT).show()
+                    }
+                }
             })
 
         biometricPrompt.authenticate(promptInfo)
@@ -490,7 +506,7 @@ class MainActivity : FragmentActivity() {
 
     private suspend fun applyDueRecurringEvents() {
         try {
-            withContext(Dispatchers.IO) {
+            database.withTransaction {
                 val now = System.currentTimeMillis()
                 val enabledEvents = database.recurringEventDao().getEnabledEventsSync()
                 
