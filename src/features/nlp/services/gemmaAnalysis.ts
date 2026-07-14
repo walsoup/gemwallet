@@ -3,8 +3,8 @@ import type { Transaction } from '../../../../types/finance';
 import { formatCurrency } from '../../../../utils/formatCurrency';
 import type { AiProvider } from '../../../../store/useSettingsStore';
 
-const DEFAULT_MODEL = 'gemini-2.5-flash';
-const FALLBACK_MODEL = 'gemini-2.5-flash';
+const DEFAULT_MODEL = 'gemma-4-31b-it';
+const FALLBACK_MODEL = 'gemma-4-31b-it';
 const HUGGINGFACE_API_URL = 'https://api-inference.huggingface.co/models';
 const STREAM_CHUNK_SIZE = 80;
 const MIN_CHUNK_DELAY_MS = 4;

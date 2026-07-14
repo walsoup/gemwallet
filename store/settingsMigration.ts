@@ -52,7 +52,7 @@ export const defaultSettingsState: SettingsPersistedShape = {
   themePrimary: '#ff6b6b',
   themeSecondary: '#52dea2',
   aiFeaturesEnabled: false,
-  gemmaModel: 'gemini-2.5-flash',
+  gemmaModel: 'gemma-4-31b-it',
   localModelId: 'gemma-4-e2b-it',
   localModelDownloaded: false,
   smartCategorizationEnabled: true,
@@ -83,7 +83,7 @@ export function migrateSettingsState(persistedState: unknown): SettingsPersisted
     aiProvider,
     themePrimary: legacy.themePrimary ?? defaultSettingsState.themePrimary,
     themeSecondary: legacy.themeSecondary ?? defaultSettingsState.themeSecondary,
-    gemmaModel: legacy.gemmaModel === 'gemma-4-31b-it' ? 'gemini-2.5-flash' : (legacy.gemmaModel ?? defaultSettingsState.gemmaModel),
+    gemmaModel: legacy.gemmaModel ?? defaultSettingsState.gemmaModel,
     localModelId: legacy.localModelId ?? defaultSettingsState.localModelId,
     localModelDownloaded: legacy.localModelDownloaded ?? defaultSettingsState.localModelDownloaded,
     smartCategorizationEnabled:
