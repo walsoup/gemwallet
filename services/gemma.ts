@@ -11,7 +11,7 @@ export async function parseTransactionsWithAI(text: string, categories: any[]) {
     throw new Error("Gemini API key not found. Please set EXPO_PUBLIC_GEMINI_API_KEY.");
   }
 
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
   
   const categoryNames = categories.map(c => c.name).join(', ');
   
