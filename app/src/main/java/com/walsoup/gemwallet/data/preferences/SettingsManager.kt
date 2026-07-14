@@ -2,16 +2,25 @@ package com.walsoup.gemwallet.data.preferences
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Base64
+import android.util.Log
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import java.security.MessageDigest
+import java.security.SecureRandom
+import javax.crypto.SecretKeyFactory
+import javax.crypto.spec.PBEKeySpec
 
-class SettingsManager(context: Context) {
+class SettingsManager private constructor(context: Context) {
 
-    private val prefs: SharedPreferences = context.getSharedPreferences("gemwallet_settings", Context.MODE_PRIVATE)
+    private val prefs: SharedPreferences = context.getSharedPreferences(
+        "gemwallet_settings", Context.MODE_PRIVATE
+    )
+
     private val securePrefs: SharedPreferences = try {
         val masterKey = MasterKey.Builder(context)
             .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
@@ -24,10 +33,10 @@ class SettingsManager(context: Context) {
             EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
         )
     } catch (e: Exception) {
-        context.getSharedPreferences("gemwallet_secure_settings", Context.MODE_PRIVATE)
+        Log.e("SettingsManager", "EncryptedSharedPreferences init failed, secure storage unavailable", e)
+        throw SecurityException("Failed to initialize encrypted preferences", e)
     }
 
-    // Data class representing the settings state
     data class SettingsState(
         val themePreference: String = "dark",
         val oledTrueBlackEnabled: Boolean = true,
@@ -41,7 +50,6 @@ class SettingsManager(context: Context) {
         val notificationsSavingsGoalProgress: Boolean = true,
         val notificationsBudgetWarnings: Boolean = true,
         val passcodeEnabled: Boolean = false,
-        val passcodePinHash: String = "",
         val currencyCode: String = "USD",
         val language: String = "en-US",
         val region: String = "US",
@@ -58,7 +66,7 @@ class SettingsManager(context: Context) {
         val customGreetingName: String = "",
         val hasCompletedOnboarding: Boolean = false,
         val voiceAssistantEnabled: Boolean = false,
-        val isLoaded: Boolean = false
+        val isLoaded: Boolean = true
     )
 
     private val _settingsState = MutableStateFlow(loadSettings())
@@ -78,7 +86,6 @@ class SettingsManager(context: Context) {
             notificationsSavingsGoalProgress = prefs.getBoolean("notificationsSavingsGoalProgress", true),
             notificationsBudgetWarnings = prefs.getBoolean("notificationsBudgetWarnings", true),
             passcodeEnabled = prefs.getBoolean("passcodeEnabled", false),
-            passcodePinHash = securePrefs.getString("passcodePinHash", "") ?: "",
             currencyCode = prefs.getString("currencyCode", "USD") ?: "USD",
             language = prefs.getString("language", "en-US") ?: "en-US",
             region = prefs.getString("region", "US") ?: "US",
@@ -106,37 +113,88 @@ class SettingsManager(context: Context) {
         _settingsState.value = loadSettings()
     }
 
-    // Setters
+    private fun updatePrefsAndNotify(block: SharedPreferences.Editor.() -> Unit): SettingsState {
+        val editor = prefs.edit()
+        editor.block()
+        editor.apply()
+        val newState = loadSettings()
+        _settingsState.value = newState
+        return newState
+    }
+
+    companion object {
+        @Volatile private var INSTANCE: SettingsManager? = null
+
+        fun getInstance(context: Context): SettingsManager {
+            return INSTANCE ?: synchronized(this) {
+                INSTANCE ?: SettingsManager(context.applicationContext).also { INSTANCE = it }
+            }
+        }
+    }
+
+    // Theme
     fun setThemePreference(valStr: String) = updatePrefs { putString("themePreference", valStr) }
     fun setOledTrueBlackEnabled(enabled: Boolean) = updatePrefs { putBoolean("oledTrueBlackEnabled", enabled) }
     fun setHighContrastEnabled(enabled: Boolean) = updatePrefs { putBoolean("highContrastEnabled", enabled) }
     fun setThemePrimary(color: String) = updatePrefs { putString("themePrimary", color.trim()) }
     fun setThemeSecondary(color: String) = updatePrefs { putString("themeSecondary", color.trim()) }
+
+    // Security
     fun setSecureAccessEnabled(enabled: Boolean) = updatePrefs { putBoolean("secureAccessEnabled", enabled) }
     fun setBiometricAuthEnabled(enabled: Boolean) = updatePrefs { putBoolean("biometricAuthEnabled", enabled) }
+
+    // Notifications
     fun setNotificationsTransactionAlerts(enabled: Boolean) = updatePrefs { putBoolean("notificationsTransactionAlerts", enabled) }
     fun setNotificationsWeeklySummary(enabled: Boolean) = updatePrefs { putBoolean("notificationsWeeklySummary", enabled) }
     fun setNotificationsSavingsGoalProgress(enabled: Boolean) = updatePrefs { putBoolean("notificationsSavingsGoalProgress", enabled) }
     fun setNotificationsBudgetWarnings(enabled: Boolean) = updatePrefs { putBoolean("notificationsBudgetWarnings", enabled) }
-    
-    fun setPasscodePin(pin: String) {
-        val hash = if (pin.isNotEmpty()) pbkdf2Hash(pin) else ""
-        securePrefs.edit().putString("passcodePinHash", hash).apply()
-        updatePrefs {
-            putBoolean("passcodeEnabled", hash.isNotEmpty())
-        }
-    }
-    
-    fun removePasscode() {
-        securePrefs.edit().remove("passcodePinHash").apply()
-        updatePrefs {
-            putBoolean("passcodeEnabled", false)
+
+    // Passcode with old PIN verification
+    fun setPasscodePin(newPin: String, oldPin: String? = null): Result<Unit> {
+        return try {
+            val currentHash = securePrefs.getString("passcodePinHash", "") ?: ""
+            if (currentHash.isNotEmpty()) {
+                if (oldPin == null || !verifyPasscodePin(oldPin, currentHash)) {
+                    return Result.failure(SecurityException("Current passcode incorrect"))
+                }
+            }
+            val newHash = if (newPin.isNotEmpty()) pbkdf2Hash(newPin) else ""
+            securePrefs.edit().putString("passcodePinHash", newHash).apply()
+            updatePrefs { putBoolean("passcodeEnabled", newHash.isNotEmpty()) }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 
+    fun removePasscode(currentPin: String): Result<Unit> {
+        return try {
+            val currentHash = securePrefs.getString("passcodePinHash", "") ?: ""
+            if (currentHash.isEmpty()) {
+                return Result.success(Unit)
+            }
+            if (!verifyPasscodePin(currentPin, currentHash)) {
+                return Result.failure(SecurityException("Current passcode incorrect"))
+            }
+            securePrefs.edit().remove("passcodePinHash").apply()
+            updatePrefs { putBoolean("passcodeEnabled", false) }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    fun verifyPasscodePin(enteredPin: String): Boolean {
+        val storedHash = securePrefs.getString("passcodePinHash", "") ?: ""
+        return verifyPasscodePin(enteredPin, storedHash)
+    }
+
+    // Region / Localization
     fun setCurrencyCode(code: String) = updatePrefs { putString("currencyCode", code) }
     fun setLanguage(lang: String) = updatePrefs { putString("language", lang) }
     fun setRegion(reg: String) = updatePrefs { putString("region", reg) }
+
+    // AI
     fun setAiProvider(provider: String) = updatePrefs { putString("aiProvider", provider) }
     fun setAiFeaturesEnabled(enabled: Boolean) = updatePrefs { putBoolean("aiFeaturesEnabled", enabled) }
     fun setGemmaModel(model: String) = updatePrefs { putString("gemmaModel", model) }
@@ -144,6 +202,8 @@ class SettingsManager(context: Context) {
     fun setLocalModelDownloaded(downloaded: Boolean) = updatePrefs { putBoolean("localModelDownloaded", downloaded) }
     fun setSmartCategorizationEnabled(enabled: Boolean) = updatePrefs { putBoolean("smartCategorizationEnabled", enabled) }
     fun setAdvancedSummariesEnabled(enabled: Boolean) = updatePrefs { putBoolean("advancedSummariesEnabled", enabled) }
+
+    // Export / Misc
     fun setIncludeNotesInExport(enabled: Boolean) = updatePrefs { putBoolean("includeNotesInExport", enabled) }
     fun setSetupCoachDismissed(dismissed: Boolean) = updatePrefs { putBoolean("setupCoachDismissed", dismissed) }
     fun setBackupConfigured(configured: Boolean) = updatePrefs { putBoolean("backupConfigured", configured) }
@@ -152,16 +212,13 @@ class SettingsManager(context: Context) {
     fun setVoiceAssistantEnabled(enabled: Boolean) = updatePrefs { putBoolean("voiceAssistantEnabled", enabled) }
 
     fun clearAllData() {
-        updatePrefs {
-            clear()
-        }
+        updatePrefs { clear() }
         securePrefs.edit().clear().apply()
     }
 
     fun resetSettings() {
         securePrefs.edit().remove("passcodePinHash").apply()
         updatePrefs {
-            // Keep onboarding status but reset other settings
             val onboarded = prefs.getBoolean("hasCompletedOnboarding", false)
             clear()
             putBoolean("hasCompletedOnboarding", onboarded)
@@ -169,9 +226,7 @@ class SettingsManager(context: Context) {
     }
 
     // Secure Storage for API Keys
-    fun getGeminiApiKey(): String {
-        return securePrefs.getString("gemini_api_key", "") ?: ""
-    }
+    fun getGeminiApiKey(): String = securePrefs.getString("gemini_api_key", "") ?: ""
 
     fun setGeminiApiKey(key: String) {
         securePrefs.edit().putString("gemini_api_key", key).apply()
@@ -181,9 +236,7 @@ class SettingsManager(context: Context) {
         securePrefs.edit().remove("gemini_api_key").apply()
     }
 
-    fun getHuggingFaceToken(): String {
-        return securePrefs.getString("hugging_face_token", "") ?: ""
-    }
+    fun getHuggingFaceToken(): String = securePrefs.getString("hugging_face_token", "") ?: ""
 
     fun setHuggingFaceToken(token: String) {
         securePrefs.edit().putString("hugging_face_token", token).apply()
@@ -194,24 +247,19 @@ class SettingsManager(context: Context) {
     }
 
     private fun pbkdf2Hash(pin: String): String {
-        val random = java.security.SecureRandom()
+        val random = SecureRandom()
         val salt = ByteArray(16)
         random.nextBytes(salt)
         return hashPinWithSalt(pin, salt)
     }
 
     private fun hashPinWithSalt(pin: String, salt: ByteArray): String {
-        val iterations = 10000
+        val iterations = 600_000 // OWASP 2023+ recommendation
         val keyLength = 256
-        val spec = javax.crypto.spec.PBEKeySpec(pin.toCharArray(), salt, iterations, keyLength)
-        val skf = javax.crypto.SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
+        val spec = PBEKeySpec(pin.toCharArray(), salt, iterations, keyLength)
+        val skf = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
         val hash = skf.generateSecret(spec).encoded
-        return android.util.Base64.encodeToString(salt, android.util.Base64.NO_WRAP) + ":" + android.util.Base64.encodeToString(hash, android.util.Base64.NO_WRAP)
-    }
-
-    fun verifyPasscodePin(enteredPin: String): Boolean {
-        val storedHash = securePrefs.getString("passcodePinHash", "") ?: ""
-        return verifyPasscodePin(enteredPin, storedHash)
+        return Base64.encodeToString(salt, Base64.NO_WRAP) + ":" + Base64.encodeToString(hash, Base64.NO_WRAP)
     }
 
     fun verifyPasscodePin(enteredPin: String, storedHash: String): Boolean {
@@ -219,11 +267,11 @@ class SettingsManager(context: Context) {
         return try {
             val parts = storedHash.split(":")
             if (parts.size != 2) return false
-            val salt = android.util.Base64.decode(parts[0], android.util.Base64.NO_WRAP)
-            val storedPinHashBytes = android.util.Base64.decode(parts[1], android.util.Base64.NO_WRAP)
+            val salt = Base64.decode(parts[0], Base64.NO_WRAP)
+            val storedPinHashBytes = Base64.decode(parts[1], Base64.NO_WRAP)
             val computedHashString = hashPinWithSalt(enteredPin, salt)
-            val computedPinHashBytes = android.util.Base64.decode(computedHashString.split(":")[1], android.util.Base64.NO_WRAP)
-            java.security.MessageDigest.isEqual(storedPinHashBytes, computedPinHashBytes)
+            val computedPinHashBytes = Base64.decode(computedHashString.split(":")[1], Base64.NO_WRAP)
+            MessageDigest.isEqual(storedPinHashBytes, computedPinHashBytes)
         } catch (e: Exception) {
             false
         }
