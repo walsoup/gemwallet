@@ -213,8 +213,9 @@ class GeminiService {
             }
         } finally {
             response.close()
-        }.flowOn(Dispatchers.IO)
-    }
+        }
+    }.flowOn(Dispatchers.IO)
+
 
     data class ParsedTransaction(
         val item: String,
