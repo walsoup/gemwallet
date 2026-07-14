@@ -401,8 +401,7 @@ export async function* streamGeminiFinancialAnalysis(
 
   for (const modelName of modelsToTry) {
     let streamedAny = false;
-    const prefix = '';
-    let raw = prefix;
+    let raw = '';
 
     try {
       const model = genAI.getGenerativeModel({ model: modelName });
@@ -415,11 +414,6 @@ export async function* streamGeminiFinancialAnalysis(
         },
       });
 
-      if (prefix) {
-        streamedAny = true;
-        yield prefix;
-      }
-
       for await (const chunk of stream.stream) {
         const text = chunk.text();
         if (!text) continue;
@@ -428,19 +422,38 @@ export async function* streamGeminiFinancialAnalysis(
         yield text;
       }
 
-      if (!streamedAny) {
-        raw = fallback;
-        for (const chunk of chunkText(fallback)) {
+      if (streamedAny) {
+        applyDetectedCommands(raw, callbacks);
+        return;
+      }
+    } catch (error) {
+      console.warn(`Gemini stream failed on model ${modelName}, attempting non-stream fallback...`, error);
+    }
+
+    try {
+      const model = genAI.getGenerativeModel({ model: modelName });
+      const result = await model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: options.advanced ? 0.55 : 0.28,
+          maxOutputTokens: options.advanced ? 360 : MAX_TOKENS_BASE,
+          topP: 0.85,
+        },
+      });
+
+      const text = result.response.text();
+      if (text) {
+        raw = text;
+        applyDetectedCommands(raw, callbacks);
+        const cleaned = sanitizeModelOutput(raw) || fallback;
+        for (const chunk of chunkText(cleaned)) {
           await new Promise((resolve) => setTimeout(resolve, MIN_CHUNK_DELAY_MS));
           yield chunk;
         }
+        return;
       }
-
-      applyDetectedCommands(raw, callbacks);
-      return;
-    } catch (error) {
-      const errorName = error instanceof Error ? error.name : 'UnknownError';
-      console.warn(`Gemini stream failed on model ${modelName} (${errorName})`);
+    } catch (fallbackError) {
+      console.warn(`Gemini non-stream fallback failed on model ${modelName}:`, fallbackError);
       continue;
     }
   }

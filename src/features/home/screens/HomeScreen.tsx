@@ -175,11 +175,11 @@ export default function HomeScreen() {
               <Text style={[styles.actionButtonText, { color: theme.colors.onPrimaryContainer }]}>Add Funds</Text>
             </BouncyButton>
             <BouncyButton
-              style={[styles.actionButton, styles.secondaryButton, { backgroundColor: theme.colors.surfaceContainerHighest }]}
+              style={[styles.actionButton, styles.secondaryButton, { backgroundColor: theme.colors.secondaryContainer }]}
               onPress={() => openQuickAction('expense')}
             >
-              <MaterialCommunityIcons name="arrow-down" size={20} color={theme.colors.onSurface} />
-              <Text style={[styles.actionButtonText, { color: theme.colors.onSurface }]}>Spend Funds</Text>
+              <MaterialCommunityIcons name="arrow-down" size={20} color={theme.colors.onSecondaryContainer} />
+              <Text style={[styles.actionButtonText, { color: theme.colors.onSecondaryContainer }]}>Spend Funds</Text>
             </BouncyButton>
           </View>
         </View>

@@ -81,7 +81,7 @@ export function CustomBottomNav({ state, descriptors, navigation }: BottomTabBar
           style={[
             styles.indicator, 
             indicatorStyle, 
-            { height: INDICATOR_HEIGHT, width: indicatorWidth, backgroundColor: theme.colors.primaryContainer, borderRadius: 28 },
+            { width: indicatorWidth, backgroundColor: theme.colors.primaryContainer, borderRadius: 28 },
           ]} 
         />
         
@@ -166,6 +166,7 @@ const styles = StyleSheet.create({
   indicator: {
     position: 'absolute',
     top: 12,
+    bottom: 12,
     left: 0,
     zIndex: -1,
   },
