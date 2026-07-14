@@ -10,7 +10,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -19,16 +18,17 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import java.util.Locale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.walsoup.gemwallet.ui.theme.BeVietnamProFamily
 import com.walsoup.gemwallet.ui.theme.SpaceGroteskFamily
+import java.util.Locale
 
 // 1. Bar Chart Data Class
 data class BarChartItem(
@@ -72,13 +72,20 @@ fun SimpleBarChart(
                 verticalArrangement = Arrangement.Bottom,
                 modifier = Modifier.weight(1f)
             ) {
-                // The Bar
+                // The Bar with beautiful gradient and rounded top
                 Box(
                     modifier = Modifier
                         .width(22.dp)
                         .fillMaxHeight(0.85f * animatedHeightFraction)
-                        .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
-                        .background(primaryColor)
+                        .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp))
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    primaryColor,
+                                    primaryColor.copy(alpha = 0.5f)
+                                )
+                            )
+                        )
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 // Label
@@ -131,7 +138,7 @@ fun SimpleDonutChart(
             contentAlignment = Alignment.Center
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
-                val strokeWidth = 24.dp.toPx()
+                val strokeWidth = 20.dp.toPx()
                 val radius = (size.dp.toPx() - strokeWidth) / 2
                 val arcSize = Size(radius * 2, radius * 2)
                 val offset = Offset(strokeWidth / 2, strokeWidth / 2)
@@ -139,14 +146,15 @@ fun SimpleDonutChart(
                 var startAngle = -90f
                 slices.forEach { slice ->
                     val sweepAngle = (slice.value / total) * 360f * animatedScale
+                    // Draw slice with a thin gap to make it look premium
                     drawArc(
                         color = slice.color,
-                        startAngle = startAngle,
-                        sweepAngle = sweepAngle,
+                        startAngle = startAngle + 1f,
+                        sweepAngle = sweepAngle - 2f,
                         useCenter = false,
                         topLeft = offset,
                         size = arcSize,
-                        style = Stroke(width = strokeWidth)
+                        style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
                     )
                     startAngle += sweepAngle
                 }
@@ -154,7 +162,7 @@ fun SimpleDonutChart(
             // Inner center text
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    text = "Expenses",
+                    text = "Moves",
                     fontFamily = SpaceGroteskFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 12.sp,
@@ -225,6 +233,8 @@ fun SimpleLineChart(
         animationSpec = tween(durationMillis = 800)
     )
 
+    val gridLineColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.08f)
+
     Column(modifier = modifier.fillMaxWidth()) {
         Canvas(
             modifier = Modifier
@@ -236,6 +246,18 @@ fun SimpleLineChart(
             val graphHeight = size.height
             val spacingX = width / (itemsCount - 1).coerceAtLeast(1)
 
+            // Draw horizontal grid lines for engineered M3 look
+            val gridLines = 4
+            for (i in 0..gridLines) {
+                val y = (graphHeight / gridLines) * i
+                drawLine(
+                    color = gridLineColor,
+                    start = Offset(0f, y),
+                    end = Offset(width, y),
+                    strokeWidth = 1.dp.toPx()
+                )
+            }
+
             val incomePoints = incomeItems.mapIndexed { idx, item ->
                 Offset(idx * spacingX, graphHeight - (item.value / maxVal) * graphHeight * animatedProgress)
             }
@@ -244,38 +266,79 @@ fun SimpleLineChart(
                 Offset(idx * spacingX, graphHeight - (item.value / maxVal) * graphHeight * animatedProgress)
             }
 
-            // Helper to draw connection lines
-            fun drawLinePath(points: List<Offset>, color: Color) {
+            // Helper to draw connection lines as smooth Bezier curves with vertical gradient fill
+            fun drawSmoothLineAndFill(points: List<Offset>, color: Color) {
                 if (points.size < 2) return
+
                 val path = Path().apply {
                     moveTo(points[0].x, points[0].y)
                     for (i in 1 until points.size) {
-                        lineTo(points[i].x, points[i].y)
+                        val prev = points[i - 1]
+                        val curr = points[i]
+                        // Hermite spline approximation
+                        cubicTo(
+                            prev.x + (curr.x - prev.x) / 2, prev.y,
+                            prev.x + (curr.x - prev.x) / 2, curr.y,
+                            curr.x, curr.y
+                        )
                     }
                 }
+
+                // Create the closing path for the gradient fill underneath
+                val fillPath = Path().apply {
+                    moveTo(points[0].x, points[0].y)
+                    for (i in 1 until points.size) {
+                        val prev = points[i - 1]
+                        val curr = points[i]
+                        cubicTo(
+                            prev.x + (curr.x - prev.x) / 2, prev.y,
+                            prev.x + (curr.x - prev.x) / 2, curr.y,
+                            curr.x, curr.y
+                        )
+                    }
+                    lineTo(points.last().x, graphHeight)
+                    lineTo(points[0].x, graphHeight)
+                    close()
+                }
+
+                // Draw gradient fill
+                drawPath(
+                    path = fillPath,
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            color.copy(alpha = 0.20f),
+                            Color.Transparent
+                        ),
+                        startY = 0f,
+                        endY = graphHeight
+                    )
+                )
+
+                // Draw Bezier outline path
                 drawPath(
                     path = path,
                     color = color,
                     style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
                 )
-                // Draw dots
+
+                // Draw dots at control points
                 points.forEach { point ->
                     drawCircle(
                         color = color,
-                        radius = 5.dp.toPx(),
+                        radius = 4.5.dp.toPx(),
                         center = point
                     )
                     drawCircle(
                         color = Color.White,
-                        radius = 2.5.dp.toPx(),
+                        radius = 2.dp.toPx(),
                         center = point
                     )
                 }
             }
 
-            // Draw Lines
-            drawLinePath(incomePoints, incomeColor)
-            drawLinePath(expensePoints, expenseColor)
+            // Draw Lines and Fills
+            drawSmoothLineAndFill(incomePoints, incomeColor)
+            drawSmoothLineAndFill(expensePoints, expenseColor)
         }
 
         // X-Axis labels

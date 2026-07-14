@@ -30,6 +30,7 @@ import com.walsoup.gemwallet.data.database.TransactionEntity
 import com.walsoup.gemwallet.ui.components.AnimatedBalance
 import com.walsoup.gemwallet.ui.components.ProgressRing
 import com.walsoup.gemwallet.ui.components.formatCurrency
+import com.walsoup.gemwallet.ui.components.bouncyClickable
 import com.walsoup.gemwallet.ui.theme.BeVietnamProFamily
 import com.walsoup.gemwallet.ui.theme.SpaceGroteskFamily
 import java.text.SimpleDateFormat
@@ -81,18 +82,28 @@ fun HomeScreen(
     // Category dictionary for quick lookups
     val categoryMap = remember(categories) { categories.associateBy { it.id } }
 
-    // Computed monthly spend
-    val monthlySpendCents = remember(transactions) {
+    // Computed monthly spend per category (with early break optimization since transactions are sorted DESC)
+    val currentMonthSpentByCategory = remember(transactions) {
         val calendar = Calendar.getInstance()
         calendar.set(Calendar.DAY_OF_MONTH, 1)
         calendar.set(Calendar.HOUR_OF_DAY, 0)
         calendar.set(Calendar.MINUTE, 0)
         calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
         val startOfMonth = calendar.timeInMillis
 
-        transactions
-            .filter { it.type == "expense" && it.timestamp >= startOfMonth }
-            .sumOf { it.amountCents }
+        val map = mutableMapOf<String, Long>()
+        for (tx in transactions) {
+            if (tx.timestamp < startOfMonth) break
+            if (tx.type == "expense") {
+                map[tx.categoryId] = (map[tx.categoryId] ?: 0L) + tx.amountCents
+            }
+        }
+        map
+    }
+
+    val monthlySpendCents = remember(currentMonthSpentByCategory) {
+        currentMonthSpentByCategory.values.sum()
     }
 
     // Vacation / default savings goal
@@ -425,74 +436,126 @@ fun HomeScreen(
                     val category = categoryMap[tx.categoryId]
                     val isIncome = tx.type == "income"
 
-                    // Swipeable behavior can be done via drag or simply long press.
-                    // Compose card with click to open detail and long press to delete/options, which is very robust.
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                selectedTransactionForDetail = tx
-                                showDetailModal = true
-                            },
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                        ),
-                        shape = RoundedCornerShape(16.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                // Emoji Icon Box
-                                Box(
-                                    modifier = Modifier
-                                        .size(48.dp)
-                                        .clip(CircleShape)
-                                        .background(
-                                            if (isIncome) MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f)
-                                            else MaterialTheme.colorScheme.surfaceVariant
-                                        ),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = category?.emoji ?: "🧩",
-                                        fontSize = 20.sp
-                                    )
-                                }
+                    val budgetLimit = category?.maxBudgetLimitCents
+                    val spent = if (category != null) currentMonthSpentByCategory[category.id] ?: 0L else 0L
+                    val isWarning = !isIncome && budgetLimit != null && budgetLimit > 0 && spent >= (0.8f * budgetLimit).toLong()
 
-                                Column {
+                    val dismissState = rememberSwipeToDismissBoxState(
+                        confirmValueChange = { dismissValue ->
+                            if (dismissValue == SwipeToDismissBoxValue.EndToStart) {
+                                onDeleteTransaction(tx.id)
+                                true
+                            } else {
+                                false
+                            }
+                        }
+                    )
+
+                    SwipeToDismissBox(
+                        state = dismissState,
+                        enableDismissFromStartToEnd = false,
+                        backgroundContent = {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(RoundedCornerShape(20.dp))
+                                    .background(MaterialTheme.colorScheme.errorContainer)
+                                    .padding(horizontal = 24.dp),
+                                contentAlignment = Alignment.CenterEnd
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Delete",
+                                    tint = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                            }
+                        },
+                        content = {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .bouncyClickable {
+                                        selectedTransactionForDetail = tx
+                                        showDetailModal = true
+                                    },
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (isWarning) {
+                                        MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f)
+                                    } else {
+                                        MaterialTheme.colorScheme.surfaceContainerLow
+                                    }
+                                ),
+                                shape = RoundedCornerShape(20.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                    ) {
+                                        // Emoji Icon Box with Optional Progress Ring
+                                        Box(
+                                            modifier = Modifier.size(48.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            if (!isIncome && budgetLimit != null && budgetLimit > 0) {
+                                                ProgressRing(
+                                                    progress = spent.toFloat() / budgetLimit.toFloat(),
+                                                    size = 48.dp,
+                                                    strokeWidth = 3.dp,
+                                                    color = if (isWarning) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                                                    trackColor = if (isWarning) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surfaceVariant
+                                                )
+                                            } else {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .fillMaxSize()
+                                                        .clip(CircleShape)
+                                                        .background(
+                                                            if (isIncome) MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f)
+                                                            else MaterialTheme.colorScheme.surfaceVariant
+                                                        )
+                                                )
+                                            }
+                                            Text(
+                                                text = category?.emoji ?: "🧩",
+                                                fontSize = 20.sp
+                                            )
+                                        }
+
+                                        Column {
+                                            Text(
+                                                text = tx.note ?: category?.name ?: "Transaction",
+                                                fontFamily = BeVietnamProFamily,
+                                                fontWeight = FontWeight.Medium,
+                                                fontSize = 16.sp,
+                                                color = if (isWarning) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSurface
+                                            )
+                                            Text(
+                                                text = category?.name ?: "Misc",
+                                                fontFamily = BeVietnamProFamily,
+                                                fontSize = 14.sp,
+                                                color = if (isWarning) MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+
                                     Text(
-                                        text = tx.note ?: category?.name ?: "Transaction",
+                                        text = (if (isIncome) "+" else "-") + formatCurrency(tx.amountCents, currencyCode, localeString),
                                         fontFamily = BeVietnamProFamily,
-                                        fontWeight = FontWeight.Medium,
+                                        fontWeight = FontWeight.Bold,
                                         fontSize = 16.sp,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Text(
-                                        text = category?.name ?: "Misc",
-                                        fontFamily = BeVietnamProFamily,
-                                        fontSize = 14.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = if (isIncome) MaterialTheme.colorScheme.tertiary else (if (isWarning) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
                                     )
                                 }
                             }
-
-                            Text(
-                                text = (if (isIncome) "+" else "-") + formatCurrency(tx.amountCents, currencyCode, localeString),
-                                fontFamily = BeVietnamProFamily,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp,
-                                color = if (isIncome) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurface
-                            )
                         }
-                    }
+                    )
                 }
             }
 

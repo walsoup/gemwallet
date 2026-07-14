@@ -22,9 +22,14 @@ fun GemWalletTheme(
         else -> isSystemInDarkTheme()
     }
 
-    val primary = parseColor(primaryColorHex, DefaultPrimary)
-    val secondary = parseColor(secondaryColorHex, DefaultSecondary)
-    val tertiary = DefaultTertiary
+    // Select defaults based on dark/light to match Velvet theme
+    val defaultPrimaryColor = if (isDark) Color(0xFFffb3b0) else DefaultPrimary
+    val defaultSecondaryColor = if (isDark) Color(0xFFffb3b0) else DefaultSecondary
+    val defaultTertiaryColor = if (isDark) Color(0xFF52dea2) else DefaultTertiary
+
+    val primary = parseColor(primaryColorHex, defaultPrimaryColor)
+    val secondary = parseColor(secondaryColorHex, defaultSecondaryColor)
+    val tertiary = defaultTertiaryColor
 
     val colorScheme = if (isDark) {
         val bg = if (oledTrueBlackEnabled) OLEDBackground else DarkBackground
@@ -35,16 +40,16 @@ fun GemWalletTheme(
         darkColorScheme(
             primary = primary,
             onPrimary = if (highContrastEnabled) Color.Black else Color.White,
-            primaryContainer = primary.copy(alpha = 0.25f),
-            onPrimaryContainer = primary,
+            primaryContainer = primary,
+            onPrimaryContainer = if (highContrastEnabled) Color.Black else Color.White,
             secondary = secondary,
             onSecondary = Color.Black,
-            secondaryContainer = secondary.copy(alpha = 0.2f),
-            onSecondaryContainer = secondary,
+            secondaryContainer = secondary,
+            onSecondaryContainer = Color.Black,
             tertiary = tertiary,
             onTertiary = Color.White,
-            tertiaryContainer = tertiary.copy(alpha = 0.2f),
-            onTertiaryContainer = tertiary,
+            tertiaryContainer = tertiary,
+            onTertiaryContainer = Color.White,
             background = bg,
             onBackground = Color.White,
             surface = surf,
@@ -61,16 +66,16 @@ fun GemWalletTheme(
         lightColorScheme(
             primary = primary,
             onPrimary = Color.White,
-            primaryContainer = primary.copy(alpha = 0.15f),
-            onPrimaryContainer = primary,
+            primaryContainer = primary,
+            onPrimaryContainer = Color.White,
             secondary = secondary,
             onSecondary = Color.White,
-            secondaryContainer = secondary.copy(alpha = 0.15f),
-            onSecondaryContainer = secondary,
+            secondaryContainer = secondary,
+            onSecondaryContainer = Color.White,
             tertiary = tertiary,
             onTertiary = Color.White,
-            tertiaryContainer = tertiary.copy(alpha = 0.15f),
-            onTertiaryContainer = tertiary,
+            tertiaryContainer = tertiary,
+            onTertiaryContainer = Color.White,
             background = LightBackground,
             onBackground = Color.Black,
             surface = LightSurface,

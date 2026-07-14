@@ -11,7 +11,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.dp
+import com.walsoup.gemwallet.ui.components.FloatingBottomNav
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.ViewModel
@@ -355,6 +359,7 @@ class MainActivity : FragmentActivity() {
             }
         }
     }
+    }
 
     @Composable
     private fun MainContent(
@@ -368,119 +373,103 @@ class MainActivity : FragmentActivity() {
         onExportCsv: () -> Unit
     ) {
         Scaffold(
-            bottomBar = {
-                NavigationBar(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                ) {
-                    NavigationBarItem(
-                        selected = viewModel.activeTab == "home",
-                        onClick = { viewModel.setTab("home") },
-                        icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
-                        label = { Text("Home", fontFamily = BeVietnamProFamily) }
-                    )
-                    NavigationBarItem(
-                        selected = viewModel.activeTab == "analytics",
-                        onClick = { viewModel.setTab("analytics") },
-                        icon = { Icon(Icons.Default.PieChart, contentDescription = "Insights") },
-                        label = { Text("Insights", fontFamily = BeVietnamProFamily) }
-                    )
-                    if (settingsState.aiFeaturesEnabled) {
-                        NavigationBarItem(
-                            selected = viewModel.activeTab == "chat",
-                            onClick = { viewModel.setTab("chat") },
-                            icon = { Icon(Icons.Default.Chat, contentDescription = "Chat") },
-                            label = { Text("Chat", fontFamily = BeVietnamProFamily) }
-                        )
-                    }
-                    NavigationBarItem(
-                        selected = viewModel.activeTab == "planning",
-                        onClick = { viewModel.setTab("planning") },
-                        icon = { Icon(Icons.Default.Flag, contentDescription = "Plan") },
-                        label = { Text("Plan", fontFamily = BeVietnamProFamily) }
-                    )
-                    NavigationBarItem(
-                        selected = viewModel.activeTab == "settings",
-                        onClick = { viewModel.setTab("settings") },
-                        icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
-                        label = { Text("Settings", fontFamily = BeVietnamProFamily) }
-                    )
-                }
-            }
+            // bottomBar is omitted to allow floating behavior
         ) { innerPadding ->
+            val layoutDirection = LocalLayoutDirection.current
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding)
+                    .padding(
+                        start = innerPadding.calculateStartPadding(layoutDirection),
+                        top = innerPadding.calculateTopPadding(),
+                        end = innerPadding.calculateEndPadding(layoutDirection),
+                        bottom = 0.dp
+                    )
             ) {
-                when (viewModel.activeTab) {
-                    "home" -> HomeScreen(
-                        transactions = transactions,
-                        categories = categories,
-                        goals = goals,
-                        balanceCents = balanceCents,
-                        currencyCode = settingsState.currencyCode,
-                        localeString = settingsState.language,
-                        customGreetingName = settingsState.customGreetingName,
-                        onAddTransaction = { amount, catId, type, note ->
-                            viewModel.addTransaction(amount, catId, type, note)
-                        },
-                        onDeleteTransaction = { id -> viewModel.deleteTransaction(id) },
-                        onUpdateTransaction = { id, amount, catId, type, note ->
-                            viewModel.updateTransaction(id, amount, catId, type, note)
-                        }
-                    )
-                    "analytics" -> AnalyticsScreen(
-                        transactions = transactions,
-                        categories = categories,
-                        currencyCode = settingsState.currencyCode,
-                        localeString = settingsState.language
-                    )
-                    "chat" -> ChatScreen(
-                        transactions = transactions,
-                        categories = categories,
-                        settingsState = settingsState,
-                        settingsManager = viewModel.settingsManager as SettingsManager, // exposed via public getter
-                        nlpService = viewModel.nlpService as NlpService,
-                        onAddExpense = { amount, catId, note ->
-                            viewModel.addTransaction(amount, catId, "expense", note)
-                        },
-                        onAddIncome = { amount, catId, note ->
-                            viewModel.addTransaction(amount, catId, "income", note)
-                        },
-                        onAddRecurring = { name, amount, type, interval, catId, startDate ->
-                            viewModel.addRecurringEvent(name, amount, type, catId, interval, startDate)
-                        },
-                        onAddGoal = { name, target, dueDate ->
-                            viewModel.addGoal(name, target, dueDate)
-                        }
-                    )
-                    "planning" -> PlanningScreen(
-                        goals = goals,
-                        events = events,
-                        categories = categories,
-                        currencyCode = settingsState.currencyCode,
-                        localeString = settingsState.language,
-                        onAddGoal = { name, target ->
-                            viewModel.addGoal(name, target)
-                        },
-                        onAddRecurring = { name, amount, type, interval, catId, startDate ->
-                            viewModel.addRecurringEvent(name, amount, type, catId, interval, startDate)
-                        },
-                        onToggleRecurring = { id, enabled ->
-                            viewModel.toggleRecurring(id, enabled)
-                        }
-                    )
-                    "settings" -> SettingsScreen(
-                        settingsState = settingsState,
-                        settingsManager = viewModel.settingsManager as SettingsManager,
-                        categories = categories,
-                        onAddCustomCategory = { name, emoji ->
-                            viewModel.addCustomCategory(name, emoji)
-                        },
-                        onClearAllData = { viewModel.clearAllData() },
-                        onExportCsv = onExportCsv
-                    )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = 80.dp) // Leave clean space for floating bottom nav
+                ) {
+                    when (viewModel.activeTab) {
+                        "home" -> HomeScreen(
+                            transactions = transactions,
+                            categories = categories,
+                            goals = goals,
+                            balanceCents = balanceCents,
+                            currencyCode = settingsState.currencyCode,
+                            localeString = settingsState.language,
+                            customGreetingName = settingsState.customGreetingName,
+                            onAddTransaction = { amount, catId, type, note ->
+                                viewModel.addTransaction(amount, catId, type, note)
+                            },
+                            onDeleteTransaction = { id -> viewModel.deleteTransaction(id) },
+                            onUpdateTransaction = { id, amount, catId, type, note ->
+                                viewModel.updateTransaction(id, amount, catId, type, note)
+                            }
+                        )
+                        "analytics" -> AnalyticsScreen(
+                            transactions = transactions,
+                            categories = categories,
+                            currencyCode = settingsState.currencyCode,
+                            localeString = settingsState.language
+                        )
+                        "chat" -> ChatScreen(
+                            transactions = transactions,
+                            categories = categories,
+                            settingsState = settingsState,
+                            settingsManager = viewModel.settingsManager as SettingsManager, // exposed via public getter
+                            nlpService = viewModel.nlpService as NlpService,
+                            onAddExpense = { amount, catId, note ->
+                                viewModel.addTransaction(amount, catId, "expense", note)
+                            },
+                            onAddIncome = { amount, catId, note ->
+                                viewModel.addTransaction(amount, catId, "income", note)
+                            },
+                            onAddRecurring = { name, amount, type, interval, catId, startDate ->
+                                viewModel.addRecurringEvent(name, amount, type, catId, interval, startDate)
+                            },
+                            onAddGoal = { name, target, dueDate ->
+                                viewModel.addGoal(name, target, dueDate)
+                            }
+                        )
+                        "planning" -> PlanningScreen(
+                            goals = goals,
+                            events = events,
+                            categories = categories,
+                            currencyCode = settingsState.currencyCode,
+                            localeString = settingsState.language,
+                            onAddGoal = { name, target ->
+                                viewModel.addGoal(name, target)
+                            },
+                            onAddRecurring = { name, amount, type, interval, catId, startDate ->
+                                viewModel.addRecurringEvent(name, amount, type, catId, interval, startDate)
+                            },
+                            onToggleRecurring = { id, enabled ->
+                                viewModel.toggleRecurring(id, enabled)
+                            }
+                        )
+                        "settings" -> SettingsScreen(
+                            settingsState = settingsState,
+                            settingsManager = viewModel.settingsManager as SettingsManager,
+                            categories = categories,
+                            onAddCustomCategory = { name, emoji ->
+                                viewModel.addCustomCategory(name, emoji)
+                            },
+                            onClearAllData = { viewModel.clearAllData() },
+                            onExportCsv = onExportCsv
+                        )
+                    }
                 }
+
+                FloatingBottomNav(
+                    activeTab = viewModel.activeTab,
+                    onTabSelected = { viewModel.setTab(it) },
+                    aiFeaturesEnabled = settingsState.aiFeaturesEnabled,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(start = 20.dp, end = 20.dp, bottom = 16.dp)
+                )
             }
         }
     }
