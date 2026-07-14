@@ -13,3 +13,7 @@
 
 # Add any project specific keep options here:
 -keep class com.google.ai.edge.litertlm.** { *; }
+
+# Ignore missing optional class warnings for Expo modules under R8
+-dontwarn expo.modules.**
+-dontwarn expo.**
