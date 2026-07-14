@@ -240,7 +240,7 @@ class NlpService(
     private fun resolveProvider(request: AnalysisRequest): AiProvider {
         // This would come from settings in practice
         // For now, infer from request or use a default
-        return AiProvider.Google(apiKey = "", modelName = "gemini-1.5-flash") // placeholder
+        return AiProvider.Google(apiKey = "", modelName = "gemini-flash-lite-lastest") // placeholder
     }
 
     private fun buildPrompt(request: AnalysisRequest): String {
