@@ -88,6 +88,9 @@ interface RecurringEventDao {
     @Query("SELECT * FROM recurring_events ORDER BY id DESC")
     fun getAllEvents(): Flow<List<RecurringEventEntity>>
 
+    @Query("SELECT * FROM recurring_events ORDER BY id DESC")
+    suspend fun getAllEventsSync(): List<RecurringEventEntity>
+
     @Query("SELECT * FROM recurring_events WHERE enabled = 1")
     suspend fun getEnabledEventsSync(): List<RecurringEventEntity>
 
