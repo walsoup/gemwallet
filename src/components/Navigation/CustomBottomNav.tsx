@@ -48,9 +48,9 @@ export function CustomBottomNav({ state, descriptors, navigation }: BottomTabBar
 
   useEffect(() => {
     translateX.value = withSpring(CONTAINER_PADDING_H + activeIndex * tabWidth + INDICATOR_MARGIN, {
-      damping: 20,
-      stiffness: 150,
-      mass: 1
+      damping: 24,
+      stiffness: 200,
+      mass: 0.8
     });
   }, [activeIndex, tabWidth, translateX, INDICATOR_MARGIN, CONTAINER_PADDING_H]);
 
@@ -121,6 +121,9 @@ export function CustomBottomNav({ state, descriptors, navigation }: BottomTabBar
               onPress={onPress}
               scaleTo={0.85}
               style={styles.tabItem}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: isFocused }}
+              accessibilityLabel={`${label} tab`}
             >
               <MaterialCommunityIcons
                 name={iconName as any}

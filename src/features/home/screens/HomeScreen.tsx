@@ -169,6 +169,8 @@ export default function HomeScreen() {
             <BouncyButton
               style={[styles.actionButton, styles.primaryButton, { backgroundColor: theme.colors.primaryContainer }]}
               onPress={() => openQuickAction('income')}
+              accessibilityRole="button"
+              accessibilityLabel="Add income funds"
             >
               <MaterialCommunityIcons name="arrow-up" size={20} color={theme.colors.onPrimaryContainer} />
               <Text style={[styles.actionButtonText, { color: theme.colors.onPrimaryContainer }]}>Add Funds</Text>
@@ -176,6 +178,8 @@ export default function HomeScreen() {
             <BouncyButton
               style={[styles.actionButton, styles.secondaryButton, { backgroundColor: theme.colors.secondaryContainer }]}
               onPress={() => openQuickAction('expense')}
+              accessibilityRole="button"
+              accessibilityLabel="Spend expense funds"
             >
               <MaterialCommunityIcons name="arrow-down" size={20} color={theme.colors.onSecondaryContainer} />
               <Text style={[styles.actionButtonText, { color: theme.colors.onSecondaryContainer }]}>Spend Funds</Text>
@@ -358,6 +362,8 @@ export default function HomeScreen() {
                       { backgroundColor: itemBg || 'transparent' },
                       !isLast && { borderBottomWidth: 1, borderBottomColor: isWarning ? theme.colors.onErrorContainer + '26' : theme.colors.outlineVariant + '26' }
                     ]}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${isIncome ? 'Income' : 'Expense'}, ${tx.note || category?.name || 'Transaction'}, ${formatAppCurrency(tx.amountCents)}`}
                   >
                     <View style={styles.txItemLeft}>
                       <View style={{ width: 48, height: 48, justifyContent: 'center', alignItems: 'center' }}>

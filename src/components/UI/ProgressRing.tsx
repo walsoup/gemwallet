@@ -1,5 +1,8 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import Svg, { Circle } from 'react-native-svg';
+import Animated, { useAnimatedProps, useSharedValue, withTiming } from 'react-native-reanimated';
+
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 interface Props {
   size: number;
@@ -12,9 +15,18 @@ interface Props {
 export function ProgressRing({ size, strokeWidth, progress, color, trackColor }: Props) {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
-  // Cap progress between 0 and 1, ensuring we draw correctly
   const cappedProgress = Math.min(Math.max(progress, 0), 1);
-  const strokeDashoffset = circumference - cappedProgress * circumference;
+  const targetOffset = circumference - cappedProgress * circumference;
+
+  const animatedOffset = useSharedValue(targetOffset);
+
+  useEffect(() => {
+    animatedOffset.value = withTiming(targetOffset, { duration: 500 });
+  }, [targetOffset, animatedOffset]);
+
+  const animatedProps = useAnimatedProps(() => ({
+    strokeDashoffset: animatedOffset.value,
+  }));
 
   return (
     <Svg width={size} height={size}>
@@ -26,7 +38,7 @@ export function ProgressRing({ size, strokeWidth, progress, color, trackColor }:
         r={radius}
         strokeWidth={strokeWidth}
       />
-      <Circle
+      <AnimatedCircle
         stroke={color}
         fill="none"
         cx={size / 2}
@@ -34,7 +46,7 @@ export function ProgressRing({ size, strokeWidth, progress, color, trackColor }:
         r={radius}
         strokeWidth={strokeWidth}
         strokeDasharray={`${circumference} ${circumference}`}
-        strokeDashoffset={strokeDashoffset}
+        animatedProps={animatedProps}
         strokeLinecap="round"
         transform={`rotate(-90 ${size / 2} ${size / 2})`}
       />

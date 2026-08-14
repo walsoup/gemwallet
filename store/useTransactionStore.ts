@@ -68,15 +68,17 @@ type TransactionState = {
 
 const triggerBudgetHaptics = (spentAfter: number, budgetLimit: number) => {
   try {
+    // Dynamic import to prevent node test runner from importing react-native Flow files
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const Haptics = require('expo-haptics');
-    if (Haptics && Haptics.notificationAsync && Haptics.NotificationFeedbackType) {
+    if (Haptics?.notificationAsync && Haptics?.NotificationFeedbackType) {
       if (spentAfter >= budgetLimit) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       } else if (spentAfter >= 0.8 * budgetLimit) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       }
     }
-  } catch (e) {
+  } catch {
     // Fail silently in node test/non-expo environment
   }
 };

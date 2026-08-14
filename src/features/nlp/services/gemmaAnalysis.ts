@@ -3,8 +3,8 @@ import type { Transaction } from '../../../../types/finance';
 import { formatCurrency } from '../../../../utils/formatCurrency';
 import type { AiProvider } from '../../../../store/useSettingsStore';
 
-const DEFAULT_MODEL = 'gemini-1.5-flash';
-const FALLBACK_MODEL = 'gemini-1.5-flash';
+const DEFAULT_MODEL = 'gemini-flash-lite-latest';
+const FALLBACK_MODEL = 'gemini-flash-lite-latest';
 const HUGGINGFACE_API_URL = 'https://api-inference.huggingface.co/models';
 const STREAM_CHUNK_SIZE = 80;
 const MIN_CHUNK_DELAY_MS = 4;
@@ -146,9 +146,9 @@ function applyDetectedCommands(raw: string, callbacks?: AnalysisCallbacks) {
 }
 
 export function parseAddExpenseCommand(text: string) {
-  const match = text.match(/ADD_EXPENSE:\s*([0-9]+(?:\.[0-9]{1,2})?)\s+([^\s]+)\s*(.*)/i);
+  const match = text.match(/ADD_EXPENSE:\s*[$€£¥₹]?\s*([0-9,]+(?:\.[0-9]{1,2})?)\s+([^\s]+)\s*(.*)/i);
   if (!match) return null;
-  const amount = Number(match[1]);
+  const amount = Number(match[1].replace(/,/g, ''));
   if (!Number.isFinite(amount) || amount <= 0) return null;
   const categoryHint = match[2];
   const note = match[3]?.trim();
@@ -156,9 +156,9 @@ export function parseAddExpenseCommand(text: string) {
 }
 
 export function parseAddIncomeCommand(text: string) {
-  const match = text.match(/ADD_INCOME:\s*([0-9]+(?:\.[0-9]{1,2})?)\s+([^\s]+)\s*(.*)/i);
+  const match = text.match(/ADD_INCOME:\s*[$€£¥₹]?\s*([0-9,]+(?:\.[0-9]{1,2})?)\s+([^\s]+)\s*(.*)/i);
   if (!match) return null;
-  const amount = Number(match[1]);
+  const amount = Number(match[1].replace(/,/g, ''));
   if (!Number.isFinite(amount) || amount <= 0) return null;
   const categoryHint = match[2];
   const note = match[3]?.trim();
@@ -167,11 +167,11 @@ export function parseAddIncomeCommand(text: string) {
 
 export function parseAddRecurringCommand(text: string) {
   const match = text.match(
-    /ADD_RECURRING:\s*([^\s]+)\s+([0-9]+(?:\.[0-9]{1,2})?)\s+(income|expense)\s+(weekly|monthly)\s*([^\s]+)?\s*(.*)?/i
+    /ADD_RECURRING:\s*([^\s]+)\s+[$€£¥₹]?\s*([0-9,]+(?:\.[0-9]{1,2})?)\s+(income|expense)\s+(weekly|monthly)\s*([^\s]+)?\s*(.*)?/i
   );
   if (!match) return null;
   const name = match[1]?.trim();
-  const amount = Number(match[2]);
+  const amount = Number(match[2].replace(/,/g, ''));
   if (!name || !Number.isFinite(amount) || amount <= 0) return null;
   const type: 'income' | 'expense' = match[3] === 'income' ? 'income' : 'expense';
   const interval: 'weekly' | 'monthly' = match[4] === 'weekly' ? 'weekly' : 'monthly';
@@ -189,10 +189,10 @@ export function parseAddRecurringCommand(text: string) {
 }
 
 export function parseAddGoalCommand(text: string) {
-  const match = text.match(/ADD_GOAL:\s*([^\s].*?)\s+([0-9]+(?:\.[0-9]{1,2})?)\s*(.*)?/i);
+  const match = text.match(/ADD_GOAL:\s*([^\s].*?)\s+[$€£¥₹]?\s*([0-9,]+(?:\.[0-9]{1,2})?)\s*(.*)?/i);
   if (!match) return null;
   const name = match[1]?.trim();
-  const amount = Number(match[2]);
+  const amount = Number(match[2].replace(/,/g, ''));
   if (!name || !Number.isFinite(amount) || amount <= 0) return null;
   const dueDateRaw = match[3]?.trim();
   const dueDate = dueDateRaw ? Date.parse(dueDateRaw) : undefined;

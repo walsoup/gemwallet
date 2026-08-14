@@ -13,3 +13,30 @@
 
 # Add any project specific keep options here:
 -keep class com.google.ai.edge.litertlm.** { *; }
+
+# React Native Modules
+-keep class * extends com.facebook.react.bridge.ReactContextBaseJavaModule { *; }
+-keep class * implements com.facebook.react.bridge.NativeModule { *; }
+-keep class * extends com.facebook.react.bridge.JavaScriptModule { *; }
+-keepclassmembers class * extends com.facebook.react.bridge.ReactContextBaseJavaModule {
+    @com.facebook.react.bridge.ReactMethod *;
+}
+
+# Room Database & Entities
+-keep class * extends androidx.room.RoomDatabase { *; }
+-keep class * implements androidx.room.RoomDatabase { *; }
+-keep @androidx.room.Dao interface * { *; }
+-keep @androidx.room.Entity class * { *; }
+
+# Google Generative AI
+-keep class com.google.ai.client.generativeai.** { *; }
+
+# Kotlin Coroutines
+-keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
+-keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}
+
+# OkHttp & Okio
+-keep class okhttp3.** { *; }
+-keep interface okhttp3.** { *; }
+-dontwarn okhttp3.**
+-dontwarn okio.**

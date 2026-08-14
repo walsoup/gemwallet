@@ -36,6 +36,7 @@ export function BouncyButton({
 
   return (
     <AnimatedPressable
+      accessibilityRole={rest.accessibilityRole || 'button'}
       style={[style, animatedStyle]}
       onPressIn={(e) => {
         scale.value = withSpring(scaleTo, { damping: 15, stiffness: 300, mass: 0.5 });

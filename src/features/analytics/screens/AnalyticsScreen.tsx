@@ -316,6 +316,7 @@ export default function AnalyticsScreen() {
         {/* Monthly Spending */}
         <View style={styles.section}>
           <Text
+            accessibilityRole="header"
             style={[
               styles.sectionTitle,
               { color: theme.colors.onSurfaceVariant },
@@ -350,6 +351,7 @@ export default function AnalyticsScreen() {
         {/* Category Breakdown */}
         <View style={styles.section}>
           <Text
+            accessibilityRole="header"
             style={[
               styles.sectionTitle,
               { color: theme.colors.onSurfaceVariant },
@@ -426,6 +428,7 @@ export default function AnalyticsScreen() {
         {/* Income vs. Expense */}
         <View style={styles.section}>
           <Text
+            accessibilityRole="header"
             style={[
               styles.sectionTitle,
               { color: theme.colors.onSurfaceVariant },
@@ -463,6 +466,7 @@ export default function AnalyticsScreen() {
         {/* Top Movers */}
         <View style={styles.section}>
           <Text
+            accessibilityRole="header"
             style={[
               styles.sectionTitle,
               { color: theme.colors.onSurfaceVariant },

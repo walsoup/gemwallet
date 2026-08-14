@@ -1,9 +1,13 @@
 package com.walsoup.gemwallet.data.database
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "categories")
+@Entity(
+    tableName = "categories",
+    indices = [Index(value = ["kind"])]
+)
 data class CategoryEntity(
     @PrimaryKey val id: String,
     val name: String,
@@ -15,7 +19,13 @@ data class CategoryEntity(
     val updatedAt: Long = System.currentTimeMillis()
 )
 
-@Entity(tableName = "transactions")
+@Entity(
+    tableName = "transactions",
+    indices = [
+        Index(value = ["timestamp"]),
+        Index(value = ["categoryId"])
+    ]
+)
 data class TransactionEntity(
     @PrimaryKey val id: String,
     val amountCents: Long,
@@ -28,7 +38,10 @@ data class TransactionEntity(
     val updatedAt: Long = System.currentTimeMillis()
 )
 
-@Entity(tableName = "goals")
+@Entity(
+    tableName = "goals",
+    indices = [Index(value = ["completed"])]
+)
 data class GoalEntity(
     @PrimaryKey val id: String,
     val name: String,
@@ -40,7 +53,13 @@ data class GoalEntity(
     val enabled: Boolean = true
 )
 
-@Entity(tableName = "recurring_events")
+@Entity(
+    tableName = "recurring_events",
+    indices = [
+        Index(value = ["nextRun"]),
+        Index(value = ["enabled"])
+    ]
+)
 data class RecurringEventEntity(
     @PrimaryKey val id: String,
     val name: String,

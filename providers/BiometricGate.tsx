@@ -1,4 +1,4 @@
-import React, { PropsWithChildren, useEffect, useRef, useState } from 'react';
+import React, { PropsWithChildren, useCallback, useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, AppState, AppStateStatus } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { Text, Button, useTheme } from 'react-native-paper';
@@ -24,7 +24,7 @@ export function BiometricGate({ children }: PropsWithChildren) {
   const appState = useRef(AppState.currentState);
   const lastActiveTimestamp = useRef<number>(Date.now());
 
-  const runBiometrics = async () => {
+  const runBiometrics = useCallback(async () => {
     try {
       const hasHardware = await LocalAuthentication.hasHardwareAsync();
       const enrolled = await LocalAuthentication.isEnrolledAsync();
@@ -62,9 +62,9 @@ export function BiometricGate({ children }: PropsWithChildren) {
         setShowPasscodeFallback(true);
       }
     }
-  };
+  }, [passcodePin]);
 
-  const authenticate = async () => {
+  const authenticate = useCallback(async () => {
     setError(null);
     setPasscodeValue('');
     setPasscodeError(null);
@@ -76,7 +76,7 @@ export function BiometricGate({ children }: PropsWithChildren) {
     } else {
       setIsAuthed(true);
     }
-  };
+  }, [biometricAuthEnabled, passcodePin, runBiometrics]);
 
   useEffect(() => {
     if (biometricAuthEnabled || passcodeEnabled) {
@@ -85,7 +85,7 @@ export function BiometricGate({ children }: PropsWithChildren) {
     } else {
       setIsAuthed(true);
     }
-  }, [biometricAuthEnabled, passcodeEnabled]);
+  }, [authenticate, biometricAuthEnabled, passcodeEnabled]);
 
   useEffect(() => {
     const handleAppStateChange = (nextAppState: AppStateStatus) => {
@@ -110,7 +110,7 @@ export function BiometricGate({ children }: PropsWithChildren) {
     return () => {
       subscription.remove();
     };
-  }, [biometricAuthEnabled, passcodeEnabled]);
+  }, [authenticate, biometricAuthEnabled, passcodeEnabled]);
 
   const handleDigit = (digit: string) => {
     if (passcodeValue.length >= 6) return;

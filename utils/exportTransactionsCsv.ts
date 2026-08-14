@@ -1,10 +1,15 @@
 import type { Transaction, Category } from '../types/finance';
 
 function escapeCsv(value: string) {
-  if (value.includes('"') || value.includes(',') || value.includes('\n')) {
-    return `"${value.replace(/"/g, '""')}"`;
+  let sanitized = value;
+  // Guard against CSV Formula Injection when opened in spreadsheet applications
+  if (/^[=+\-@\t\r]/.test(sanitized)) {
+    sanitized = `'${sanitized}`;
   }
-  return value;
+  if (sanitized.includes('"') || sanitized.includes(',') || sanitized.includes('\n') || sanitized.includes('\r')) {
+    return `"${sanitized.replace(/"/g, '""')}"`;
+  }
+  return sanitized;
 }
 
 export function exportTransactionsCsv(params: {
