@@ -1,13 +1,11 @@
 import React, { useMemo } from "react";
-import { ScrollView, StyleSheet, View, Pressable } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 import { Text, useTheme } from "react-native-paper";
 import { useTransactionStore } from "../../../../store/useTransactionStore";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { AppTheme } from "../../../../providers/AppThemeProvider";
 import { ScreenLayout } from "../../../components/Layout/ScreenLayout";
 import { formatAppCurrency } from "../../../../utils/currency";
-import * as Haptics from "expo-haptics";
-import Animated from "react-native-reanimated";
 import { BarChart, PieChart, LineChart } from "react-native-gifted-charts";
 
 export default function AnalyticsScreen() {
@@ -169,7 +167,7 @@ export default function AnalyticsScreen() {
   const topMovers = useMemo(() => {
     const map = currentMonthData.categoryTotals;
     const counts = currentMonthData.categoryCounts;
-    const results: { id: string; total: number; count: number; name: string; icon: string }[] = [];
+    const results: { id: string; total: number; count: number; name: string; emoji?: string; icon: string }[] = [];
 
     Object.keys(map).forEach((catId) => {
       const cat = categoryMap[catId];
@@ -187,6 +185,7 @@ export default function AnalyticsScreen() {
           total: map[catId],
           count: counts[catId],
           name: cat.name,
+          emoji: cat.emoji,
           icon,
         });
       }
@@ -487,11 +486,15 @@ export default function AnalyticsScreen() {
                         { backgroundColor: theme.colors.surfaceContainer },
                       ]}
                     >
-                      <MaterialCommunityIcons
-                        name={mover.icon as any}
-                        size={24}
-                        color={theme.colors.onSurfaceVariant}
-                      />
+                      {mover.emoji ? (
+                        <Text style={{ fontSize: 20 }}>{mover.emoji}</Text>
+                      ) : (
+                        <MaterialCommunityIcons
+                          name={mover.icon as any}
+                          size={24}
+                          color={theme.colors.onSurfaceVariant}
+                        />
+                      )}
                     </View>
                     <View>
                       <Text

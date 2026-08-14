@@ -1,6 +1,6 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Pressable } from 'react-native';
-import { Text, TextInput, IconButton, useTheme, Surface } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { Text, TextInput, useTheme, Surface } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTransactionStore } from '../../../../store/useTransactionStore';
@@ -18,14 +18,13 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ScreenLayout } from '../../../components/Layout/ScreenLayout';
 import Animated, { FadeInLeft, FadeInRight, FadeInUp, Layout } from 'react-native-reanimated';
 import { BouncyButton } from '../../../components/UI/BouncyButton';
+import { AppTheme } from '../../../../providers/AppThemeProvider';
 
 type ChatMessage = {
   id: string;
   role: 'user' | 'assistant' | 'system';
   text: string;
 };
-
-import { AppTheme } from '../../../../providers/AppThemeProvider';
 
 export default function ChatScreen() {
   const theme = useTheme<AppTheme>();
@@ -181,8 +180,8 @@ export default function ChatScreen() {
     return kind === 'income' ? 'income-custom' : 'expense-misc';
   };
 
-  const onSend = async () => {
-    const question = inputText.trim();
+  const onSend = async (textOverride?: unknown) => {
+    const question = (typeof textOverride === 'string' ? textOverride : inputText).trim();
     if (!question || isSending) return;
     const isLocalProvider = settings.aiProvider === 'local';
     const geminiApiKey = isLocalProvider ? null : await getGeminiApiKey();
@@ -199,7 +198,9 @@ export default function ChatScreen() {
       return;
     }
 
-    setInputText('');
+    if (typeof textOverride !== 'string') {
+      setInputText('');
+    }
     setIsSending(true);
 
     const userMessage: ChatMessage = {
@@ -385,6 +386,34 @@ export default function ChatScreen() {
               </Animated.View>
             );
           })}
+
+          {messages.length <= 1 && (
+            <Animated.View entering={FadeInUp.delay(200).springify()} style={styles.suggestionsContainer}>
+              <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 13, fontFamily: 'BeVietnamPro_500Medium', marginBottom: 8, paddingHorizontal: 4 }}>
+                Suggested Prompts
+              </Text>
+              <View style={styles.suggestionsRow}>
+                {[
+                  '📊 Analyze my spending this month',
+                  '💡 How can I save more money?',
+                  '🍕 Log $15 lunch',
+                  '🎯 Review my savings goals',
+                ].map((promptText) => (
+                  <BouncyButton
+                    key={promptText}
+                    style={[styles.suggestionChip, { backgroundColor: theme.colors.surfaceContainerLow, borderColor: theme.colors.outlineVariant + '33', borderWidth: 1 }]}
+                    onPress={() => onSend(promptText)}
+                    accessibilityRole="button"
+                    accessibilityLabel={promptText}
+                  >
+                    <Text style={{ color: theme.colors.onSurface, fontFamily: 'BeVietnamPro_500Medium', fontSize: 13 }}>
+                      {promptText}
+                    </Text>
+                  </BouncyButton>
+                ))}
+              </View>
+            </Animated.View>
+          )}
         </ScrollView>
 
         <BlurView intensity={80} tint="dark" style={styles.floatingInputWrapper}>
@@ -523,5 +552,17 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  suggestionsContainer: {
+    marginTop: 8,
+    paddingHorizontal: 4,
+  },
+  suggestionsRow: {
+    gap: 8,
+  },
+  suggestionChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 16,
   },
 });

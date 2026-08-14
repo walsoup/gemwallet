@@ -11,7 +11,7 @@
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
     "build": "expo export --platform android --output-dir dist",
-    "test": "node --experimental-test-module-mocks --import tsx/esm --test tests/*.test.ts"
+    "test": "node --experimental-test-module-mocks --import tsx/esm --test tests/*.test.ts tests/__tests__/**/*.test.ts store/__tests__/*.test.ts"
   },
   "dependencies": {
     "@expo-google-fonts/be-vietnam-pro": "^0.4.1",

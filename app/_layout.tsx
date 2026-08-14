@@ -1,10 +1,8 @@
-import 'react-native-gesture-handler';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Tabs, useRouter, useSegments, SplashScreen } from 'expo-router';
 import React, { useEffect } from 'react';
 import { View, Pressable } from 'react-native';
 import { Text as PaperText } from 'react-native-paper';
-
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CustomBottomNav } from '../src/components/Navigation/CustomBottomNav';
 import { MaterialCommunityIcons } from '@expo/vector-icons';

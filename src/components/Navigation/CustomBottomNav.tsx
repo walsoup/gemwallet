@@ -36,7 +36,6 @@ export function CustomBottomNav({ state, descriptors, navigation }: BottomTabBar
   const totalNavWidth = width - (POSITION_PADDING_H * 2);
   const usableNavWidth = totalNavWidth - (CONTAINER_PADDING_H * 2);
 
-  const INDICATOR_HEIGHT = 44;
   const INDICATOR_MARGIN = 4;
   
   const tabWidth = usableNavWidth / routes.length;

@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { ScrollView, StyleSheet, View, TextInput, Pressable, Modal, Animated as RNAnimated } from 'react-native';
-import { Button, Text, useTheme } from 'react-native-paper';
+import { ScrollView, StyleSheet, View, TextInput, Pressable, Animated as RNAnimated } from 'react-native';
+import { Text, useTheme } from 'react-native-paper';
 import { useTransactionStore, selectBalanceCents } from '../../../../store/useTransactionStore';
 import { useGoalsStore } from '../../../../store/useGoalsStore';
 import { useSettingsStore } from '../../../../store/useSettingsStore';
@@ -67,7 +67,6 @@ export default function HomeScreen() {
   };
 
   const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
 
   const customGreeting = useSettingsStore(state => state.customGreetingName);
   const hour = now.getHours();
@@ -377,11 +376,15 @@ export default function HomeScreen() {
                           styles.txIconContainer,
                           { backgroundColor: isIncome ? theme.colors.tertiary + '1A' : (isWarning ? theme.colors.onErrorContainer + '1A' : theme.colors.surfaceContainerHighest) }
                         ]}>
-                          <MaterialCommunityIcons
-                            name={iconName as any}
-                            size={24}
-                            color={isIncome ? theme.colors.tertiary : (isWarning ? theme.colors.onErrorContainer : theme.colors.onSurfaceVariant)}
-                          />
+                          {category?.emoji ? (
+                            <Text style={{ fontSize: 22 }}>{category.emoji}</Text>
+                          ) : (
+                            <MaterialCommunityIcons
+                              name={iconName as any}
+                              size={24}
+                              color={isIncome ? theme.colors.tertiary : (isWarning ? theme.colors.onErrorContainer : theme.colors.onSurfaceVariant)}
+                            />
+                          )}
                         </View>
                       </View>
                       <View style={{ marginLeft: 4 }}>

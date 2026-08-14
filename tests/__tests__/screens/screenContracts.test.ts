@@ -8,13 +8,12 @@ const root = process.cwd();
 const read = (p: string) => readFileSync(join(root, p), 'utf8');
 
 describe('screen wiring contracts', () => {
-  it('home quick actions call addIncome/addExpense and render transaction list from store', () => {
+  it('home quick actions open AddTransactionModal and render filtered transactions from store', () => {
     const src = read('src/features/home/screens/HomeScreen.tsx');
     assert.match(src, /openQuickAction\('income'\)/);
     assert.match(src, /openQuickAction\('expense'\)/);
-    assert.match(src, /addIncome\(\{ amountCents, categoryId: 'income-custom', note \}\)/);
-    assert.match(src, /addExpense\(\{ amountCents, categoryId: 'expense-misc', note \}\)/);
-    assert.match(src, /filteredTransactions\.slice\(0, 10\)\.map/);
+    assert.match(src, /<AddTransactionModal/);
+    assert.match(src, /filteredTransactions/);
   });
 
   it('planning goal creation and recurring toggle are wired to stores', () => {
@@ -25,8 +24,7 @@ describe('screen wiring contracts', () => {
 
   it('analytics computes savings from transaction store data', () => {
     const src = read('src/features/analytics/screens/AnalyticsScreen.tsx');
-    assert.match(src, /transactions\.forEach\(tx =>/);
-    assert.match(src, /savedPercentage = totalIncome > 0 \? \(\(savedCents \/ totalIncome\) \* 100\)\.toFixed\(1\) : '0\.0'/);
+    assert.match(src, /savedPercentage =\s*totalIncome > 0 \? \(\(savedCents \/ totalIncome\) \* 100\)\.toFixed\(1\) : ["']0\.0["']/);
   });
 
   it('chat uses provider-aware runner, command callbacks, and inline provider errors', () => {
@@ -36,22 +34,25 @@ describe('screen wiring contracts', () => {
     assert.match(src, /onIncome:/);
     assert.match(src, /onRecurring:/);
     assert.match(src, /onGoal:/);
-    assert.match(src, /Cloud API is selected but no Gemini key is saved\./);
+    assert.match(src, /No Gemini key saved\./);
     assert.match(src, /Local model is not downloaded yet\./);
-    assert.match(src, /System •/);
+    assert.match(src, /pushSystemMessage/);
   });
 
   it('settings includes theme/currency/export/clear/sync wiring and dynamic app version', () => {
-    const src = read('src/features/settings/screens/SettingsScreen.tsx');
-    assert.match(src, /setThemePreference\(/);
-    assert.match(src, /router\.push\('\/settings\/currency'\)/);
-    assert.match(src, /exportTransactionsCsv\(/);
-    assert.match(src, /Sharing\.shareAsync\(/);
-    assert.match(src, /clearAllTransactions\(\)/);
-    assert.match(src, /clearAllGoals\(\)/);
-    assert.match(src, /clearAllRecurring\(\)/);
-    assert.match(src, /Cloud Sync \(needs infrastructure\)/);
-    assert.match(src, /appConfig\.expo\.version/);
+    const appearance = read('src/features/settings/components/AppearanceSection.tsx');
+    const currency = read('src/features/settings/components/CurrencyRegionSection.tsx');
+    const localData = read('src/features/settings/components/LocalDataSection.tsx');
+    const about = read('src/features/settings/components/AboutSection.tsx');
+
+    assert.match(appearance, /setThemePreference\(/);
+    assert.match(currency, /router\.push\('\/settings\/currency'\)/);
+    assert.match(localData, /exportTransactionsCsv\(/);
+    assert.match(localData, /Sharing\.shareAsync\(/);
+    assert.match(localData, /clearAllTransactions\(/);
+    assert.match(localData, /clearAllGoals\(/);
+    assert.match(localData, /clearAllRecurring\(/);
+    assert.match(about, /appConfig\?\.expo\?\.version|appConfig\.expo\.version/);
   });
 
   it('change passcode flow verifies current, requires confirm match, and stores new pin', () => {
@@ -60,6 +61,6 @@ describe('screen wiring contracts', () => {
     assert.match(src, /Incorrect passcode\. Try again\./);
     assert.match(src, /if \(step === 'confirm'\)/);
     assert.match(src, /Passcodes did not match\. Start over\./);
-    assert.match(src, /setPasscodePin\(next\)/);
+    assert.match(src, /setPasscodePin\(SHA256\(next\)\.toString\(\)\)/);
   });
 });

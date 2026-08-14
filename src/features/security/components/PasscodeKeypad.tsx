@@ -1,8 +1,8 @@
 import React from 'react';
-import { View, Pressable, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { Text } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-
+import { BouncyButton } from '../../../components/UI/BouncyButton';
 import type { AppTheme } from '../../../../providers/AppThemeProvider';
 
 type Props = {
@@ -13,8 +13,6 @@ type Props = {
 };
 
 const DIGITS: (string | null)[] = ['1', '2', '3', '4', '5', '6', '7', '8', '9', null, '0', 'back'];
-
-import { BouncyButton } from '../../../components/UI/BouncyButton';
 
 export function PasscodeKeypad({ theme, value, onDigit, onBackspace }: Props) {
   return (

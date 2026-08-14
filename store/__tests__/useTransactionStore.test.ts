@@ -1,15 +1,34 @@
-import { useTransactionStore, selectBalanceCents } from '../useTransactionStore';
+import 'tsx/cjs';
+import assert from 'node:assert/strict';
+import { describe, it, beforeEach, mock } from 'node:test';
+
+mock.module('@react-native-async-storage/async-storage', {
+  namedExports: {
+    default: {
+      getItem: async () => null,
+      setItem: async () => {},
+      removeItem: async () => {},
+      clear: async () => {},
+    }
+  }
+});
+
+let useTransactionStore: any;
+let selectBalanceCents: any;
 
 describe('useTransactionStore', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    const mod = await import('../useTransactionStore');
+    useTransactionStore = mod.useTransactionStore;
+    selectBalanceCents = mod.selectBalanceCents;
     useTransactionStore.getState().clearAllData();
   });
 
   it('initializes with default categories and empty transactions', () => {
     const state = useTransactionStore.getState();
-    expect(state.transactions).toHaveLength(0);
-    expect(state.categories.length).toBeGreaterThan(0);
-    expect(state.walletMeta.hasCompletedOnboarding).toBe(false);
+    assert.equal(state.transactions.length, 0);
+    assert.ok(state.categories.length > 0);
+    assert.equal(state.walletMeta.hasCompletedOnboarding, false);
   });
 
   it('completes onboarding and sets initial balance', () => {
@@ -17,12 +36,12 @@ describe('useTransactionStore', () => {
     completeOnboarding({ initialBalanceCents: 1000, voiceAssistantEnabled: true });
 
     const state = useTransactionStore.getState();
-    expect(state.walletMeta.hasCompletedOnboarding).toBe(true);
-    expect(state.walletMeta.voiceAssistantEnabled).toBe(true);
-    expect(state.transactions).toHaveLength(1);
-    expect(state.transactions[0].amountCents).toBe(1000);
-    expect(state.transactions[0].type).toBe('income');
-    expect(selectBalanceCents(state)).toBe(1000);
+    assert.equal(state.walletMeta.hasCompletedOnboarding, true);
+    assert.equal(state.walletMeta.voiceAssistantEnabled, true);
+    assert.equal(state.transactions.length, 1);
+    assert.equal(state.transactions[0].amountCents, 1000);
+    assert.equal(state.transactions[0].type, 'income');
+    assert.equal(selectBalanceCents(state), 1000);
   });
 
   it('adds an expense correctly', () => {
@@ -30,11 +49,11 @@ describe('useTransactionStore', () => {
     addExpense({ amountCents: 550, categoryId: 'expense-food', note: 'Burger' });
 
     const state = useTransactionStore.getState();
-    expect(state.transactions).toHaveLength(1);
-    expect(state.transactions[0].amountCents).toBe(550);
-    expect(state.transactions[0].type).toBe('expense');
-    expect(state.transactions[0].note).toBe('Burger');
-    expect(selectBalanceCents(state)).toBe(-550);
+    assert.equal(state.transactions.length, 1);
+    assert.equal(state.transactions[0].amountCents, 550);
+    assert.equal(state.transactions[0].type, 'expense');
+    assert.equal(state.transactions[0].note, 'Burger');
+    assert.equal(selectBalanceCents(state), -550);
   });
 
   it('adds an income correctly', () => {
@@ -42,19 +61,19 @@ describe('useTransactionStore', () => {
     addIncome({ amountCents: 2000, categoryId: 'income-paycheck' });
 
     const state = useTransactionStore.getState();
-    expect(state.transactions).toHaveLength(1);
-    expect(state.transactions[0].type).toBe('income');
-    expect(selectBalanceCents(state)).toBe(2000);
+    assert.equal(state.transactions.length, 1);
+    assert.equal(state.transactions[0].type, 'income');
+    assert.equal(selectBalanceCents(state), 2000);
   });
 
   it('undos a transaction', () => {
     const { addExpense, undoTransaction } = useTransactionStore.getState();
     const tx = addExpense({ amountCents: 100, categoryId: 'expense-food' });
     
-    expect(useTransactionStore.getState().transactions).toHaveLength(1);
+    assert.equal(useTransactionStore.getState().transactions.length, 1);
     
     undoTransaction(tx.id);
-    expect(useTransactionStore.getState().transactions).toHaveLength(0);
+    assert.equal(useTransactionStore.getState().transactions.length, 0);
   });
 
   it('adds a custom category', () => {
@@ -62,9 +81,9 @@ describe('useTransactionStore', () => {
     addCustomCategory({ name: 'Gaming', emoji: '🎮' });
 
     const state = useTransactionStore.getState();
-    const custom = state.categories.find(c => c.name === 'Gaming');
-    expect(custom).toBeDefined();
-    expect(custom?.emoji).toBe('🎮');
+    const custom = state.categories.find((c: any) => c.name === 'Gaming');
+    assert.ok(custom);
+    assert.equal(custom?.emoji, '🎮');
   });
 
   it('deletes a custom category and moves transactions to misc', () => {
@@ -72,15 +91,15 @@ describe('useTransactionStore', () => {
     addCustomCategory({ name: 'Trash', emoji: '🗑️' });
     
     const stateWithCat = useTransactionStore.getState();
-    const trashCat = stateWithCat.categories.find(c => c.name === 'Trash')!;
+    const trashCat = stateWithCat.categories.find((c: any) => c.name === 'Trash')!;
     
     addExpense({ amountCents: 100, categoryId: trashCat.id });
     
     deleteCategory(trashCat.id);
     
     const finalState = useTransactionStore.getState();
-    expect(finalState.categories.find(c => c.id === trashCat.id)).toBeUndefined();
-    expect(finalState.transactions[0].categoryId).toBe('expense-misc');
+    assert.equal(finalState.categories.find((c: any) => c.id === trashCat.id), undefined);
+    assert.equal(finalState.transactions[0].categoryId, 'expense-misc');
   });
 
   it('updates a transaction correctly', () => {
@@ -95,9 +114,9 @@ describe('useTransactionStore', () => {
     });
 
     const state = useTransactionStore.getState();
-    expect(state.transactions[0].amountCents).toBe(600);
-    expect(state.transactions[0].note).toBe('New Note');
-    expect(state.transactions[0].categoryId).toBe('expense-coffee');
+    assert.equal(state.transactions[0].amountCents, 600);
+    assert.equal(state.transactions[0].note, 'New Note');
+    assert.equal(state.transactions[0].categoryId, 'expense-coffee');
   });
 
   it('handles multiple updates to the same transaction', () => {
@@ -109,9 +128,9 @@ describe('useTransactionStore', () => {
     updateTransaction({ id: tx.id, categoryId: 'expense-entertainment' });
 
     const state = useTransactionStore.getState();
-    expect(state.transactions[0].amountCents).toBe(2000);
-    expect(state.transactions[0].note).toBe('Double Burger');
-    expect(state.transactions[0].categoryId).toBe('expense-entertainment');
+    assert.equal(state.transactions[0].amountCents, 2000);
+    assert.equal(state.transactions[0].note, 'Double Burger');
+    assert.equal(state.transactions[0].categoryId, 'expense-entertainment');
   });
 
   it('prevents deleting system categories', () => {
@@ -122,7 +141,7 @@ describe('useTransactionStore', () => {
     deleteCategory('expense-misc');
     
     const stateAfter = useTransactionStore.getState();
-    expect(stateAfter.categories).toEqual(stateBefore.categories);
+    assert.deepEqual(stateAfter.categories, stateBefore.categories);
   });
 
   it('correctly calculates balance with multiple transactions', () => {
@@ -132,6 +151,6 @@ describe('useTransactionStore', () => {
     addExpense({ amountCents: 500, categoryId: 'expense-coffee' });   // -5.00
     
     const state = useTransactionStore.getState();
-    expect(selectBalanceCents(state)).toBe(3000); // 30.00
+    assert.equal(selectBalanceCents(state), 3000); // 30.00
   });
 });

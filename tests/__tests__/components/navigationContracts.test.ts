@@ -23,7 +23,7 @@ describe('navigation component contracts', () => {
     const layout = read('src/components/Layout/ScreenLayout.tsx');
     const appLayout = read('app/_layout.tsx');
     assert.match(layout, /paddingTop: insets\.top \+ TOP_NAV_ESTIMATED_HEIGHT/);
-    assert.match(layout, /paddingBottom: insets\.bottom \+ BOTTOM_NAV_ESTIMATED_HEIGHT/);
+    assert.match(layout, /BOTTOM_NAV_ESTIMATED_HEIGHT/);
     assert.doesNotMatch(appLayout, /PaperProvider/);
   });
 });

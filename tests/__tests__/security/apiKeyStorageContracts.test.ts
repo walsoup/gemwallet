@@ -23,7 +23,7 @@ describe('API key storage security contracts', () => {
   });
 
   it('settings screen test-connection reads key from secure store at runtime', () => {
-    const src = read('src/features/settings/screens/SettingsScreen.tsx');
+    const src = read('src/features/settings/components/AISettingsSection.tsx');
     assert.match(src, /const key = await getGeminiApiKey\(\)/);
     assert.match(src, /new GoogleGenerativeAI\(key\)/);
   });

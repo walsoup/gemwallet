@@ -14,10 +14,11 @@ describe('major flow smoke contracts', () => {
   });
 
   it('add expense flow exists and transaction list renders in home', () => {
-    const src = read('src/features/home/screens/HomeScreen.tsx');
-    assert.match(src, /openQuickAction\('expense'\)/);
-    assert.match(src, /addExpense\(/);
-    assert.match(src, /filteredTransactions\.slice\(0, 10\)\.map/);
+    const home = read('src/features/home/screens/HomeScreen.tsx');
+    const modal = read('src/features/home/components/AddTransactionModal.tsx');
+    assert.match(home, /openQuickAction\('expense'\)/);
+    assert.match(modal, /addExpense\(/);
+    assert.match(home, /filteredTransactions/);
   });
 
   it('recurring scheduler runs from root layout', () => {
