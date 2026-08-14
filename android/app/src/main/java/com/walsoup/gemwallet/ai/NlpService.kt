@@ -361,16 +361,6 @@ class NlpService(
     }
 }
 
-interface LocalModelService {
-    fun streamAnalysis(
-        prompt: String,
-        modelName: String,
-        cancellationToken: AtomicBoolean
-    ): Flow<LocalChunk>
-}
-
-data class LocalChunk(val text: String)
-
 // Default no-op executor (replace with real implementation)
 class DefaultCommandExecutor : CommandExecutor {
     override suspend fun execute(command: ParsedCommand): CommandExecutionResult {

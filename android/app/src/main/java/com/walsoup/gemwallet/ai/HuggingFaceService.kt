@@ -1,7 +1,6 @@
 package com.walsoup.gemwallet.ai
 
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -10,10 +9,9 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
-import okhttp3.sse.EventSource
-import okhttp3.sse.EventSourceListener
-import okhttp3.sse.EventSources
 import org.json.JSONObject
+import java.io.BufferedReader
+import java.io.InputStreamReader
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -53,61 +51,40 @@ class HuggingFaceService {
             .post(jsonBody.toString().toRequestBody(mediaType))
             .build()
 
-        val resultBuffer = StringBuilder()
-        val done = AtomicBoolean(false)
-        val errorRef = kotlin.concurrent.AtomicReference<Throwable?>(null)
-        
-        EventSources.createFactory(client).newEventSource(request, object : EventSourceListener() {
-            override fun onEvent(eventSource: EventSource, id: String?, type: String?, data: String) {
-                if (cancellationToken.get()) {
-                    eventSource.cancel()
-                    return
-                }
-                
-                try {
-                    val json = JSONObject(data)
-                    val tokenText = json.optJSONObject("token")?.optString("text", "") ?: ""
-                    
-                    if (tokenText.isNotEmpty()) {
-                        resultBuffer.append(tokenText)
-                    }
-                } catch (_: Exception) {}
-            }
-            
-            override fun onClosed(eventSource: EventSource) {
-                done.set(true)
-            }
-            
-            override fun onFailure(eventSource: EventSource, t: Throwable?, response: okhttp3.Response?) {
-                errorRef.set(t ?: Exception("SSE failed: ${response?.code} ${response?.message}"))
-                done.set(true)
-            }
-        })
-        
-        while (!done.get() && !cancellationToken.get()) {
-            kotlinx.coroutines.delay(100)
+        val response = withContext(Dispatchers.IO) {
+            client.newCall(request).execute()
         }
-        
-        errorRef.get()?.let { throw it }
-        
-        val fullText = resultBuffer.toString()
-        if (fullText.isNotEmpty() && !cancellationToken.get()) {
-            val words = fullText.split(" ")
-            var buffer = ""
-            for (word in words) {
+
+        try {
+            if (!response.isSuccessful) {
+                val errorBody = response.body?.string() ?: ""
+                throw Exception("Hugging Face API Error ${response.code}: $errorBody")
+            }
+
+            val input = response.body?.byteStream() ?: throw Exception("Empty stream body")
+            val reader = BufferedReader(InputStreamReader(input))
+
+            var line: String?
+            while (reader.readLine().also { line = it } != null) {
                 if (cancellationToken.get()) break
-                buffer += "$word "
-                if (buffer.length >= 30) {
-                    emit(HfChunk(buffer))
-                    buffer = ""
-                    kotlinx.coroutines.delay(60)
+                val currentLine = line ?: continue
+                if (currentLine.isBlank()) continue
+
+                if (currentLine.startsWith("data:")) {
+                    val jsonStr = currentLine.removePrefix("data:").trim()
+                    if (jsonStr.isEmpty() || jsonStr == "[DONE]") continue
+                    try {
+                        val json = JSONObject(jsonStr)
+                        val tokenText = json.optJSONObject("token")?.optString("text", "") ?: ""
+                        if (tokenText.isNotEmpty()) {
+                            emit(HfChunk(tokenText))
+                        }
+                    } catch (_: Exception) {}
                 }
             }
-            if (buffer.isNotEmpty()) {
-                emit(HfChunk(buffer))
-            }
+        } finally {
+            response.close()
         }
-        
     }.flowOn(Dispatchers.IO)
     
     suspend fun queryModel(
