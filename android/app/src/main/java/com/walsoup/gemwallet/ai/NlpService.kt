@@ -369,41 +369,41 @@ class NlpService(
             for ((type, pattern) in patterns) {
                 val match = pattern.matchEntire(trimmed)
                 if (match != null) {
-                    val amountStr = match.groupValues["amount"]?.replace(",", "") ?: "0"
-                    val amountCents = (amountStr.toDoubleOrNull() ?: 0.0 * 100).toLong()
+                    val amountStr = match.groups["amount"]?.value?.replace(",", "") ?: "0"
+                    val amountCents = ((amountStr.toDoubleOrNull() ?: 0.0) * 100).toLong()
                     
                     val command = when (type) {
                         ParsedCommand.CommandType.ADD_EXPENSE -> ParsedCommand(
                             type = type, amountCents = amountCents,
-                            categoryHint = match.groupValues["category"]?.trim(),
-                            note = match.groupValues["note"]?.trim().takeIf { it.isNotBlank() },
+                            categoryHint = match.groups["category"]?.value?.trim(),
+                            note = match.groups["note"]?.value?.trim()?.takeIf { it.isNotBlank() },
                             name = null, interval = null, recurrenceType = null,
                             startDate = null, dueDate = null, targetCents = null, rawLine = trimmed
                         )
                         ParsedCommand.CommandType.ADD_INCOME -> ParsedCommand(
                             type = type, amountCents = amountCents,
-                            categoryHint = match.groupValues["category"]?.trim(),
-                            note = match.groupValues["note"]?.trim().takeIf { it.isNotBlank() },
+                            categoryHint = match.groups["category"]?.value?.trim(),
+                            note = match.groups["note"]?.value?.trim()?.takeIf { it.isNotBlank() },
                             name = null, interval = null, recurrenceType = null,
                             startDate = null, dueDate = null, targetCents = null, rawLine = trimmed
                         )
                         ParsedCommand.CommandType.ADD_RECURRING -> ParsedCommand(
                             type = type, amountCents = amountCents,
-                            categoryHint = match.groupValues["category"]?.trim().takeIf { it.isNotBlank() },
+                            categoryHint = match.groups["category"]?.value?.trim()?.takeIf { it.isNotBlank() },
                             note = null,
-                            name = match.groupValues["name"]?.trim(),
-                            interval = match.groupValues["interval"]?.lowercase(),
-                            recurrenceType = match.groupValues["type"]?.lowercase(),
-                            startDate = parseDate(match.groupValues["date"]),
+                            name = match.groups["name"]?.value?.trim(),
+                            interval = match.groups["interval"]?.value?.lowercase(),
+                            recurrenceType = match.groups["type"]?.value?.lowercase(),
+                            startDate = parseDate(match.groups["date"]?.value),
                             dueDate = null, targetCents = null, rawLine = trimmed
                         )
                         ParsedCommand.CommandType.ADD_GOAL -> ParsedCommand(
                             type = type, amountCents = null,
                             categoryHint = null, note = null,
-                            name = match.groupValues["name"]?.trim(),
+                            name = match.groups["name"]?.value?.trim(),
                             interval = null, recurrenceType = null,
                             startDate = null,
-                            dueDate = parseDate(match.groupValues["date"]),
+                            dueDate = parseDate(match.groups["date"]?.value),
                             targetCents = amountCents, // reuse amount field for target
                             rawLine = trimmed
                         )
