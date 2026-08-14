@@ -279,19 +279,6 @@ class GeminiService {
             .take(5000) // prevent absurdly long inputs
     }
 
-    fun streamWithFunctions(
-        prompt: String,
-        apiKey: String,
-        modelName: String = DEFAULT_MODEL,
-        functions: List<com.google.ai.client.generativeai.type.FunctionDeclaration> = emptyList(),
-        cancellationToken: java.util.concurrent.atomic.AtomicBoolean = java.util.concurrent.atomic.AtomicBoolean(false)
-    ): Flow<GeminiChunk> = flow {
-        streamAnalysis(prompt, apiKey, modelName).collect { text ->
-            if (cancellationToken.get()) return@collect
-            emit(GeminiChunk(text = text))
-        }
-    }
-
     data class ParsedTransaction(
         val item: String,
         val amountCents: Long,
@@ -299,14 +286,4 @@ class GeminiService {
         val confidence: Double
     )
 }
-
-data class GeminiChunk(
-    val text: String,
-    val functionCalls: List<FunctionCall> = emptyList()
-)
-
-data class FunctionCall(
-    val name: String,
-    val args: Map<String, Any>
-)
 

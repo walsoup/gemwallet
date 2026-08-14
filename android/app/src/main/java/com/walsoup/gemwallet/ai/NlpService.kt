@@ -1,18 +1,11 @@
 package com.walsoup.gemwallet.ai
 
-import com.google.ai.client.generativeai.GenerativeModel
-import com.google.ai.client.generativeai.type.BlockThreshold
-import com.google.ai.client.generativeai.type.FunctionDeclaration
-import com.google.ai.client.generativeai.type.Schema
-import com.google.ai.client.generativeai.type.Type
 import com.walsoup.gemwallet.data.database.CategoryEntity
 import com.walsoup.gemwallet.data.database.TransactionEntity
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.map
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -74,6 +67,10 @@ data class CommandExecutionResult(
     val data: Any? = null
 )
 
+interface LocalModelService {
+    fun streamAnalysis(prompt: String, modelName: String, cancellationToken: AtomicBoolean): Flow<String>
+}
+
 // ========================================================================
 // MAIN SERVICE
 // ========================================================================
@@ -81,70 +78,11 @@ data class CommandExecutionResult(
 class NlpService(
     private val geminiService: GeminiService,
     private val huggingFaceService: HuggingFaceService,
-    private val localModelService: LocalModelService? = null, // optional for now
+    private val localModelService: LocalModelService? = null,
     private val commandExecutor: CommandExecutor,
     private val maxPromptTokens: Int = 8000,
     private val maxHistoryMessages: Int = 10
 ) {
-
-    // Function declarations for structured output (Gemini function calling)
-    private val functionDeclarations = listOf(
-        FunctionDeclaration.Builder(
-            name = "add_expense",
-            description = "Log a new expense transaction"
-        ).apply {
-            parameters = Schema.obj(
-                properties = mapOf(
-                    "amount_cents" to Schema.obj(type = Type.INTEGER, description = "Amount in cents"),
-                    "category_hint" to Schema.obj(type = Type.STRING, description = "Category name or hint"),
-                    "note" to Schema.obj(type = Type.STRING, description = "Optional note", nullable = true)
-                ),
-                required = listOf("amount_cents", "category_hint")
-            )
-        }.build(),
-        FunctionDeclaration.Builder(
-            name = "add_income",
-            description = "Log a new income transaction"
-        ).apply {
-            parameters = Schema.obj(
-                properties = mapOf(
-                    "amount_cents" to Schema.obj(type = Type.INTEGER, description = "Amount in cents"),
-                    "category_hint" to Schema.obj(type = Type.STRING, description = "Category name or hint"),
-                    "note" to Schema.obj(type = Type.STRING, description = "Optional note", nullable = true)
-                ),
-                required = listOf("amount_cents", "category_hint")
-            )
-        }.build(),
-        FunctionDeclaration.Builder(
-            name = "add_recurring",
-            description = "Create a recurring transaction"
-        ).apply {
-            parameters = Schema.obj(
-                properties = mapOf(
-                    "name" to Schema.obj(type = Type.STRING),
-                    "amount_cents" to Schema.obj(type = Type.INTEGER),
-                    "type" to Schema.obj(type = Type.STRING, enumValues = listOf("income", "expense")),
-                    "interval" to Schema.obj(type = Type.STRING, enumValues = listOf("weekly", "monthly")),
-                    "category_hint" to Schema.obj(type = Type.STRING, nullable = true),
-                    "start_date" to Schema.obj(type = Type.INTEGER, description = "Unix timestamp ms", nullable = true)
-                ),
-                required = listOf("name", "amount_cents", "type", "interval")
-            )
-        }.build(),
-        FunctionDeclaration.Builder(
-            name = "add_goal",
-            description = "Create a savings goal"
-        ).apply {
-            parameters = Schema.obj(
-                properties = mapOf(
-                    "name" to Schema.obj(type = Type.STRING),
-                    "target_cents" to Schema.obj(type = Type.INTEGER),
-                    "due_date" to Schema.obj(type = Type.INTEGER, description = "Unix timestamp ms", nullable = true)
-                ),
-                required = listOf("name", "target_cents")
-            )
-        }.build()
-    )
 
     fun streamAnalysis(request: AnalysisRequest): Flow<NlpResult> = flow {
         val provider = resolveProvider(request)
@@ -175,55 +113,39 @@ class NlpService(
 
         val cancellationToken = AtomicBoolean(false)
         val fullResponse = AtomicReference<StringBuilder>(StringBuilder())
-        var functionCallsExecuted = 0
 
         try {
-            val rawFlow = when (provider) {
-                is AiProvider.Google -> geminiService.streamWithFunctions(
+            val rawFlow: Flow<String> = when (provider) {
+                is AiProvider.Google -> geminiService.streamAnalysis(
                     prompt = prompt,
                     apiKey = provider.apiKey,
-                    modelName = provider.modelName,
-                    functions = functionDeclarations,
-                    cancellationToken = cancellationToken
+                    modelName = provider.modelName
                 )
                 is AiProvider.HuggingFace -> huggingFaceService.streamModel(
                     prompt = prompt,
                     token = provider.token,
                     modelName = provider.modelName,
                     cancellationToken = cancellationToken
-                )
-                is AiProvider.Local -> localModelService!!.streamAnalysis(
+                ).map { it.text }
+                is AiProvider.Local -> localModelService?.streamAnalysis(
                     prompt = prompt,
                     modelName = provider.modelName,
                     cancellationToken = cancellationToken
-                )
+                ) ?: emptyFlow()
             }
 
-            rawFlow.collect { chunk ->
+            rawFlow.collect { text ->
                 if (cancellationToken.get()) return@collect
                 
-                fullResponse.getAndUpdate { it.append(chunk.text) }
+                fullResponse.getAndUpdate { it.append(text) }
                 
-                // Emit clean text chunks immediately
-                if (chunk.text.isNotBlank()) {
-                    emit(NlpResult.Chunk(chunk.text))
-                }
-
-                // Handle function calls from structured output
-                chunk.functionCalls?.forEach { fnCall ->
-                    val parsed = parseFunctionCall(fnCall.name, fnCall.args)
-                    if (parsed != null) {
-                        emit(NlpResult.Command(parsed))
-                        functionCallsExecuted++
-                    }
+                if (text.isNotBlank()) {
+                    emit(NlpResult.Chunk(text))
                 }
             }
 
-            // Fallback: regex parse any commands the model emitted as text (for non-Gemini providers)
-            if (provider !is AiProvider.Google && functionCallsExecuted == 0) {
-                val fallbackCommands = parseCommandsFromText(fullResponse.get().toString())
-                fallbackCommands.forEach { emit(NlpResult.Command(it)) }
-            }
+            val fallbackCommands = parseCommandsFromText(fullResponse.get().toString())
+            fallbackCommands.forEach { emit(NlpResult.Command(it)) }
 
             emit(NlpResult.StreamComplete)
 
@@ -407,9 +329,12 @@ class NlpService(
                             targetCents = amountCents, // reuse amount field for target
                             rawLine = trimmed
                         )
+                        ParsedCommand.CommandType.UNKNOWN -> null
                     }
-                    commands.add(command)
-                    break // one command per line
+                    if (command != null) {
+                        commands.add(command)
+                        break // one command per line
+                    }
                 }
             }
         }
